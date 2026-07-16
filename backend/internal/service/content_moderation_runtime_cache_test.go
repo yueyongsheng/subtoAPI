@@ -271,6 +271,9 @@ func TestContentModerationRuntimeSnapshotRefreshFailureKeepsStaleConfig(t *testi
 	decision, err := svc.Check(context.Background(), input)
 	require.NoError(t, err)
 	require.True(t, decision.Blocked)
+	snapshot := *svc.runtimeSnapshot.Load()
+	snapshot.loadedAt = time.Now().Add(-time.Second)
+	svc.runtimeSnapshot.Store(&snapshot)
 
 	repo.failMultiple(errors.New("database unavailable"))
 	decision, err = svc.Check(context.Background(), input)

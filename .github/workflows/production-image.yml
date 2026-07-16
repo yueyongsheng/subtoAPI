@@ -1,0 +1,114 @@
+name: Production image
+
+on:
+  push:
+    tags:
+      - "release-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: production-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          check-latest: false
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify backend
+        working-directory: backend
+        run: |
+          go test -tags=unit ./...
+          go test -tags=integration ./...
+
+      - name: Verify frontend
+        run: make test-frontend
+
+      - name: Scan backend dependencies
+        working-directory: backend
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
+          govulncheck ./...
+
+      - name: Audit frontend production dependencies
+        shell: bash
+        run: |
+          cd frontend
+          pnpm audit --prod --audit-level=high --json > audit.json || true
+          cd ..
+          python tools/check_pnpm_audit_exceptions.py \
+            --audit frontend/audit.json \
+            --exceptions .github/audit-exceptions.yml
+
+      - name: Scan high-confidence credential patterns
+        shell: bash
+        run: |
+          matches="$(git grep -n -I -E \
+            '(sk-(proj-)?[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{20,})' \
+            -- . \
+            ':(exclude)**/__tests__/**' \
+            ':(exclude)**/*_test.go' \
+            ':(exclude)**/*.spec.ts' || true)"
+          unexpected="$(printf '%s\n' "$matches" | grep -Ev '(mirror-x+|example|fixture)' || true)"
+          if [[ -n "$unexpected" ]]; then
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Normalize image name
+        id: image
+        shell: bash
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push fixed image tags
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ github.ref_name }}
+            ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
