@@ -99,11 +99,24 @@ jobs:
         shell: bash
         run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve release metadata
+        id: release
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#release-v}"
+          if [[ -z "$version" || "$version" == "$GITHUB_REF_NAME" ]]; then
+            version="${GITHUB_REF_NAME}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Build and push fixed image tags
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
+          build-args: |
+            VERSION=${{ steps.release.outputs.version }}
+            COMMIT=${{ github.sha }}
           tags: |
             ${{ steps.image.outputs.name }}:${{ github.ref_name }}
             ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
