@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Sub2API encrypted R2 backup daily
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Shanghai
+RandomizedDelaySec=15m
+Persistent=true
+Unit=sub2api-restic-backup.service
+
+[Install]
+WantedBy=timers.target

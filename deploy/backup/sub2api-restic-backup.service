@@ -1,0 +1,21 @@
+[Unit]
+Description=Sub2API encrypted configuration backup to R2
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/sub2api-restic.env
+Environment=RESTIC_CACHE_DIR=/var/cache/sub2api-restic
+ExecStart=/usr/local/sbin/sub2api-restic-backup
+StateDirectory=sub2api-backup
+CacheDirectory=sub2api-restic
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/sub2api-backup /var/cache/sub2api-restic

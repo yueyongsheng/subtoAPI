@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 STATE_FILE = Path("/var/lib/sub2api-monitor/state.json")
+RESTIC_SUCCESS_FILE = Path("/var/lib/sub2api-backup/last-success")
 CONTAINERS = ("sub2api", "sub2api-postgres", "sub2api-redis")
 
 
@@ -67,6 +68,18 @@ def check_disk(issues: list[str]) -> None:
         issues.append(f"disk /: WARNING {percent:.1f}% used")
 
 
+def check_restic_backup(issues: list[str]) -> None:
+    maximum_age = int(os.getenv("RESTIC_MAX_AGE_SECONDS", "129600"))
+    try:
+        completed_at = int(RESTIC_SUCCESS_FILE.read_text(encoding="utf-8").strip())
+    except (FileNotFoundError, ValueError):
+        issues.append("restic backup: no successful run recorded")
+        return
+    age = int(time.time()) - completed_at
+    if age > maximum_age:
+        issues.append(f"restic backup: last success is {age // 3600} hours old")
+
+
 def load_state() -> dict:
     try:
         return json.loads(STATE_FILE.read_text(encoding="utf-8"))
@@ -118,6 +131,7 @@ def main() -> int:
     issues: list[str] = []
     check_containers(issues)
     check_disk(issues)
+    check_restic_backup(issues)
     check_url("local health", os.getenv("LOCAL_HEALTH_URL", "http://127.0.0.1:8080/health"), issues)
     check_url("public health", os.getenv("PUBLIC_HEALTH_URL", "https://api-yue88.xyz/health"), issues)
 
