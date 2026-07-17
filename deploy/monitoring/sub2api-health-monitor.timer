@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Sub2API production health checks every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=sub2api-health-monitor.service
+
+[Install]
+WantedBy=timers.target
