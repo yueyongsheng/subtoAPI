@@ -16,7 +16,7 @@ This directory is a credential-free production template. It is not ready to run 
 
 1. Copy this directory to `/opt/sub2api/compose`.
 2. Copy `.env.production.example` to `.env`, generate every secret, and set mode `600`.
-3. Replace all image tags with tested immutable digests after the first pull.
+3. Keep PostgreSQL and Redis on the tested immutable digests; replace the application tag with its verified GHCR digest after the first release build.
 4. Create `data`, `postgres_data`, and `redis_data` with the ownership required by the images.
 5. Replace the Caddy domain and install it as the host Caddy configuration.
 6. Validate with `docker compose config` before starting containers.

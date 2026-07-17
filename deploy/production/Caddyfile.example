@@ -1,5 +1,4 @@
-# Replace api.example.com after the domain is provided.
-api.example.com {
+api-yue88.xyz {
   encode zstd gzip
 
   @static path /assets/*
