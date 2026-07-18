@@ -1,9 +1,9 @@
 <template>
   <AuthLayout>
-    <div class="space-y-6">
+    <div class="space-y-5">
       <!-- Title -->
       <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 class="text-xl font-semibold text-gray-950 dark:text-white">
           {{ t('auth.createAccount') }}
         </h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
@@ -183,7 +183,10 @@
         </div>
 
         <!-- Turnstile Widget -->
-        <div v-if="turnstileEnabled && turnstileSiteKey">
+        <div
+          v-if="turnstileEnabled && turnstileSiteKey"
+          class="flex min-h-[65px] items-center justify-center overflow-hidden"
+        >
           <TurnstileWidget
             ref="turnstileRef"
             :site-key="turnstileSiteKey"

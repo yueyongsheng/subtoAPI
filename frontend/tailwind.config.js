@@ -5,19 +5,33 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 主色调 - Teal/Cyan 青色系
+        // 悦享 API 主色 - 取自品牌 Logo 的蓝色
         primary: {
-          50: '#f0fdfa',
-          100: '#ccfbf1',
-          200: '#99f6e4',
-          300: '#5eead4',
-          400: '#2dd4bf',
-          500: '#14b8a6',
-          600: '#0d9488',
-          700: '#0f766e',
-          800: '#115e59',
-          900: '#134e4a',
-          950: '#042f2e'
+          50: '#eff7ff',
+          100: '#dceeff',
+          200: '#b9ddff',
+          300: '#86c5ff',
+          400: '#4aa4f4',
+          500: '#2184e6',
+          600: '#126bd0',
+          700: '#1155a8',
+          800: '#134987',
+          900: '#163e70',
+          950: '#0e2747'
+        },
+        // 品牌辅助色 - 取自 Logo 的青绿色
+        brand: {
+          50: '#edfffc',
+          100: '#c7fff6',
+          200: '#90fcec',
+          300: '#50efdc',
+          400: '#20d7c5',
+          500: '#0bb8aa',
+          600: '#07958c',
+          700: '#0b7772',
+          800: '#0e5e5b',
+          900: '#104e4c',
+          950: '#02302f'
         },
         // 辅助色 - 深蓝灰
         accent: {
@@ -67,8 +81,8 @@ export default {
       boxShadow: {
         glass: '0 8px 32px rgba(0, 0, 0, 0.08)',
         'glass-sm': '0 4px 16px rgba(0, 0, 0, 0.06)',
-        glow: '0 0 20px rgba(20, 184, 166, 0.25)',
-        'glow-lg': '0 0 40px rgba(20, 184, 166, 0.35)',
+        glow: '0 0 20px rgba(33, 132, 230, 0.22)',
+        'glow-lg': '0 0 40px rgba(33, 132, 230, 0.30)',
         card: '0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06)',
         'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
         'inner-glow': 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
@@ -79,8 +93,7 @@ export default {
         'gradient-dark': 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
         'gradient-glass':
           'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-        'mesh-gradient':
-          'radial-gradient(at 40% 20%, rgba(20, 184, 166, 0.12) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(6, 182, 212, 0.08) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(20, 184, 166, 0.08) 0px, transparent 50%)'
+        'mesh-gradient': 'none'
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
@@ -118,8 +131,8 @@ export default {
           '100%': { backgroundPosition: '200% 0' }
         },
         glow: {
-          '0%': { boxShadow: '0 0 20px rgba(20, 184, 166, 0.25)' },
-          '100%': { boxShadow: '0 0 30px rgba(20, 184, 166, 0.4)' }
+          '0%': { boxShadow: '0 0 20px rgba(33, 132, 230, 0.22)' },
+          '100%': { boxShadow: '0 0 30px rgba(33, 132, 230, 0.34)' }
         }
       },
       backdropBlur: {
