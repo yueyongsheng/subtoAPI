@@ -221,3 +221,11 @@ func TestGatewayCacheTTLGlobalSetting_RequestInjectionScope(t *testing.T) {
 	gatewayForwardingCache.Store(&cachedGatewayForwardingSettings{})
 	require.False(t, svc.shouldInjectAnthropicCacheTTL1h(context.Background(), &Account{Platform: PlatformAnthropic, Type: AccountTypeOAuth}))
 }
+
+func TestGatewayCacheTTLGlobalSetting_DefaultEnabled(t *testing.T) {
+	repo := &gatewayTTLSettingRepo{data: map[string]string{}}
+	gatewayForwardingCache.Store(&cachedGatewayForwardingSettings{})
+	svc := NewSettingService(repo, &config.Config{})
+
+	require.True(t, svc.IsAnthropicCacheTTL1hInjectionEnabled(context.Background()))
+}

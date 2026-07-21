@@ -579,6 +579,10 @@ func (s *SettingService) refreshCachedSettings(settings *SystemSettings) {
 	}
 }
 
+func (s *SettingService) defaultAnthropicCacheTTL1hInjection() bool {
+	return true
+}
+
 func (s *SettingService) defaultRewriteMessageCacheControl() bool {
 	return true
 }
