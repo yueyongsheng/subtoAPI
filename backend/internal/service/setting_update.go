@@ -580,7 +580,7 @@ func (s *SettingService) refreshCachedSettings(settings *SystemSettings) {
 }
 
 func (s *SettingService) defaultRewriteMessageCacheControl() bool {
-	return false
+	return true
 }
 
 func (s *SettingService) validateDefaultSubscriptionGroups(ctx context.Context, items []DefaultSubscriptionSetting) error {
