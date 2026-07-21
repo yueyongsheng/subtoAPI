@@ -774,9 +774,9 @@ func (r *userRepository) ApplyRedeemBalanceAdjustment(ctx context.Context, id in
 	return nil
 }
 
-// DeductBalance 扣除用户余额
-// 透支策略：允许余额变为负数，确保当前请求能够完成
-// 中间件会阻止余额 <= 0 的用户发起后续请求
+// DeductBalance 扣除用户余额。
+// The balance predicate is part of the same UPDATE so concurrent requests
+// cannot both spend the same remaining balance or drive it below zero.
 func (r *userRepository) DeductBalance(ctx context.Context, id int64, amount float64) error {
 	client := clientFromContext(ctx, r.client)
 	n, err := client.User.Update().
@@ -790,17 +790,14 @@ func (r *userRepository) DeductBalance(ctx context.Context, id int64, amount flo
 		return nil
 	}
 
-	n, err = client.User.Update().
-		Where(dbuser.IDEQ(id)).
-		AddBalance(-amount).
-		Save(ctx)
+	exists, err := client.User.Query().Where(dbuser.IDEQ(id)).Exist(ctx)
 	if err != nil {
 		return err
 	}
-	if n == 0 {
+	if !exists {
 		return service.ErrUserNotFound
 	}
-	return nil
+	return service.ErrInsufficientBalance
 }
 
 func (r *userRepository) UpdateConcurrency(ctx context.Context, id int64, amount int) error {

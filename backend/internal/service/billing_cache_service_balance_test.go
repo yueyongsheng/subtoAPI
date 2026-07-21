@@ -74,13 +74,12 @@ func TestSyncBalanceCacheAfterDeduction_InvalidatesExhaustedBalance(t *testing.T
 	svc := NewBillingCacheService(cache, userRepo, nil, nil, nil, nil, cfg, nil)
 	t.Cleanup(svc.Stop)
 
-	newBalance := -0.25
+	newBalance := 0.0
 	syncBalanceCacheAfterDeduction(context.Background(), &postUsageBillingParams{
 		Cost: &CostBreakdown{ActualCost: 0.75},
 		User: &User{ID: 1},
 	}, &billingDeps{billingCacheService: svc}, &UsageBillingApplyResult{
-		NewBalance:         &newBalance,
-		BalanceOverdrafted: true,
+		NewBalance: &newBalance,
 	})
 
 	require.Equal(t, int64(1), cache.invalidateCalls.Load())
