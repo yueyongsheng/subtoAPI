@@ -382,7 +382,7 @@ const contactInfo = computed(() => configuredContactInfo.value || SUPPORT_CONTAC
 
 // Helper functions for history display
 const isBalanceType = (type: string) => {
-  return type === 'balance' || type === 'admin_balance'
+	return type === 'balance' || type === 'admin_balance' || type === 'signup_bonus'
 }
 
 const isSubscriptionType = (type: string) => {
@@ -396,6 +396,8 @@ const isAdminAdjustment = (type: string) => {
 const getHistoryItemTitle = (item: RedeemHistoryItem) => {
   if (item.type === 'balance') {
     return t('redeem.balanceAddedRedeem')
+	} else if (item.type === 'signup_bonus') {
+		return t('redeem.balanceAddedSignup')
   } else if (item.type === 'admin_balance') {
     return item.value >= 0 ? t('redeem.balanceAddedAdmin') : t('redeem.balanceDeductedAdmin')
   } else if (item.type === 'concurrency') {

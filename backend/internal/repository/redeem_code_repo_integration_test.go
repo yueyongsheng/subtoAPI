@@ -5,12 +5,14 @@ package repository
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -70,6 +72,27 @@ func (s *RedeemCodeRepoSuite) TestCreate() {
 	s.Require().Equal("TEST-CREATE", got.Code)
 	s.Require().NotNil(got.ExpiresAt)
 	s.Require().WithinDuration(expiresAt, *got.ExpiresAt, time.Second)
+}
+
+func TestRedeemCodeRepositoryCreateHonorsOuterTransaction(t *testing.T) {
+	client := testEntClient(t)
+	tx, err := client.Tx(context.Background())
+	require.NoError(t, err)
+
+	ctx := dbent.NewTxContext(context.Background(), tx)
+	repo := NewRedeemCodeRepository(client)
+	codeValue := "TX-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	record := &service.RedeemCode{
+		Code:   codeValue,
+		Type:   service.RedeemTypeSignupBonus,
+		Value:  10,
+		Status: service.StatusUsed,
+	}
+	require.NoError(t, repo.Create(ctx, record))
+	require.NoError(t, tx.Rollback())
+
+	_, err = repo.GetByCode(context.Background(), codeValue)
+	require.ErrorIs(t, err, service.ErrRedeemCodeNotFound)
 }
 
 func (s *RedeemCodeRepoSuite) TestCreateBatch() {

@@ -15,6 +15,8 @@ import (
 
 type redeemCodeRepoStub struct {
 	codesByCode map[string]*RedeemCode
+	created     []*RedeemCode
+	deletedIDs  []int64
 	useCalls    []struct {
 		id     int64
 		userID int64
@@ -22,8 +24,21 @@ type redeemCodeRepoStub struct {
 	updateCalls []*RedeemCode
 }
 
-func (s *redeemCodeRepoStub) Create(context.Context, *RedeemCode) error {
-	panic("unexpected Create call")
+func (s *redeemCodeRepoStub) Create(_ context.Context, code *RedeemCode) error {
+	if code == nil {
+		return nil
+	}
+	cloned := *code
+	if cloned.ID == 0 {
+		cloned.ID = int64(len(s.created) + 100)
+	}
+	code.ID = cloned.ID
+	s.created = append(s.created, &cloned)
+	if s.codesByCode == nil {
+		s.codesByCode = make(map[string]*RedeemCode)
+	}
+	s.codesByCode[cloned.Code] = &cloned
+	return nil
 }
 
 func (s *redeemCodeRepoStub) CreateBatch(context.Context, []RedeemCode) error {
@@ -63,8 +78,15 @@ func (s *redeemCodeRepoStub) BatchUpdate(context.Context, []int64, RedeemCodeBat
 	panic("unexpected BatchUpdate call")
 }
 
-func (s *redeemCodeRepoStub) Delete(context.Context, int64) error {
-	panic("unexpected Delete call")
+func (s *redeemCodeRepoStub) Delete(_ context.Context, id int64) error {
+	s.deletedIDs = append(s.deletedIDs, id)
+	for code, redeemCode := range s.codesByCode {
+		if redeemCode.ID == id {
+			delete(s.codesByCode, code)
+			break
+		}
+	}
+	return nil
 }
 
 func (s *redeemCodeRepoStub) Use(_ context.Context, id, userID int64) error {
@@ -197,6 +219,11 @@ func TestRegisterOAuthEmailAccountRollsBackCreatedUserWhenTokenPairGenerationFai
 	require.Len(t, userRepo.created, 1)
 	require.Empty(t, redeemRepo.useCalls)
 	require.Empty(t, redeemRepo.updateCalls)
+	require.Len(t, redeemRepo.created, 1)
+	require.Equal(t, RedeemTypeSignupBonus, redeemRepo.created[0].Type)
+	require.Equal(t, []int64{redeemRepo.created[0].ID}, redeemRepo.deletedIDs)
+	_, exists := redeemRepo.codesByCode[signupBonusCode(42)]
+	require.False(t, exists)
 }
 
 func TestRegisterOAuthEmailAccountSetsNormalizedSignupSourceOnCreatedUser(t *testing.T) {

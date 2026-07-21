@@ -472,6 +472,31 @@ func TestAuthService_Register_Success(t *testing.T) {
 	require.True(t, user.CheckPassword("password"))
 }
 
+func TestAuthService_Register_CreatesSignupBonusHistory(t *testing.T) {
+	userRepo := &userRepoStub{nextID: 17}
+	redeemRepo := &redeemCodeRepoStub{}
+	service := newAuthService(userRepo, map[string]string{
+		SettingKeyRegistrationEnabled:                 "true",
+		SettingKeyAuthSourceDefaultEmailGrantOnSignup: "true",
+		SettingKeyAuthSourceDefaultEmailBalance:       "10",
+	}, nil, nil)
+	service.redeemRepo = redeemRepo
+
+	_, user, err := service.Register(context.Background(), "bonus@test.com", "password")
+	require.NoError(t, err)
+	require.NotNil(t, user)
+	require.Equal(t, 10.0, user.Balance)
+	require.Len(t, redeemRepo.created, 1)
+
+	record := redeemRepo.created[0]
+	require.Equal(t, signupBonusCode(user.ID), record.Code)
+	require.Equal(t, RedeemTypeSignupBonus, record.Type)
+	require.Equal(t, 10.0, record.Value)
+	require.Equal(t, StatusUsed, record.Status)
+	require.Equal(t, user.ID, *record.UsedBy)
+	require.NotNil(t, record.UsedAt)
+}
+
 func TestAuthService_ValidateToken_ExpiredReturnsClaimsWithError(t *testing.T) {
 	repo := &userRepoStub{}
 	service := newAuthService(repo, nil, nil, nil)

@@ -159,7 +159,7 @@ func (s *AuthService) RegisterOAuthEmailAccount(
 		SignupSource: signupSource,
 	}
 
-	if err := s.userRepo.Create(ctx, user); err != nil {
+	if err := s.createUserWithSignupBonus(ctx, user); err != nil {
 		if errors.Is(err, ErrEmailExists) {
 			return nil, nil, ErrEmailExists
 		}
@@ -241,7 +241,7 @@ func (s *AuthService) RegisterVerifiedOAuthEmailAccount(
 		SignupSource: signupSource,
 	}
 
-	if err := s.userRepo.Create(ctx, user); err != nil {
+	if err := s.createUserWithSignupBonus(ctx, user); err != nil {
 		if errors.Is(err, ErrEmailExists) {
 			return nil, nil, ErrEmailExists
 		}
@@ -297,6 +297,9 @@ func (s *AuthService) RollbackOAuthEmailAccountCreation(ctx context.Context, use
 	}
 	if err := s.restoreOAuthRegistrationInvitation(ctx, invitationCode, userID); err != nil {
 		return err
+	}
+	if err := s.deleteSignupBonusRecord(ctx, userID); err != nil {
+		return fmt.Errorf("delete signup bonus record: %w", err)
 	}
 	if err := s.userRepo.Delete(ctx, userID); err != nil {
 		return fmt.Errorf("delete created oauth user: %w", err)
