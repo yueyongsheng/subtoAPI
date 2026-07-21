@@ -12,8 +12,10 @@
             type="text"
             class="input pr-8"
             :placeholder="t('admin.usage.searchUserPlaceholder')"
-            @input="debounceUserSearch"
+            @input="onUserInput"
             @focus="showUserDropdown = true"
+            @keydown.enter.prevent="resolveUserKeyword()"
+            @change="resolveUserKeyword()"
           />
           <button
             v-if="filters.user_id"
@@ -167,7 +169,7 @@
 
       <!-- Right: actions -->
       <div v-if="showActions" class="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
-        <button type="button" @click="$emit('refresh')" class="btn btn-secondary">
+        <button type="button" @click="handleRefresh" class="btn btn-secondary">
           {{ t('common.refresh') }}
         </button>
         <button type="button" @click="$emit('reset')" class="btn btn-secondary">
@@ -235,6 +237,7 @@ const apiKeySearchRef = ref<HTMLElement | null>(null)
 const accountSearchRef = ref<HTMLElement | null>(null)
 
 const userKeyword = ref('')
+const selectedUserEmail = ref('')
 const userResults = ref<SimpleUser[]>([])
 const showUserDropdown = ref(false)
 let userSearchTimeout: ReturnType<typeof setTimeout> | null = null
@@ -307,20 +310,74 @@ const billingModeOptions = ref<SelectOption[]>([
 
 const emitChange = () => emit('change')
 
+const findExactUser = (users: SimpleUser[], keyword: string) => {
+  const normalizedKeyword = keyword.trim().toLowerCase()
+  const normalizedId = normalizedKeyword.replace(/^#/, '')
+
+  return users.find((user) =>
+    user.email.toLowerCase() === normalizedKeyword || String(user.id) === normalizedId
+  )
+}
+
+const resolveUserKeyword = async (notifyChange = true) => {
+  if (userSearchTimeout) {
+    clearTimeout(userSearchTimeout)
+    userSearchTimeout = null
+  }
+
+  const keyword = userKeyword.value.trim()
+  if (!keyword) return true
+
+  if (
+    filters.value.user_id &&
+    selectedUserEmail.value.trim().toLowerCase() === keyword.toLowerCase()
+  ) {
+    return true
+  }
+
+  try {
+    const results = await adminAPI.usage.searchUsers(keyword)
+    if (userKeyword.value.trim() !== keyword) return false
+
+    userResults.value = results.sort((a, b) => Number(a.deleted) - Number(b.deleted))
+    const exactUser = findExactUser(userResults.value, keyword)
+    if (!exactUser) {
+      showUserDropdown.value = true
+      return false
+    }
+
+    await selectUser(exactUser, notifyChange)
+    return true
+  } catch {
+    userResults.value = []
+    showUserDropdown.value = true
+    return false
+  }
+}
+
 const debounceUserSearch = () => {
   if (userSearchTimeout) clearTimeout(userSearchTimeout)
   userSearchTimeout = setTimeout(async () => {
-    if (!userKeyword.value) {
+    userSearchTimeout = null
+    if (!userKeyword.value.trim()) {
       userResults.value = []
       return
     }
-    try {
-      const results = await adminAPI.usage.searchUsers(userKeyword.value)
-      userResults.value = results.sort((a, b) => Number(a.deleted) - Number(b.deleted))
-    } catch {
-      userResults.value = []
-    }
+    await resolveUserKeyword()
   }, 300)
+}
+
+const onUserInput = () => {
+  const selectedEmail = selectedUserEmail.value.trim().toLowerCase()
+  const typedKeyword = userKeyword.value.trim().toLowerCase()
+
+  if (filters.value.user_id && typedKeyword !== selectedEmail) {
+    filters.value.user_id = undefined
+    clearApiKey()
+    emitChange()
+  }
+
+  debounceUserSearch()
 }
 
 const debounceApiKeySearch = () => {
@@ -337,10 +394,16 @@ const debounceApiKeySearch = () => {
   }, 300)
 }
 
-const selectUser = async (u: SimpleUser) => {
+async function selectUser(u: SimpleUser, notifyChange = true) {
+  const selectionChanged = filters.value.user_id !== u.id ||
+    selectedUserEmail.value.toLowerCase() !== u.email.toLowerCase()
+
   userKeyword.value = u.email
+  selectedUserEmail.value = u.email
   showUserDropdown.value = false
   filters.value.user_id = u.id
+  if (!selectionChanged) return
+
   clearApiKey()
 
   // Auto-load API keys for this user
@@ -350,11 +413,19 @@ const selectUser = async (u: SimpleUser) => {
     apiKeyResults.value = []
   }
 
-  emitChange()
+  if (notifyChange) emitChange()
+}
+
+const handleRefresh = async () => {
+  const userResolved = await resolveUserKeyword(false)
+  if (userKeyword.value.trim() && !userResolved) return
+
+  emit('refresh')
 }
 
 const clearUser = () => {
   userKeyword.value = ''
+  selectedUserEmail.value = ''
   userResults.value = []
   showUserDropdown.value = false
   filters.value.user_id = undefined
@@ -453,7 +524,11 @@ watch(
   () => filters.value.user_id,
   (userId) => {
     if (!userId) {
-      userKeyword.value = ''
+      const preserveTypedKeyword = Boolean(selectedUserEmail.value) &&
+        userKeyword.value.trim().toLowerCase() !== selectedUserEmail.value.trim().toLowerCase()
+
+      if (!preserveTypedKeyword) userKeyword.value = ''
+      selectedUserEmail.value = ''
       userResults.value = []
     }
   }
@@ -496,6 +571,7 @@ onUnmounted(() => {
 // 供外部(如用户排行下钻)在程序化设置 user_id 后回显选中的用户邮箱
 const setUserKeyword = (email: string) => {
   userKeyword.value = email
+  selectedUserEmail.value = email
   userResults.value = []
   showUserDropdown.value = false
 }

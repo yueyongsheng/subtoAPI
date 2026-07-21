@@ -163,6 +163,116 @@ describe('UsageFilters — user search dropdown', () => {
     // (the component uses toRef so modelValue is mutated in place and 'change' is emitted)
     expect(wrapper.props('modelValue').user_id).toBe(1)
   })
+
+  it('automatically applies an exact email match without requiring a dropdown click', async () => {
+    mockSearchUsers.mockResolvedValue([
+      { id: 4, email: 'aprendendo@163.com', deleted: false },
+    ])
+
+    const wrapper = mountFilters()
+    const input = wrapper.find('input[type="text"]')
+
+    await input.setValue('aprendendo@163.com')
+    vi.advanceTimersByTime(300)
+    await flushPromises()
+
+    expect(wrapper.props('modelValue').user_id).toBe(4)
+    expect(wrapper.emitted('change')).toHaveLength(1)
+  })
+
+  it('clears a stale selected user and API key as soon as the user text is edited', async () => {
+    mockSearchUsers.mockResolvedValue([
+      { id: 4, email: 'aprendendo@163.com', deleted: false },
+    ])
+
+    const wrapper = mountFilters()
+    const input = wrapper.find('input[type="text"]')
+
+    await input.setValue('aprendendo@163.com')
+    vi.advanceTimersByTime(300)
+    await flushPromises()
+    wrapper.props('modelValue').api_key_id = 99
+
+    await input.setValue('another@example.com')
+    await flushPromises()
+
+    expect(wrapper.props('modelValue').user_id).toBeUndefined()
+    expect(wrapper.props('modelValue').api_key_id).toBeUndefined()
+    expect((input.element as HTMLInputElement).value).toBe('another@example.com')
+    expect(wrapper.emitted('change')).toHaveLength(2)
+  })
+
+  it('resolves an exact user before emitting refresh', async () => {
+    mockSearchUsers.mockResolvedValue([
+      { id: 4, email: 'aprendendo@163.com', deleted: false },
+    ])
+
+    const wrapper = mount(UsageFilters, {
+      props: {
+        modelValue: defaultFilters(),
+        exporting: false,
+        startDate: '2026-05-01',
+        endDate: '2026-05-28',
+        showActions: true,
+        modelOptions: [],
+      },
+      global: { stubs: { Select: true, Teleport: true } },
+    })
+    const input = wrapper.find('input[type="text"]')
+
+    await input.setValue('aprendendo@163.com')
+    const refreshButton = wrapper.findAll('button').find((button) => button.text() === 'Refresh')
+    expect(refreshButton).toBeTruthy()
+    await refreshButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockSearchUsers).toHaveBeenCalledWith('aprendendo@163.com')
+    expect(wrapper.props('modelValue').user_id).toBe(4)
+    expect(wrapper.emitted('refresh')).toHaveLength(1)
+  })
+
+  it.each([
+    { value: '#4', event: 'keydown', eventOptions: { key: 'Enter' } },
+    { value: 'aprendendo@163.com', event: 'change', eventOptions: {} },
+  ])('resolves an exact user on $event', async ({ value, event, eventOptions }) => {
+    mockSearchUsers.mockResolvedValue([
+      { id: 4, email: 'aprendendo@163.com', deleted: false },
+    ])
+
+    const wrapper = mountFilters()
+    const input = wrapper.find('input[type="text"]')
+
+    await input.setValue(value)
+    await input.trigger(event, eventOptions)
+    await flushPromises()
+
+    expect(wrapper.props('modelValue').user_id).toBe(4)
+    expect(wrapper.emitted('change')).toHaveLength(1)
+  })
+
+  it('does not emit refresh when typed user text has no exact match', async () => {
+    mockSearchUsers.mockResolvedValue([])
+
+    const wrapper = mount(UsageFilters, {
+      props: {
+        modelValue: defaultFilters(),
+        exporting: false,
+        startDate: '2026-05-01',
+        endDate: '2026-05-28',
+        showActions: true,
+        modelOptions: [],
+      },
+      global: { stubs: { Select: true, Teleport: true } },
+    })
+
+    await wrapper.find('input[type="text"]').setValue('missing@example.com')
+    const refreshButton = wrapper.findAll('button').find((button) => button.text() === 'Refresh')
+    await refreshButton!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.props('modelValue').user_id).toBeUndefined()
+    expect(wrapper.emitted('refresh')).toBeUndefined()
+  })
 })
 
 describe('UsageFilters — model options come from prop (no dup request)', () => {
