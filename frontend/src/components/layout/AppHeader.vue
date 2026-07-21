@@ -120,7 +120,7 @@
 
           <!-- Dropdown Menu -->
           <transition name="dropdown">
-            <div v-if="dropdownOpen" class="dropdown right-0 mt-2 w-56">
+            <div v-if="dropdownOpen" class="dropdown right-0 mt-2 w-72">
               <!-- User Info -->
               <div class="border-b border-gray-100 px-4 py-3 dark:border-dark-700">
                 <div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -173,31 +173,27 @@
 
               </div>
 
-              <!-- Contact Support (only show if configured) -->
-              <div
-                v-if="contactInfo"
-                class="border-t border-gray-100 px-4 py-2.5 dark:border-dark-700"
+              <router-link
+                to="/support"
+                class="block border-t border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50 dark:border-dark-700 dark:hover:bg-dark-800"
+                @click="closeDropdown"
               >
-                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                  <svg
-                    class="h-3.5 w-3.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"
-                    />
-                  </svg>
-                  <span>{{ t('common.contactSupport') }}:</span>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{
-                    contactInfo
-                  }}</span>
+                <div class="flex items-center justify-between gap-3">
+                  <div class="inline-flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
+                    <Icon name="chat" size="sm" class="text-primary-500" />
+                    {{ t('nav.support') }}
+                  </div>
+                  <span class="text-xs text-emerald-600 dark:text-emerald-400">
+                    {{ supportContact.serviceHours }}
+                  </span>
                 </div>
-              </div>
+                <dl class="mt-2 grid grid-cols-[58px_minmax(0,1fr)] gap-x-2 gap-y-1 text-xs leading-5">
+                  <dt class="text-gray-500 dark:text-dark-400">{{ t('support.qq') }}</dt>
+                  <dd class="font-medium text-gray-700 dark:text-dark-200">{{ supportContact.qq }}</dd>
+                  <dt class="text-gray-500 dark:text-dark-400">{{ t('support.wechat') }}</dt>
+                  <dd class="break-all font-medium text-gray-700 dark:text-dark-200">{{ supportContact.wechat }}</dd>
+                </dl>
+              </router-link>
 
               <div v-if="showOnboardingButton" class="border-t border-gray-100 py-1 dark:border-dark-700">
                 <button @click="handleReplayGuide" class="dropdown-item w-full">
@@ -249,6 +245,7 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { SUPPORT_CONTACT } from '@/config/support'
 import { sanitizeUrl } from '@/utils/url'
 
 const router = useRouter()
@@ -262,7 +259,7 @@ const onboardingStore = useOnboardingStore()
 const user = computed(() => authStore.user)
 const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
-const contactInfo = computed(() => appStore.contactInfo)
+const supportContact = SUPPORT_CONTACT
 const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
 const availableBalance = computed(() => Number(user.value?.balance || 0))

@@ -184,12 +184,13 @@
                 <li>{{ t('redeem.codeRule2') }}</li>
                 <li>
                   {{ t('redeem.codeRule3') }}
-                  <span
-                    v-if="contactInfo"
-                    class="ml-1.5 inline-flex items-center rounded-md bg-primary-200/50 px-2 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-800/40 dark:text-primary-200"
+                  <router-link
+                    to="/support"
+                    class="ml-1.5 inline-flex max-w-full items-center gap-1 rounded-md bg-primary-200/50 px-2 py-0.5 text-xs font-medium text-primary-800 hover:bg-primary-200 dark:bg-primary-800/40 dark:text-primary-200 dark:hover:bg-primary-800/60"
                   >
                     {{ contactInfo }}
-                  </span>
+                    <Icon name="arrowRight" size="xs" class="flex-shrink-0" />
+                  </router-link>
                 </li>
                 <li>{{ t('redeem.codeRule4') }}</li>
               </ul>
@@ -350,6 +351,7 @@ import { useSubscriptionStore } from '@/stores/subscriptions'
 import { redeemAPI, authAPI, type RedeemHistoryItem } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { SUPPORT_CONTACT_LINE } from '@/config/support'
 import { formatDateTime } from '@/utils/format'
 
 const { t } = useI18n()
@@ -375,7 +377,8 @@ const errorMessage = ref('')
 // History data
 const history = ref<RedeemHistoryItem[]>([])
 const loadingHistory = ref(false)
-const contactInfo = ref('')
+const configuredContactInfo = ref('')
+const contactInfo = computed(() => configuredContactInfo.value || SUPPORT_CONTACT_LINE)
 
 // Helper functions for history display
 const isBalanceType = (type: string) => {
@@ -480,7 +483,7 @@ onMounted(async () => {
   fetchHistory()
   try {
     const settings = await authAPI.getPublicSettings()
-    contactInfo.value = settings.contact_info || ''
+    configuredContactInfo.value = settings.contact_info || ''
   } catch (error) {
     console.error('Failed to load contact info:', error)
   }

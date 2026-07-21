@@ -159,6 +159,7 @@ export default {
     affiliateRebateRecords: '返利记录',
     affiliateTransferRecords: '提取记录',
     profile: '个人资料',
+    support: '联系客服',
     users: '用户管理',
     groups: '分组管理',
     channels: '渠道管理',
@@ -190,6 +191,25 @@ export default {
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
     riskControl: '风控中心',
+  },
+
+  support: {
+    title: '联系客服',
+    description: '账号、充值、模型和使用问题均可联系我们',
+    heading: '悦享 API 客服中心',
+    qq: '客服 QQ',
+    wechat: '客服微信',
+    qqGroup: '官方 QQ 群',
+    qqGroupTitle: '加入悦享 API 官方群',
+    groupNumber: '群号：',
+    serviceHours: '服务时间',
+    replyNotice: '服务时段内会尽快回复，繁忙时请稍作等待。',
+    qqGroupHint: '使用 QQ 扫描二维码加入官方群，及时获取服务通知。',
+    qqGroupQrAlt: '悦享 API 官方 QQ 群二维码',
+    copyValue: '复制{label}',
+    copied: '{label}已复制',
+    prepareTitle: '联系时建议提供',
+    prepareDescription: '请附上账号邮箱、问题发生时间和相关截图；涉及充值或订单时请同时提供订单号，以便快速核对。'
   },
 
   // Auth

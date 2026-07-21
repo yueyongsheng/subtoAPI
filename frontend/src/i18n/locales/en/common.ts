@@ -159,6 +159,7 @@ export default {
     affiliateRebateRecords: 'Rebate Records',
     affiliateTransferRecords: 'Transfer Records',
     profile: 'Profile',
+    support: 'Contact Support',
     users: 'Users',
     groups: 'Groups',
     channels: 'Channels',
@@ -190,6 +191,25 @@ export default {
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
     riskControl: 'Risk Control',
+  },
+
+  support: {
+    title: 'Contact Support',
+    description: 'Help with accounts, recharge, models, and usage',
+    heading: 'Yuexiang API Support',
+    qq: 'Support QQ',
+    wechat: 'Support WeChat',
+    qqGroup: 'Official QQ Group',
+    qqGroupTitle: 'Join the Yuexiang API QQ Group',
+    groupNumber: 'Group:',
+    serviceHours: 'Service hours',
+    replyNotice: 'We reply as soon as possible during service hours.',
+    qqGroupHint: 'Scan with QQ to join the official group and receive service updates.',
+    qqGroupQrAlt: 'Yuexiang API official QQ group QR code',
+    copyValue: 'Copy {label}',
+    copied: '{label} copied',
+    prepareTitle: 'Useful details to include',
+    prepareDescription: 'Include your account email, the time of the issue, and a screenshot. For recharge or order questions, include the order number.'
   },
 
   // Auth

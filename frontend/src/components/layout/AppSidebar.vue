@@ -357,6 +357,21 @@ const UserIcon = {
     )
 }
 
+const SupportIcon = {
+  render: () =>
+    h(
+      'svg',
+      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
+      [
+        h('path', {
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          d: 'M18 10.5V6.75a6 6 0 00-12 0v3.75m12 0a2.25 2.25 0 012.25 2.25v2.5A2.25 2.25 0 0118 17.5h-.75A2.25 2.25 0 0115 15.25v-2.5a2.25 2.25 0 012.25-2.25H18zm-12 0a2.25 2.25 0 00-2.25 2.25v2.5A2.25 2.25 0 006 17.5h.75A2.25 2.25 0 009 15.25v-2.5a2.25 2.25 0 00-2.25-2.25H6zm12 7v.75A2.75 2.75 0 0115.25 21H12'
+        })
+      ]
+    )
+}
+
 const UsersIcon = {
   render: () =>
     h(
@@ -711,6 +726,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
     { path: '/affiliate', label: t('nav.affiliate'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagAffiliate },
     { path: '/profile', label: t('nav.profile'), icon: UserIcon },
+    { path: '/support', label: t('nav.support'), icon: SupportIcon },
     ...customMenuItemsForUser.value.map((item): NavItem => ({
       path: `/custom/${item.id}`,
       label: item.label,
