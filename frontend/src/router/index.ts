@@ -167,6 +167,24 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/docs',
+    name: 'ConfigDocs',
+    component: () => import('@/views/public/ConfigDocsView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: '配置文档'
+    }
+  },
+  {
+    path: '/docs/:guideId',
+    name: 'ConfigGuide',
+    component: () => import('@/views/public/ConfigDocsView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: '配置教程'
+    }
+  },
+  {
     path: '/legal/:documentId',
     name: 'LegalDocument',
     component: () => import('@/views/public/LegalDocumentView.vue'),
@@ -715,7 +733,7 @@ let authInitialized = false
 const navigationLoading = useNavigationLoadingState()
 // 延迟初始化预加载，传入 router 实例
 let routePrefetch: ReturnType<typeof useRoutePrefetch> | null = null
-const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/payment/result', '/payment/airwallex', '/legal']
+const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/payment/result', '/payment/airwallex', '/legal', '/docs']
 const BACKEND_MODE_CALLBACK_PATHS = [
   '/auth/callback',
   '/auth/linuxdo/callback',

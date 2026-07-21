@@ -18,12 +18,21 @@ describe('doc_url sanitization', () => {
     expect(headerSource).toContain('sanitizeUrl(appStore.docUrl)')
   })
 
+  it('AppHeader falls back to the built-in docs route', () => {
+    expect(headerSource).toContain('v-else')
+    expect(headerSource).toContain('to="/docs"')
+  })
+
   it('HomeView imports sanitizeUrl', () => {
     expect(homeViewSource).toContain("import { sanitizeUrl } from '@/utils/url'")
   })
 
   it('HomeView applies sanitizeUrl to docUrl', () => {
     expect(homeViewSource).toContain('sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl')
+  })
+
+  it('HomeView falls back to the built-in docs route', () => {
+    expect(homeViewSource).toContain('to="/docs"')
   })
 
   it('KeyUsageView imports sanitizeUrl', () => {
