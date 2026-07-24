@@ -37,6 +37,17 @@ func TestMigration177EnablesFifteenPercentAffiliateRebates(t *testing.T) {
 	require.Contains(t, sql, "ON CONFLICT (key) DO UPDATE")
 }
 
+func TestMigration178ReducesAffiliateRebateRateToTenPercent(t *testing.T) {
+	content, err := FS.ReadFile("178_reduce_affiliate_rebate_rate_to_ten_percent.sql")
+	require.NoError(t, err)
+
+	sql := string(content)
+	require.Contains(t, sql, "('affiliate_rebate_rate', '10', NOW())")
+	require.Contains(t, sql, "ON CONFLICT (key) DO UPDATE")
+	require.Contains(t, sql, "WHERE settings.value IN ('15', '15.00000000')")
+	require.NotContains(t, sql, "affiliate_enabled")
+}
+
 func TestAuthIdentityReportTypeWideningRunsBeforeLongReportWritersAndStillReconcilesAt121(t *testing.T) {
 	preflightContent, err := FS.ReadFile("108a_widen_auth_identity_migration_report_type.sql")
 	require.NoError(t, err)
