@@ -21,6 +21,7 @@ const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
+const publicSettingsState = vi.hoisted(() => ({ paymentEnabled: true }))
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -73,6 +74,7 @@ vi.mock('@/stores', () => ({
     showError,
     showInfo,
     showWarning,
+    cachedPublicSettings: { payment_enabled: publicSettingsState.paymentEnabled },
   }),
 }))
 
@@ -215,6 +217,7 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   showError.mockReset()
   showInfo.mockReset()
   showWarning.mockReset()
+  publicSettingsState.paymentEnabled = true
   getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoWithPlansFixture(options))
   bridgeInvoke.mockReset()
   window.localStorage.clear()
@@ -235,6 +238,35 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   await flushPromises()
   return wrapper
 }
+
+describe('PaymentView preview mode', () => {
+  it('keeps the recharge form visible but prevents order creation while payment is disabled', async () => {
+    routeState.path = '/purchase'
+    routeState.query = {}
+    publicSettingsState.paymentEnabled = false
+    createOrder.mockReset()
+    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture({ methods: {} }))
+
+    const wrapper = shallowMount(PaymentView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          Teleport: true,
+          Transition: false,
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('payment.preview.title')
+    expect(wrapper.text()).toContain('payment.preview.button')
+    expect(wrapper.find('amount-input-stub').exists()).toBe(true)
+    expect(wrapper.find('payment-method-selector-stub').exists()).toBe(true)
+    const previewButton = wrapper.findAll('button').find(button => button.text().includes('payment.preview.button'))
+    expect(previewButton?.attributes('disabled')).toBeDefined()
+    expect(createOrder).not.toHaveBeenCalled()
+  })
+})
 
 describe('PaymentView subscription confirmation amounts', () => {
   it('shows converted CNY pay amount using the subscription rate, not the balance multiplier', async () => {

@@ -401,6 +401,11 @@ export default {
     tabSubscribe: '订阅',
     noPlans: '暂无可用订阅套餐',
     notAvailable: '充值功能暂未开放',
+    preview: {
+      title: '支付通道筹备中',
+      description: '充值界面已开放预览，当前不会创建支付订单。工商及支付接入完成后即可直接启用。',
+      button: '支付通道筹备中'
+    },
     confirmSubscription: '确认订阅',
     confirmCancel: '确定要取消此订单吗？',
     amountTooLow: '最低金额为 {min}',

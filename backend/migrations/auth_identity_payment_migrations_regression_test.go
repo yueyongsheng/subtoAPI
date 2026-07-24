@@ -27,6 +27,16 @@ func TestMigration118DoesNotForceOverwriteAuthSourceGrantDefaults(t *testing.T) 
 	require.Contains(t, sql, "THEN ''")
 }
 
+func TestMigration177EnablesFifteenPercentAffiliateRebates(t *testing.T) {
+	content, err := FS.ReadFile("177_enable_affiliate_at_fifteen_percent.sql")
+	require.NoError(t, err)
+
+	sql := string(content)
+	require.Contains(t, sql, "('affiliate_enabled', 'true', NOW())")
+	require.Contains(t, sql, "('affiliate_rebate_rate', '15', NOW())")
+	require.Contains(t, sql, "ON CONFLICT (key) DO UPDATE")
+}
+
 func TestAuthIdentityReportTypeWideningRunsBeforeLongReportWritersAndStillReconcilesAt121(t *testing.T) {
 	preflightContent, err := FS.ReadFile("108a_widen_auth_identity_migration_report_type.sql")
 	require.NoError(t, err)

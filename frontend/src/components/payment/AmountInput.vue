@@ -69,9 +69,15 @@ const { t } = useI18n()
 const customText = ref('')
 
 // 0 = no limit
-const filteredAmounts = computed(() =>
-  props.amounts.filter((a) => (props.min <= 0 || a >= props.min) && (props.max <= 0 || a <= props.max))
-)
+const filteredAmounts = computed(() => {
+  const available = props.amounts.filter((a) =>
+    (props.min <= 0 || a >= props.min) && (props.max <= 0 || a <= props.max),
+  )
+  if (available.length === 0 && props.min > 0 && props.min === props.max) {
+    return [props.min]
+  }
+  return available
+})
 
 const placeholderText = computed(() => {
   if (props.min > 0 && props.max > 0) return `${props.min} - ${props.max}`

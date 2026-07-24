@@ -42,6 +42,13 @@ describe('AppSidebar scroll position persistence', () => {
   })
 })
 
+describe('AppSidebar commerce navigation', () => {
+  it('keeps recharge and order history visible while payment is in preview mode', () => {
+    expect(componentSource).toContain("{ path: '/purchase', label: t('nav.buySubscription'), icon: RechargeSubscriptionIcon, hideInSimpleMode: true }")
+    expect(componentSource).toContain("{ path: '/orders', label: t('nav.myOrders'), icon: OrderListIcon, hideInSimpleMode: true }")
+  })
+})
+
 describe('AppSidebar header styles', () => {
   it('does not clip the version badge dropdown', () => {
     const sidebarHeaderBlockMatch = styleSource.match(/\.sidebar-header\s*\{[\s\S]*?\n {2}\}/)

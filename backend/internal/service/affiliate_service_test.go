@@ -15,13 +15,13 @@ import (
 // global rate, and that out-of-range exclusive rates are clamped silently.
 //
 // SettingService is left nil here so globalRebateRatePercent returns the
-// documented default (AffiliateRebateRateDefault = 20%) — this exercises the
+// documented default (AffiliateRebateRateDefault = 15%) — this exercises the
 // fallback path without spinning up a settings stub.
 func TestResolveRebateRatePercent_PerUserOverride(t *testing.T) {
 	t.Parallel()
 	svc := &AffiliateService{}
 
-	// nil exclusive rate → falls back to global default (20%)
+	// nil exclusive rate → falls back to global default (15%)
 	require.InDelta(t, AffiliateRebateRateDefault,
 		svc.resolveRebateRatePercent(context.Background(), &AffiliateSummary{}), 1e-9)
 
@@ -47,14 +47,25 @@ func TestResolveRebateRatePercent_PerUserOverride(t *testing.T) {
 }
 
 // TestIsEnabled_NilSettingServiceReturnsDefault verifies that IsEnabled
-// safely handles a nil settingService dependency by returning the default
-// (off). This protects callers from nil-pointer crashes in misconfigured
+// safely handles a nil settingService dependency by returning the default.
+// This protects callers from nil-pointer crashes in misconfigured
 // environments.
 func TestIsEnabled_NilSettingServiceReturnsDefault(t *testing.T) {
 	t.Parallel()
 	svc := &AffiliateService{}
-	require.False(t, svc.IsEnabled(context.Background()))
 	require.Equal(t, AffiliateEnabledDefault, svc.IsEnabled(context.Background()))
+}
+
+func TestIsEnabled_DefaultsOnAndHonorsExplicitFalse(t *testing.T) {
+	t.Parallel()
+
+	missing := &AffiliateService{settingService: NewSettingService(&settingRepoStub{values: map[string]string{}}, nil)}
+	require.True(t, missing.IsEnabled(context.Background()))
+
+	disabled := &AffiliateService{settingService: NewSettingService(&settingRepoStub{values: map[string]string{
+		SettingKeyAffiliateEnabled: "false",
+	}}, nil)}
+	require.False(t, disabled.IsEnabled(context.Background()))
 }
 
 // TestValidateExclusiveRate_BoundaryAndInvalid covers the validator used by
