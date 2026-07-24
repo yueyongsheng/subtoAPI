@@ -38,3 +38,42 @@ final result: passed
 - P0：无。
 - P1：无。
 - P2：无。
+
+---
+
+# Promotional Recharge Packages Design QA
+
+QA date: 2026-07-24
+
+## Inputs
+
+- Reference: `C:\Users\ADMINI~1\AppData\Local\Temp\codex-clipboard-995a9022-f1d8-437f-9ada-04c5dac0d1c9.png`
+- Production: `https://api-yue88.xyz/purchase`
+- Desktop state: dark theme, collapsed sidebar, recharge tab, 36 CNY package selected
+- Desktop viewport: reference 1056x624; production requested at 1024x624 and captured at the browser content size
+- Mobile viewport: 390 CSS px, full-page production capture
+
+## Artifacts
+
+- Desktop production: `E:\中转\.tmp\design-qa\production-desktop-collapsed-full.png`
+- Mobile production: `E:\中转\.tmp\design-qa\production-mobile-390-full.png`
+- Full comparison: `E:\中转\.tmp\design-qa\comparison-full.png`
+- Focused comparison: `E:\中转\.tmp\design-qa\comparison-focused.png`
+
+## Comparison History
+
+1. Compared the reference and production desktop captures together at the same selected-package state.
+2. Repeated the comparison with focused crops covering the package cards, quick amounts, and custom amount input.
+3. Inspected the full mobile payment flow for wrapping, clipping, overlap, and payment-summary consistency.
+
+## Findings
+
+- P0: none.
+- P1: none.
+- P2: none.
+- The production layout keeps the existing product navigation, colors, spacing, card borders, and responsive grid.
+- The four annotated reference prices were intentionally changed from 35/65/95/155 CNY to the requested 36/66/96/156 CNY; 300 CNY is unchanged.
+- All five cards fit on one desktop row. The mobile layout uses two columns and leaves the fifth card on the final row without text overflow.
+- Selecting each package updates the payment amount and credited USD balance consistently. Only WeChat Pay is visible.
+
+result: passed
