@@ -238,6 +238,42 @@ func TestCalculateCreditedBalanceStillUsesRechargeMultiplier(t *testing.T) {
 	}
 }
 
+func TestCalculateCreditedBalanceUsesPromotionalPackage(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		payAmount      float64
+		creditedAmount float64
+	}{
+		{payAmount: 36, creditedAmount: 1000},
+		{payAmount: 66, creditedAmount: 2000},
+		{payAmount: 96, creditedAmount: 3000},
+		{payAmount: 156, creditedAmount: 5000},
+		{payAmount: 300, creditedAmount: 10000},
+	}
+	for _, tt := range tests {
+		got := calculateCreditedBalance(tt.payAmount, 25)
+		if got != tt.creditedAmount {
+			t.Fatalf("calculateCreditedBalance(%v) = %v, want %v", tt.payAmount, got, tt.creditedAmount)
+		}
+	}
+}
+
+func TestPromotionalRechargePackagesAreReturnedInDisplayOrder(t *testing.T) {
+	t.Parallel()
+
+	packages := PromotionalRechargePackages()
+	if len(packages) != 5 {
+		t.Fatalf("package count = %d, want 5", len(packages))
+	}
+	if packages[0].PayAmount != 36 || packages[0].CreditedAmount != 1000 {
+		t.Fatalf("first package = %+v, want pay 36 and credit 1000", packages[0])
+	}
+	if packages[1].Badge != "recommended" || packages[4].Badge != "best_value" {
+		t.Fatalf("package badges = %q/%q, want recommended/best_value", packages[1].Badge, packages[4].Badge)
+	}
+}
+
 func TestCalculateCreateOrderPayAmountRejectsFractionalZeroDecimal(t *testing.T) {
 	t.Parallel()
 

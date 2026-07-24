@@ -291,6 +291,16 @@ export default {
     creditedBalance: 'Credited Balance',
     quickAmounts: 'Quick Amounts',
     customAmount: 'Custom Amount',
+    promotion: {
+      title: 'Special Packages',
+      package: 'Special Package',
+      creditPrefix: 'Credit',
+      balanceSuffix: 'balance',
+      badges: {
+        recommended: 'Recommended',
+        best_value: 'Best Value',
+      },
+    },
     enterAmount: 'Enter amount',
     paymentMethod: 'Payment Method',
     fee: 'Fee',

@@ -315,6 +315,16 @@ export default {
     creditedBalance: '到账余额',
     quickAmounts: '快捷金额',
     customAmount: '自定义金额',
+    promotion: {
+      title: '特惠套餐',
+      package: '特惠套餐',
+      creditPrefix: '到账',
+      balanceSuffix: '余额',
+      badges: {
+        recommended: '推荐',
+        best_value: '大额优选',
+      },
+    },
     enterAmount: '输入金额',
     paymentMethod: '支付方式',
     fee: '手续费',

@@ -105,6 +105,13 @@ function checkoutInfoFixture(overrides: Partial<CheckoutInfoResponse> = {}) {
     global_min: 0,
     global_max: 0,
     plans: [],
+    recharge_packages: [
+      { pay_amount: 36, credited_amount: 1000 },
+      { pay_amount: 66, credited_amount: 2000, badge: 'recommended' },
+      { pay_amount: 96, credited_amount: 3000 },
+      { pay_amount: 156, credited_amount: 5000 },
+      { pay_amount: 300, credited_amount: 10000, badge: 'best_value' },
+    ],
     balance_disabled: false,
     balance_recharge_multiplier: 1,
     subscription_usd_to_cny_rate: 0,
@@ -265,6 +272,55 @@ describe('PaymentView preview mode', () => {
     const previewButton = wrapper.findAll('button').find(button => button.text().includes('payment.preview.button'))
     expect(previewButton?.attributes('disabled')).toBeDefined()
     expect(createOrder).not.toHaveBeenCalled()
+  })
+})
+
+describe('PaymentView promotional recharge packages', () => {
+  it('submits the selected package price while previewing the package credit', async () => {
+    routeState.path = '/purchase'
+    routeState.query = {}
+    publicSettingsState.paymentEnabled = true
+    createOrder.mockReset().mockResolvedValue({
+      order_id: 321,
+      amount: 2000,
+      pay_amount: 66,
+      fee_rate: 0,
+      expires_at: '2099-01-01T00:10:00.000Z',
+      payment_type: 'wxpay',
+      qr_code: 'weixin://wxpay/bizpayurl?pr=package-66',
+      out_trade_no: 'sub2_package_66',
+    })
+    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture())
+
+    const wrapper = shallowMount(PaymentView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          RechargePackageSelector: {
+            props: ['packages', 'modelValue'],
+            emits: ['update:modelValue'],
+            template: '<button data-test="select-package-66" @click="$emit(\'update:modelValue\', 66)">select package</button>',
+          },
+          Teleport: true,
+          Transition: false,
+        },
+      },
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-test="select-package-66"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('$2000.00')
+
+    const submit = wrapper.findAll('button').find(button => button.text().includes('payment.createOrder'))
+    await submit?.trigger('click')
+    await flushPromises()
+
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 66,
+      order_type: 'balance',
+      payment_type: 'wxpay',
+    }))
   })
 })
 

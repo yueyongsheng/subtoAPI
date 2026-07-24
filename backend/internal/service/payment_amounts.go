@@ -9,6 +9,24 @@ import (
 
 const defaultBalanceRechargeMultiplier = 1.0
 
+type RechargePackage struct {
+	PayAmount      float64 `json:"pay_amount"`
+	CreditedAmount float64 `json:"credited_amount"`
+	Badge          string  `json:"badge,omitempty"`
+}
+
+var promotionalRechargePackages = []RechargePackage{
+	{PayAmount: 36, CreditedAmount: 1000},
+	{PayAmount: 66, CreditedAmount: 2000, Badge: "recommended"},
+	{PayAmount: 96, CreditedAmount: 3000},
+	{PayAmount: 156, CreditedAmount: 5000},
+	{PayAmount: 300, CreditedAmount: 10000, Badge: "best_value"},
+}
+
+func PromotionalRechargePackages() []RechargePackage {
+	return append([]RechargePackage(nil), promotionalRechargePackages...)
+}
+
 func normalizeBalanceRechargeMultiplier(multiplier float64) float64 {
 	if math.IsNaN(multiplier) || math.IsInf(multiplier, 0) || multiplier <= 0 {
 		return defaultBalanceRechargeMultiplier
@@ -26,6 +44,11 @@ func normalizeSubscriptionUSDToCNYRate(rate float64) float64 {
 }
 
 func calculateCreditedBalance(paymentAmount, multiplier float64) float64 {
+	for _, pkg := range promotionalRechargePackages {
+		if decimal.NewFromFloat(paymentAmount).Equal(decimal.NewFromFloat(pkg.PayAmount)) {
+			return pkg.CreditedAmount
+		}
+	}
 	return decimal.NewFromFloat(paymentAmount).
 		Mul(decimal.NewFromFloat(normalizeBalanceRechargeMultiplier(multiplier))).
 		Round(2).
