@@ -1,6 +1,7 @@
 # 忽略编译后的文件
 vite.config.js
 vite.config.d.ts
+vite.config.js.timestamp-*.mjs
 
 # 忽略依赖
 node_modules/
