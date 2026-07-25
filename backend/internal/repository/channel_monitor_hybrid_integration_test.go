@@ -100,6 +100,6 @@ func TestChannelMonitorTrafficBucket_ConcurrentUpsertAndAvailability(t *testing.
 		}
 	}
 	require.NotNil(t, found)
-	require.Equal(t, int64(2), found.TotalChecks)
+	require.Equal(t, 2, found.TotalChecks)
 	require.InDelta(t, 50, found.AvailabilityPct, 0.001, "availability must weight minute buckets, not request samples")
 }
