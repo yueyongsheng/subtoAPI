@@ -106,9 +106,26 @@
       </div>
 
       <div>
+        <label class="input-label">{{ t('admin.channelMonitor.form.mode') }}</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            v-for="mode in monitorModes"
+            :key="mode.value"
+            type="button"
+            class="rounded border px-3 py-2 text-sm font-medium"
+            :class="form.mode === mode.value ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300' : 'border-gray-200 text-gray-600 dark:border-dark-700 dark:text-gray-400'"
+            @click="form.mode = mode.value"
+          >
+            {{ mode.label }}
+          </button>
+        </div>
+        <p class="mt-1 text-xs text-gray-400">{{ t(`admin.channelMonitor.form.modeHint.${form.mode}`) }}</p>
+      </div>
+
+      <div>
         <label class="input-label">{{ t('admin.channelMonitor.form.intervalSeconds') }} <span class="text-red-500">*</span></label>
-        <input v-model.number="form.interval_seconds" type="number" min="15" max="3600" required class="input" />
-        <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.form.intervalSecondsHint') }}</p>
+        <input v-model.number="form.interval_seconds" type="number" min="15" max="3600" required class="input" :disabled="form.mode === 'hybrid'" />
+        <p class="mt-1 text-xs text-gray-400">{{ form.mode === 'hybrid' ? t('admin.channelMonitor.form.hybridIntervalHint') : t('admin.channelMonitor.form.intervalSecondsHint') }}</p>
       </div>
 
       <div>
@@ -198,6 +215,7 @@ import type {
   CreateParams,
   APIMode,
   Provider,
+  MonitorMode,
   UpdateParams,
 } from '@/api/admin/channelMonitor'
 import type { ChannelMonitorTemplate } from '@/api/admin/channelMonitorTemplate'
@@ -220,7 +238,7 @@ import {
   API_MODE_RESPONSES,
   DEFAULT_GROK_ENDPOINT,
   DEFAULT_GROK_MODEL,
-  DEFAULT_INTERVAL_SECONDS,
+  DEFAULT_MONITOR_INTERVAL_SECONDS,
 } from '@/constants/channelMonitor'
 
 const props = defineProps<{
@@ -241,7 +259,7 @@ const { providerPickerClass } = useChannelMonitorFormat()
 // constant when public settings haven't loaded yet or store the legacy 0 value.
 const systemDefaultInterval = computed<number>(() => {
   const configured = appStore.cachedPublicSettings?.channel_monitor_default_interval_seconds
-  return configured && configured > 0 ? configured : DEFAULT_INTERVAL_SECONDS
+  return configured && configured > 0 ? configured : DEFAULT_MONITOR_INTERVAL_SECONDS
 })
 
 // editing is true when we have an existing monitor
@@ -264,6 +282,9 @@ interface MonitorForm {
   primary_model: string
   extra_models: string[]
   group_name: string
+  mode: MonitorMode
+  group_id: number | null
+  probe_api_key_id: number | null
   interval_seconds: number
   jitter_seconds: number
   enabled: boolean
@@ -283,6 +304,9 @@ const form = reactive<MonitorForm>({
   primary_model: '',
   extra_models: [],
   group_name: '',
+  mode: 'active',
+  group_id: null,
+  probe_api_key_id: null,
   interval_seconds: systemDefaultInterval.value,
   jitter_seconds: 0,
   enabled: true,
@@ -294,6 +318,11 @@ const form = reactive<MonitorForm>({
 
 // jitter 上限与后端校验一致：interval - jitter 不得低于最小检测间隔 15 秒。
 const maxJitterSeconds = computed<number>(() => Math.max(0, (form.interval_seconds || 0) - 15))
+
+const monitorModes = computed(() => [
+  { value: 'active' as MonitorMode, label: t('admin.channelMonitor.form.modeActive') },
+  { value: 'hybrid' as MonitorMode, label: t('admin.channelMonitor.form.modeHybrid') },
+])
 
 let suppressFormWatchers = false
 
@@ -429,6 +458,8 @@ function selectProvider(provider: Provider) {
 watch(() => form.provider, () => {
   if (suppressFormWatchers) return
   form.api_key = ''
+  form.group_id = null
+  form.probe_api_key_id = null
   if (form.provider !== PROVIDER_OPENAI) {
     form.api_mode = API_MODE_CHAT_COMPLETIONS
   }
@@ -442,6 +473,13 @@ watch(() => form.api_mode, () => {
   }
 }, { flush: 'sync' })
 
+watch(() => form.mode, (mode) => {
+  if (mode === 'hybrid') {
+    form.interval_seconds = 3600
+    form.jitter_seconds = 0
+  }
+})
+
 function resetForm() {
   suppressFormWatchers = true
   form.name = ''
@@ -452,6 +490,9 @@ function resetForm() {
   form.primary_model = ''
   form.extra_models = []
   form.group_name = ''
+  form.mode = 'active'
+  form.group_id = null
+  form.probe_api_key_id = null
   form.interval_seconds = systemDefaultInterval.value
   form.jitter_seconds = 0
   form.enabled = true
@@ -472,6 +513,9 @@ function loadFromMonitor(m: ChannelMonitor) {
   form.primary_model = m.primary_model
   form.extra_models = [...(m.extra_models || [])]
   form.group_name = m.group_name || ''
+  form.mode = m.mode || 'active'
+  form.group_id = m.group_id ?? null
+  form.probe_api_key_id = m.probe_api_key_id ?? null
   form.interval_seconds = m.interval_seconds || systemDefaultInterval.value
   form.jitter_seconds = m.jitter_seconds || 0
   form.enabled = m.enabled
@@ -525,6 +569,8 @@ async function openMyKeyPicker() {
 
 function pickMyKey(k: ApiKey) {
   form.api_key = k.key
+  form.probe_api_key_id = k.id
+  form.group_id = k.group_id
   showKeyPicker.value = false
 }
 
@@ -538,6 +584,9 @@ function buildPayload(): CreateParams {
     primary_model: form.primary_model.trim(),
     extra_models: form.extra_models,
     group_name: form.group_name.trim(),
+    mode: form.mode,
+    group_id: form.group_id,
+    probe_api_key_id: form.probe_api_key_id,
     enabled: form.enabled,
     interval_seconds: form.interval_seconds,
     jitter_seconds: form.jitter_seconds || 0,
@@ -556,6 +605,10 @@ async function handleSubmit() {
   }
   if (!form.primary_model.trim()) {
     appStore.showError(t('admin.channelMonitor.primaryModelRequired'))
+    return
+  }
+  if (form.mode === 'hybrid' && (!form.group_id || !form.probe_api_key_id)) {
+    appStore.showError(t('admin.channelMonitor.form.hybridKeyRequired'))
     return
   }
 

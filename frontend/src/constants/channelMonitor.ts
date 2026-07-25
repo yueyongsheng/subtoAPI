@@ -44,5 +44,8 @@ export const MONITOR_STATUSES: readonly MonitorStatus[] = [
   STATUS_ERROR,
 ]
 
-/** Default polling interval for channel status auto-refresh and new monitors. */
-export const DEFAULT_INTERVAL_SECONDS = 30
+/** Default interval for the status page to re-read persisted monitor data. */
+export const DEFAULT_STATUS_REFRESH_SECONDS = 30
+
+/** Default active-probe interval for newly created legacy monitors. */
+export const DEFAULT_MONITOR_INTERVAL_SECONDS = 30

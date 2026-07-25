@@ -71,6 +71,18 @@ const (
 	MonitorStatusFailed      = "failed"
 	MonitorStatusError       = "error"
 
+	MonitorModeActive = "active"
+	MonitorModeHybrid = "hybrid"
+
+	MonitorSourceActiveProbe = "active_probe"
+	MonitorSourceRealTraffic = "real_traffic"
+
+	monitorTrafficBucketInterval = time.Minute
+	monitorHybridTickInterval    = time.Minute
+	monitorHybridIdleInterval    = time.Hour
+	monitorHybridPingInterval    = 5 * time.Minute
+	monitorTrafficQueueSize      = 8192
+
 	// monitorAvailability7Days / 15 / 30 用于聚合查询窗口。
 	monitorAvailability7Days  = 7
 	monitorAvailability15Days = 15
@@ -152,6 +164,15 @@ var (
 	)
 	ErrChannelMonitorMissingPrimaryModel = infraerrors.BadRequest(
 		"CHANNEL_MONITOR_MISSING_PRIMARY_MODEL", "primary_model is required",
+	)
+	ErrChannelMonitorInvalidMode = infraerrors.BadRequest(
+		"CHANNEL_MONITOR_INVALID_MODE", "mode must be active or hybrid",
+	)
+	ErrChannelMonitorHybridBinding = infraerrors.BadRequest(
+		"CHANNEL_MONITOR_HYBRID_BINDING_INVALID", "hybrid mode requires a dedicated active API key bound to the selected group",
+	)
+	ErrChannelMonitorModelNotConfigured = infraerrors.BadRequest(
+		"CHANNEL_MONITOR_MODEL_NOT_CONFIGURED", "model is not configured for this monitor",
 	)
 	ErrChannelMonitorAPIKeyDecryptFailed = infraerrors.InternalServer(
 		"CHANNEL_MONITOR_KEY_DECRYPT_FAILED", "api key decryption failed; please re-edit the monitor with a fresh key",

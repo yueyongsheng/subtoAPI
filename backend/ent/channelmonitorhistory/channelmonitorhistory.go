@@ -21,6 +21,20 @@ const (
 	FieldModel = "model"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldSource holds the string denoting the source field in the database.
+	FieldSource = "source"
+	// FieldBucketStart holds the string denoting the bucket_start field in the database.
+	FieldBucketStart = "bucket_start"
+	// FieldSampleCount holds the string denoting the sample_count field in the database.
+	FieldSampleCount = "sample_count"
+	// FieldSuccessCount holds the string denoting the success_count field in the database.
+	FieldSuccessCount = "success_count"
+	// FieldFailureCount holds the string denoting the failure_count field in the database.
+	FieldFailureCount = "failure_count"
+	// FieldRecoveredErrorCount holds the string denoting the recovered_error_count field in the database.
+	FieldRecoveredErrorCount = "recovered_error_count"
+	// FieldSlowCount holds the string denoting the slow_count field in the database.
+	FieldSlowCount = "slow_count"
 	// FieldLatencyMs holds the string denoting the latency_ms field in the database.
 	FieldLatencyMs = "latency_ms"
 	// FieldPingLatencyMs holds the string denoting the ping_latency_ms field in the database.
@@ -48,6 +62,13 @@ var Columns = []string{
 	FieldMonitorID,
 	FieldModel,
 	FieldStatus,
+	FieldSource,
+	FieldBucketStart,
+	FieldSampleCount,
+	FieldSuccessCount,
+	FieldFailureCount,
+	FieldRecoveredErrorCount,
+	FieldSlowCount,
 	FieldLatencyMs,
 	FieldPingLatencyMs,
 	FieldMessage,
@@ -67,6 +88,16 @@ func ValidColumn(column string) bool {
 var (
 	// ModelValidator is a validator for the "model" field. It is called by the builders before save.
 	ModelValidator func(string) error
+	// DefaultSampleCount holds the default value on creation for the "sample_count" field.
+	DefaultSampleCount int
+	// DefaultSuccessCount holds the default value on creation for the "success_count" field.
+	DefaultSuccessCount int
+	// DefaultFailureCount holds the default value on creation for the "failure_count" field.
+	DefaultFailureCount int
+	// DefaultRecoveredErrorCount holds the default value on creation for the "recovered_error_count" field.
+	DefaultRecoveredErrorCount int
+	// DefaultSlowCount holds the default value on creation for the "slow_count" field.
+	DefaultSlowCount int
 	// DefaultMessage holds the default value on creation for the "message" field.
 	DefaultMessage string
 	// MessageValidator is a validator for the "message" field. It is called by the builders before save.
@@ -100,6 +131,32 @@ func StatusValidator(s Status) error {
 	}
 }
 
+// Source defines the type for the "source" enum field.
+type Source string
+
+// SourceActiveProbe is the default value of the Source enum.
+const DefaultSource = SourceActiveProbe
+
+// Source values.
+const (
+	SourceActiveProbe Source = "active_probe"
+	SourceRealTraffic Source = "real_traffic"
+)
+
+func (s Source) String() string {
+	return string(s)
+}
+
+// SourceValidator is a validator for the "source" field enum values. It is called by the builders before save.
+func SourceValidator(s Source) error {
+	switch s {
+	case SourceActiveProbe, SourceRealTraffic:
+		return nil
+	default:
+		return fmt.Errorf("channelmonitorhistory: invalid enum value for source field: %q", s)
+	}
+}
+
 // OrderOption defines the ordering options for the ChannelMonitorHistory queries.
 type OrderOption func(*sql.Selector)
 
@@ -121,6 +178,41 @@ func ByModel(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// BySource orders the results by the source field.
+func BySource(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSource, opts...).ToFunc()
+}
+
+// ByBucketStart orders the results by the bucket_start field.
+func ByBucketStart(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBucketStart, opts...).ToFunc()
+}
+
+// BySampleCount orders the results by the sample_count field.
+func BySampleCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSampleCount, opts...).ToFunc()
+}
+
+// BySuccessCount orders the results by the success_count field.
+func BySuccessCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSuccessCount, opts...).ToFunc()
+}
+
+// ByFailureCount orders the results by the failure_count field.
+func ByFailureCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFailureCount, opts...).ToFunc()
+}
+
+// ByRecoveredErrorCount orders the results by the recovered_error_count field.
+func ByRecoveredErrorCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRecoveredErrorCount, opts...).ToFunc()
+}
+
+// BySlowCount orders the results by the slow_count field.
+func BySlowCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSlowCount, opts...).ToFunc()
 }
 
 // ByLatencyMs orders the results by the latency_ms field.

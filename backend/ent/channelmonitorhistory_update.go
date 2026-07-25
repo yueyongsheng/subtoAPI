@@ -71,6 +71,145 @@ func (_u *ChannelMonitorHistoryUpdate) SetNillableStatus(v *channelmonitorhistor
 	return _u
 }
 
+// SetSource sets the "source" field.
+func (_u *ChannelMonitorHistoryUpdate) SetSource(v channelmonitorhistory.Source) *ChannelMonitorHistoryUpdate {
+	_u.mutation.SetSource(v)
+	return _u
+}
+
+// SetNillableSource sets the "source" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdate) SetNillableSource(v *channelmonitorhistory.Source) *ChannelMonitorHistoryUpdate {
+	if v != nil {
+		_u.SetSource(*v)
+	}
+	return _u
+}
+
+// SetBucketStart sets the "bucket_start" field.
+func (_u *ChannelMonitorHistoryUpdate) SetBucketStart(v time.Time) *ChannelMonitorHistoryUpdate {
+	_u.mutation.SetBucketStart(v)
+	return _u
+}
+
+// SetNillableBucketStart sets the "bucket_start" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdate) SetNillableBucketStart(v *time.Time) *ChannelMonitorHistoryUpdate {
+	if v != nil {
+		_u.SetBucketStart(*v)
+	}
+	return _u
+}
+
+// ClearBucketStart clears the value of the "bucket_start" field.
+func (_u *ChannelMonitorHistoryUpdate) ClearBucketStart() *ChannelMonitorHistoryUpdate {
+	_u.mutation.ClearBucketStart()
+	return _u
+}
+
+// SetSampleCount sets the "sample_count" field.
+func (_u *ChannelMonitorHistoryUpdate) SetSampleCount(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.ResetSampleCount()
+	_u.mutation.SetSampleCount(v)
+	return _u
+}
+
+// SetNillableSampleCount sets the "sample_count" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdate) SetNillableSampleCount(v *int) *ChannelMonitorHistoryUpdate {
+	if v != nil {
+		_u.SetSampleCount(*v)
+	}
+	return _u
+}
+
+// AddSampleCount adds value to the "sample_count" field.
+func (_u *ChannelMonitorHistoryUpdate) AddSampleCount(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.AddSampleCount(v)
+	return _u
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (_u *ChannelMonitorHistoryUpdate) SetSuccessCount(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.ResetSuccessCount()
+	_u.mutation.SetSuccessCount(v)
+	return _u
+}
+
+// SetNillableSuccessCount sets the "success_count" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdate) SetNillableSuccessCount(v *int) *ChannelMonitorHistoryUpdate {
+	if v != nil {
+		_u.SetSuccessCount(*v)
+	}
+	return _u
+}
+
+// AddSuccessCount adds value to the "success_count" field.
+func (_u *ChannelMonitorHistoryUpdate) AddSuccessCount(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.AddSuccessCount(v)
+	return _u
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (_u *ChannelMonitorHistoryUpdate) SetFailureCount(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.ResetFailureCount()
+	_u.mutation.SetFailureCount(v)
+	return _u
+}
+
+// SetNillableFailureCount sets the "failure_count" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdate) SetNillableFailureCount(v *int) *ChannelMonitorHistoryUpdate {
+	if v != nil {
+		_u.SetFailureCount(*v)
+	}
+	return _u
+}
+
+// AddFailureCount adds value to the "failure_count" field.
+func (_u *ChannelMonitorHistoryUpdate) AddFailureCount(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.AddFailureCount(v)
+	return _u
+}
+
+// SetRecoveredErrorCount sets the "recovered_error_count" field.
+func (_u *ChannelMonitorHistoryUpdate) SetRecoveredErrorCount(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.ResetRecoveredErrorCount()
+	_u.mutation.SetRecoveredErrorCount(v)
+	return _u
+}
+
+// SetNillableRecoveredErrorCount sets the "recovered_error_count" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdate) SetNillableRecoveredErrorCount(v *int) *ChannelMonitorHistoryUpdate {
+	if v != nil {
+		_u.SetRecoveredErrorCount(*v)
+	}
+	return _u
+}
+
+// AddRecoveredErrorCount adds value to the "recovered_error_count" field.
+func (_u *ChannelMonitorHistoryUpdate) AddRecoveredErrorCount(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.AddRecoveredErrorCount(v)
+	return _u
+}
+
+// SetSlowCount sets the "slow_count" field.
+func (_u *ChannelMonitorHistoryUpdate) SetSlowCount(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.ResetSlowCount()
+	_u.mutation.SetSlowCount(v)
+	return _u
+}
+
+// SetNillableSlowCount sets the "slow_count" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdate) SetNillableSlowCount(v *int) *ChannelMonitorHistoryUpdate {
+	if v != nil {
+		_u.SetSlowCount(*v)
+	}
+	return _u
+}
+
+// AddSlowCount adds value to the "slow_count" field.
+func (_u *ChannelMonitorHistoryUpdate) AddSlowCount(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.AddSlowCount(v)
+	return _u
+}
+
 // SetLatencyMs sets the "latency_ms" field.
 func (_u *ChannelMonitorHistoryUpdate) SetLatencyMs(v int) *ChannelMonitorHistoryUpdate {
 	_u.mutation.ResetLatencyMs()
@@ -214,6 +353,11 @@ func (_u *ChannelMonitorHistoryUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitorHistory.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Source(); ok {
+		if err := channelmonitorhistory.SourceValidator(v); err != nil {
+			return &ValidationError{Name: "source", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitorHistory.source": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Message(); ok {
 		if err := channelmonitorhistory.MessageValidator(v); err != nil {
 			return &ValidationError{Name: "message", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitorHistory.message": %w`, err)}
@@ -242,6 +386,45 @@ func (_u *ChannelMonitorHistoryUpdate) sqlSave(ctx context.Context) (_node int, 
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(channelmonitorhistory.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Source(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSource, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.BucketStart(); ok {
+		_spec.SetField(channelmonitorhistory.FieldBucketStart, field.TypeTime, value)
+	}
+	if _u.mutation.BucketStartCleared() {
+		_spec.ClearField(channelmonitorhistory.FieldBucketStart, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SampleCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSampleCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSampleCount(); ok {
+		_spec.AddField(channelmonitorhistory.FieldSampleCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.SuccessCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSuccessCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSuccessCount(); ok {
+		_spec.AddField(channelmonitorhistory.FieldSuccessCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.FailureCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldFailureCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedFailureCount(); ok {
+		_spec.AddField(channelmonitorhistory.FieldFailureCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RecoveredErrorCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldRecoveredErrorCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRecoveredErrorCount(); ok {
+		_spec.AddField(channelmonitorhistory.FieldRecoveredErrorCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.SlowCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSlowCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSlowCount(); ok {
+		_spec.AddField(channelmonitorhistory.FieldSlowCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.LatencyMs(); ok {
 		_spec.SetField(channelmonitorhistory.FieldLatencyMs, field.TypeInt, value)
@@ -358,6 +541,145 @@ func (_u *ChannelMonitorHistoryUpdateOne) SetNillableStatus(v *channelmonitorhis
 	if v != nil {
 		_u.SetStatus(*v)
 	}
+	return _u
+}
+
+// SetSource sets the "source" field.
+func (_u *ChannelMonitorHistoryUpdateOne) SetSource(v channelmonitorhistory.Source) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.SetSource(v)
+	return _u
+}
+
+// SetNillableSource sets the "source" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdateOne) SetNillableSource(v *channelmonitorhistory.Source) *ChannelMonitorHistoryUpdateOne {
+	if v != nil {
+		_u.SetSource(*v)
+	}
+	return _u
+}
+
+// SetBucketStart sets the "bucket_start" field.
+func (_u *ChannelMonitorHistoryUpdateOne) SetBucketStart(v time.Time) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.SetBucketStart(v)
+	return _u
+}
+
+// SetNillableBucketStart sets the "bucket_start" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdateOne) SetNillableBucketStart(v *time.Time) *ChannelMonitorHistoryUpdateOne {
+	if v != nil {
+		_u.SetBucketStart(*v)
+	}
+	return _u
+}
+
+// ClearBucketStart clears the value of the "bucket_start" field.
+func (_u *ChannelMonitorHistoryUpdateOne) ClearBucketStart() *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.ClearBucketStart()
+	return _u
+}
+
+// SetSampleCount sets the "sample_count" field.
+func (_u *ChannelMonitorHistoryUpdateOne) SetSampleCount(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.ResetSampleCount()
+	_u.mutation.SetSampleCount(v)
+	return _u
+}
+
+// SetNillableSampleCount sets the "sample_count" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdateOne) SetNillableSampleCount(v *int) *ChannelMonitorHistoryUpdateOne {
+	if v != nil {
+		_u.SetSampleCount(*v)
+	}
+	return _u
+}
+
+// AddSampleCount adds value to the "sample_count" field.
+func (_u *ChannelMonitorHistoryUpdateOne) AddSampleCount(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.AddSampleCount(v)
+	return _u
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (_u *ChannelMonitorHistoryUpdateOne) SetSuccessCount(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.ResetSuccessCount()
+	_u.mutation.SetSuccessCount(v)
+	return _u
+}
+
+// SetNillableSuccessCount sets the "success_count" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdateOne) SetNillableSuccessCount(v *int) *ChannelMonitorHistoryUpdateOne {
+	if v != nil {
+		_u.SetSuccessCount(*v)
+	}
+	return _u
+}
+
+// AddSuccessCount adds value to the "success_count" field.
+func (_u *ChannelMonitorHistoryUpdateOne) AddSuccessCount(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.AddSuccessCount(v)
+	return _u
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (_u *ChannelMonitorHistoryUpdateOne) SetFailureCount(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.ResetFailureCount()
+	_u.mutation.SetFailureCount(v)
+	return _u
+}
+
+// SetNillableFailureCount sets the "failure_count" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdateOne) SetNillableFailureCount(v *int) *ChannelMonitorHistoryUpdateOne {
+	if v != nil {
+		_u.SetFailureCount(*v)
+	}
+	return _u
+}
+
+// AddFailureCount adds value to the "failure_count" field.
+func (_u *ChannelMonitorHistoryUpdateOne) AddFailureCount(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.AddFailureCount(v)
+	return _u
+}
+
+// SetRecoveredErrorCount sets the "recovered_error_count" field.
+func (_u *ChannelMonitorHistoryUpdateOne) SetRecoveredErrorCount(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.ResetRecoveredErrorCount()
+	_u.mutation.SetRecoveredErrorCount(v)
+	return _u
+}
+
+// SetNillableRecoveredErrorCount sets the "recovered_error_count" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdateOne) SetNillableRecoveredErrorCount(v *int) *ChannelMonitorHistoryUpdateOne {
+	if v != nil {
+		_u.SetRecoveredErrorCount(*v)
+	}
+	return _u
+}
+
+// AddRecoveredErrorCount adds value to the "recovered_error_count" field.
+func (_u *ChannelMonitorHistoryUpdateOne) AddRecoveredErrorCount(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.AddRecoveredErrorCount(v)
+	return _u
+}
+
+// SetSlowCount sets the "slow_count" field.
+func (_u *ChannelMonitorHistoryUpdateOne) SetSlowCount(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.ResetSlowCount()
+	_u.mutation.SetSlowCount(v)
+	return _u
+}
+
+// SetNillableSlowCount sets the "slow_count" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdateOne) SetNillableSlowCount(v *int) *ChannelMonitorHistoryUpdateOne {
+	if v != nil {
+		_u.SetSlowCount(*v)
+	}
+	return _u
+}
+
+// AddSlowCount adds value to the "slow_count" field.
+func (_u *ChannelMonitorHistoryUpdateOne) AddSlowCount(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.AddSlowCount(v)
 	return _u
 }
 
@@ -517,6 +839,11 @@ func (_u *ChannelMonitorHistoryUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitorHistory.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Source(); ok {
+		if err := channelmonitorhistory.SourceValidator(v); err != nil {
+			return &ValidationError{Name: "source", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitorHistory.source": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Message(); ok {
 		if err := channelmonitorhistory.MessageValidator(v); err != nil {
 			return &ValidationError{Name: "message", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitorHistory.message": %w`, err)}
@@ -562,6 +889,45 @@ func (_u *ChannelMonitorHistoryUpdateOne) sqlSave(ctx context.Context) (_node *C
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(channelmonitorhistory.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Source(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSource, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.BucketStart(); ok {
+		_spec.SetField(channelmonitorhistory.FieldBucketStart, field.TypeTime, value)
+	}
+	if _u.mutation.BucketStartCleared() {
+		_spec.ClearField(channelmonitorhistory.FieldBucketStart, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SampleCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSampleCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSampleCount(); ok {
+		_spec.AddField(channelmonitorhistory.FieldSampleCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.SuccessCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSuccessCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSuccessCount(); ok {
+		_spec.AddField(channelmonitorhistory.FieldSuccessCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.FailureCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldFailureCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedFailureCount(); ok {
+		_spec.AddField(channelmonitorhistory.FieldFailureCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RecoveredErrorCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldRecoveredErrorCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRecoveredErrorCount(); ok {
+		_spec.AddField(channelmonitorhistory.FieldRecoveredErrorCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.SlowCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSlowCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSlowCount(); ok {
+		_spec.AddField(channelmonitorhistory.FieldSlowCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.LatencyMs(); ok {
 		_spec.SetField(channelmonitorhistory.FieldLatencyMs, field.TypeInt, value)

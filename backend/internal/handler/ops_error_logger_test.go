@@ -5,12 +5,30 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
+
+type recordingChannelHealthObserver struct {
+	mu           sync.Mutex
+	observations []service.ChannelHealthObservation
+}
+
+func (o *recordingChannelHealthObserver) ObserveChannelHealth(observation service.ChannelHealthObservation) {
+	o.mu.Lock()
+	o.observations = append(o.observations, observation)
+	o.mu.Unlock()
+}
+
+func (o *recordingChannelHealthObserver) snapshot() []service.ChannelHealthObservation {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return append([]service.ChannelHealthObservation(nil), o.observations...)
+}
 
 func resetOpsErrorLoggerStateForTest(t *testing.T) {
 	t.Helper()
@@ -137,6 +155,87 @@ func TestOpsErrorLoggerMiddleware_DoesNotBreakOuterMiddlewares(t *testing.T) {
 		r.ServeHTTP(rec, req)
 	})
 	require.Equal(t, http.StatusNoContent, rec.Code)
+}
+
+func TestOpsErrorLoggerMiddleware_EmitsQualifiedChannelHealth(t *testing.T) {
+	tests := []struct {
+		name      string
+		status    int
+		configure func(*gin.Context)
+		wantCount int
+		assert    func(*testing.T, service.ChannelHealthObservation)
+	}{
+		{
+			name: "successful customer request", status: http.StatusOK, wantCount: 1,
+			assert: func(t *testing.T, got service.ChannelHealthObservation) {
+				require.True(t, got.Success)
+				require.False(t, got.RecoveredError)
+				require.False(t, got.QualifyingFailure)
+			},
+		},
+		{
+			name: "slow customer request", status: http.StatusOK, wantCount: 1,
+			configure: func(c *gin.Context) {
+				service.SetOpsLatencyMs(c, service.OpsResponseLatencyMsKey, 7000)
+			},
+			assert: func(t *testing.T, got service.ChannelHealthObservation) {
+				require.Equal(t, 7*time.Second, got.Duration)
+			},
+		},
+		{
+			name: "recovered upstream retry", status: http.StatusOK, wantCount: 1,
+			configure: func(c *gin.Context) {
+				service.SetOpsUpstreamError(c, http.StatusBadGateway, "temporary upstream failure", "")
+			},
+			assert: func(t *testing.T, got service.ChannelHealthObservation) {
+				require.True(t, got.Success)
+				require.True(t, got.RecoveredError)
+			},
+		},
+		{
+			name: "final upstream failure", status: http.StatusBadGateway, wantCount: 1,
+			configure: func(c *gin.Context) {
+				service.SetOpsUpstreamError(c, http.StatusBadGateway, "upstream unavailable", "")
+			},
+			assert: func(t *testing.T, got service.ChannelHealthObservation) {
+				require.False(t, got.Success)
+				require.True(t, got.QualifyingFailure)
+			},
+		},
+		{name: "client parameter error", status: http.StatusBadRequest, wantCount: 0},
+		{name: "local balance restriction", status: http.StatusForbidden, wantCount: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			observer := &recordingChannelHealthObserver{}
+			r := gin.New()
+			r.Use(OpsErrorLoggerMiddleware(nil, observer))
+			r.POST("/v1/responses", func(c *gin.Context) {
+				groupID := int64(2)
+				c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{ID: 7, GroupID: &groupID})
+				c.Set(opsModelKey, "gpt-5.5")
+				if tt.configure != nil {
+					tt.configure(c)
+				}
+				c.Status(tt.status)
+			})
+
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/responses", nil))
+			observations := observer.snapshot()
+			require.Len(t, observations, tt.wantCount)
+			if tt.wantCount == 1 {
+				require.Equal(t, int64(2), observations[0].GroupID)
+				require.Equal(t, int64(7), observations[0].APIKeyID)
+				require.Equal(t, "gpt-5.5", observations[0].Model)
+				if tt.assert != nil {
+					tt.assert(t, observations[0])
+				}
+			}
+		})
+	}
 }
 
 // setupOpsErrorLogTestQueue 阻止 enqueueOpsErrorLog 启动真实 worker，改用可检查的测试队列。

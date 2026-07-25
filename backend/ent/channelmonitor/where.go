@@ -95,6 +95,16 @@ func GroupName(v string) predicate.ChannelMonitor {
 	return predicate.ChannelMonitor(sql.FieldEQ(FieldGroupName, v))
 }
 
+// GroupID applies equality check predicate on the "group_id" field. It's identical to GroupIDEQ.
+func GroupID(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldEQ(FieldGroupID, v))
+}
+
+// ProbeAPIKeyID applies equality check predicate on the "probe_api_key_id" field. It's identical to ProbeAPIKeyIDEQ.
+func ProbeAPIKeyID(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldEQ(FieldProbeAPIKeyID, v))
+}
+
 // Enabled applies equality check predicate on the "enabled" field. It's identical to EnabledEQ.
 func Enabled(v bool) predicate.ChannelMonitor {
 	return predicate.ChannelMonitor(sql.FieldEQ(FieldEnabled, v))
@@ -113,6 +123,16 @@ func JitterSeconds(v int) predicate.ChannelMonitor {
 // LastCheckedAt applies equality check predicate on the "last_checked_at" field. It's identical to LastCheckedAtEQ.
 func LastCheckedAt(v time.Time) predicate.ChannelMonitor {
 	return predicate.ChannelMonitor(sql.FieldEQ(FieldLastCheckedAt, v))
+}
+
+// LastPingLatencyMs applies equality check predicate on the "last_ping_latency_ms" field. It's identical to LastPingLatencyMsEQ.
+func LastPingLatencyMs(v int) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldEQ(FieldLastPingLatencyMs, v))
+}
+
+// LastPingAt applies equality check predicate on the "last_ping_at" field. It's identical to LastPingAtEQ.
+func LastPingAt(v time.Time) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldEQ(FieldLastPingAt, v))
 }
 
 // CreatedBy applies equality check predicate on the "created_by" field. It's identical to CreatedByEQ.
@@ -630,6 +650,126 @@ func GroupNameContainsFold(v string) predicate.ChannelMonitor {
 	return predicate.ChannelMonitor(sql.FieldContainsFold(FieldGroupName, v))
 }
 
+// ModeEQ applies the EQ predicate on the "mode" field.
+func ModeEQ(v Mode) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldEQ(FieldMode, v))
+}
+
+// ModeNEQ applies the NEQ predicate on the "mode" field.
+func ModeNEQ(v Mode) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNEQ(FieldMode, v))
+}
+
+// ModeIn applies the In predicate on the "mode" field.
+func ModeIn(vs ...Mode) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldIn(FieldMode, vs...))
+}
+
+// ModeNotIn applies the NotIn predicate on the "mode" field.
+func ModeNotIn(vs ...Mode) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNotIn(FieldMode, vs...))
+}
+
+// GroupIDEQ applies the EQ predicate on the "group_id" field.
+func GroupIDEQ(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldEQ(FieldGroupID, v))
+}
+
+// GroupIDNEQ applies the NEQ predicate on the "group_id" field.
+func GroupIDNEQ(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNEQ(FieldGroupID, v))
+}
+
+// GroupIDIn applies the In predicate on the "group_id" field.
+func GroupIDIn(vs ...int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldIn(FieldGroupID, vs...))
+}
+
+// GroupIDNotIn applies the NotIn predicate on the "group_id" field.
+func GroupIDNotIn(vs ...int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNotIn(FieldGroupID, vs...))
+}
+
+// GroupIDGT applies the GT predicate on the "group_id" field.
+func GroupIDGT(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldGT(FieldGroupID, v))
+}
+
+// GroupIDGTE applies the GTE predicate on the "group_id" field.
+func GroupIDGTE(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldGTE(FieldGroupID, v))
+}
+
+// GroupIDLT applies the LT predicate on the "group_id" field.
+func GroupIDLT(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldLT(FieldGroupID, v))
+}
+
+// GroupIDLTE applies the LTE predicate on the "group_id" field.
+func GroupIDLTE(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldLTE(FieldGroupID, v))
+}
+
+// GroupIDIsNil applies the IsNil predicate on the "group_id" field.
+func GroupIDIsNil() predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldIsNull(FieldGroupID))
+}
+
+// GroupIDNotNil applies the NotNil predicate on the "group_id" field.
+func GroupIDNotNil() predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNotNull(FieldGroupID))
+}
+
+// ProbeAPIKeyIDEQ applies the EQ predicate on the "probe_api_key_id" field.
+func ProbeAPIKeyIDEQ(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldEQ(FieldProbeAPIKeyID, v))
+}
+
+// ProbeAPIKeyIDNEQ applies the NEQ predicate on the "probe_api_key_id" field.
+func ProbeAPIKeyIDNEQ(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNEQ(FieldProbeAPIKeyID, v))
+}
+
+// ProbeAPIKeyIDIn applies the In predicate on the "probe_api_key_id" field.
+func ProbeAPIKeyIDIn(vs ...int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldIn(FieldProbeAPIKeyID, vs...))
+}
+
+// ProbeAPIKeyIDNotIn applies the NotIn predicate on the "probe_api_key_id" field.
+func ProbeAPIKeyIDNotIn(vs ...int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNotIn(FieldProbeAPIKeyID, vs...))
+}
+
+// ProbeAPIKeyIDGT applies the GT predicate on the "probe_api_key_id" field.
+func ProbeAPIKeyIDGT(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldGT(FieldProbeAPIKeyID, v))
+}
+
+// ProbeAPIKeyIDGTE applies the GTE predicate on the "probe_api_key_id" field.
+func ProbeAPIKeyIDGTE(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldGTE(FieldProbeAPIKeyID, v))
+}
+
+// ProbeAPIKeyIDLT applies the LT predicate on the "probe_api_key_id" field.
+func ProbeAPIKeyIDLT(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldLT(FieldProbeAPIKeyID, v))
+}
+
+// ProbeAPIKeyIDLTE applies the LTE predicate on the "probe_api_key_id" field.
+func ProbeAPIKeyIDLTE(v int64) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldLTE(FieldProbeAPIKeyID, v))
+}
+
+// ProbeAPIKeyIDIsNil applies the IsNil predicate on the "probe_api_key_id" field.
+func ProbeAPIKeyIDIsNil() predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldIsNull(FieldProbeAPIKeyID))
+}
+
+// ProbeAPIKeyIDNotNil applies the NotNil predicate on the "probe_api_key_id" field.
+func ProbeAPIKeyIDNotNil() predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNotNull(FieldProbeAPIKeyID))
+}
+
 // EnabledEQ applies the EQ predicate on the "enabled" field.
 func EnabledEQ(v bool) predicate.ChannelMonitor {
 	return predicate.ChannelMonitor(sql.FieldEQ(FieldEnabled, v))
@@ -768,6 +908,106 @@ func LastCheckedAtIsNil() predicate.ChannelMonitor {
 // LastCheckedAtNotNil applies the NotNil predicate on the "last_checked_at" field.
 func LastCheckedAtNotNil() predicate.ChannelMonitor {
 	return predicate.ChannelMonitor(sql.FieldNotNull(FieldLastCheckedAt))
+}
+
+// LastPingLatencyMsEQ applies the EQ predicate on the "last_ping_latency_ms" field.
+func LastPingLatencyMsEQ(v int) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldEQ(FieldLastPingLatencyMs, v))
+}
+
+// LastPingLatencyMsNEQ applies the NEQ predicate on the "last_ping_latency_ms" field.
+func LastPingLatencyMsNEQ(v int) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNEQ(FieldLastPingLatencyMs, v))
+}
+
+// LastPingLatencyMsIn applies the In predicate on the "last_ping_latency_ms" field.
+func LastPingLatencyMsIn(vs ...int) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldIn(FieldLastPingLatencyMs, vs...))
+}
+
+// LastPingLatencyMsNotIn applies the NotIn predicate on the "last_ping_latency_ms" field.
+func LastPingLatencyMsNotIn(vs ...int) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNotIn(FieldLastPingLatencyMs, vs...))
+}
+
+// LastPingLatencyMsGT applies the GT predicate on the "last_ping_latency_ms" field.
+func LastPingLatencyMsGT(v int) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldGT(FieldLastPingLatencyMs, v))
+}
+
+// LastPingLatencyMsGTE applies the GTE predicate on the "last_ping_latency_ms" field.
+func LastPingLatencyMsGTE(v int) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldGTE(FieldLastPingLatencyMs, v))
+}
+
+// LastPingLatencyMsLT applies the LT predicate on the "last_ping_latency_ms" field.
+func LastPingLatencyMsLT(v int) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldLT(FieldLastPingLatencyMs, v))
+}
+
+// LastPingLatencyMsLTE applies the LTE predicate on the "last_ping_latency_ms" field.
+func LastPingLatencyMsLTE(v int) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldLTE(FieldLastPingLatencyMs, v))
+}
+
+// LastPingLatencyMsIsNil applies the IsNil predicate on the "last_ping_latency_ms" field.
+func LastPingLatencyMsIsNil() predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldIsNull(FieldLastPingLatencyMs))
+}
+
+// LastPingLatencyMsNotNil applies the NotNil predicate on the "last_ping_latency_ms" field.
+func LastPingLatencyMsNotNil() predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNotNull(FieldLastPingLatencyMs))
+}
+
+// LastPingAtEQ applies the EQ predicate on the "last_ping_at" field.
+func LastPingAtEQ(v time.Time) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldEQ(FieldLastPingAt, v))
+}
+
+// LastPingAtNEQ applies the NEQ predicate on the "last_ping_at" field.
+func LastPingAtNEQ(v time.Time) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNEQ(FieldLastPingAt, v))
+}
+
+// LastPingAtIn applies the In predicate on the "last_ping_at" field.
+func LastPingAtIn(vs ...time.Time) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldIn(FieldLastPingAt, vs...))
+}
+
+// LastPingAtNotIn applies the NotIn predicate on the "last_ping_at" field.
+func LastPingAtNotIn(vs ...time.Time) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNotIn(FieldLastPingAt, vs...))
+}
+
+// LastPingAtGT applies the GT predicate on the "last_ping_at" field.
+func LastPingAtGT(v time.Time) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldGT(FieldLastPingAt, v))
+}
+
+// LastPingAtGTE applies the GTE predicate on the "last_ping_at" field.
+func LastPingAtGTE(v time.Time) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldGTE(FieldLastPingAt, v))
+}
+
+// LastPingAtLT applies the LT predicate on the "last_ping_at" field.
+func LastPingAtLT(v time.Time) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldLT(FieldLastPingAt, v))
+}
+
+// LastPingAtLTE applies the LTE predicate on the "last_ping_at" field.
+func LastPingAtLTE(v time.Time) predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldLTE(FieldLastPingAt, v))
+}
+
+// LastPingAtIsNil applies the IsNil predicate on the "last_ping_at" field.
+func LastPingAtIsNil() predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldIsNull(FieldLastPingAt))
+}
+
+// LastPingAtNotNil applies the NotNil predicate on the "last_ping_at" field.
+func LastPingAtNotNil() predicate.ChannelMonitor {
+	return predicate.ChannelMonitor(sql.FieldNotNull(FieldLastPingAt))
 }
 
 // CreatedByEQ applies the EQ predicate on the "created_by" field.

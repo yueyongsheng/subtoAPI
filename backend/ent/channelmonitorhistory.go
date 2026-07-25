@@ -24,6 +24,20 @@ type ChannelMonitorHistory struct {
 	Model string `json:"model,omitempty"`
 	// Status holds the value of the "status" field.
 	Status channelmonitorhistory.Status `json:"status,omitempty"`
+	// Source holds the value of the "source" field.
+	Source channelmonitorhistory.Source `json:"source,omitempty"`
+	// UTC minute bucket for real-traffic observations; NULL for active probes
+	BucketStart *time.Time `json:"bucket_start,omitempty"`
+	// SampleCount holds the value of the "sample_count" field.
+	SampleCount int `json:"sample_count,omitempty"`
+	// SuccessCount holds the value of the "success_count" field.
+	SuccessCount int `json:"success_count,omitempty"`
+	// FailureCount holds the value of the "failure_count" field.
+	FailureCount int `json:"failure_count,omitempty"`
+	// RecoveredErrorCount holds the value of the "recovered_error_count" field.
+	RecoveredErrorCount int `json:"recovered_error_count,omitempty"`
+	// SlowCount holds the value of the "slow_count" field.
+	SlowCount int `json:"slow_count,omitempty"`
 	// LatencyMs holds the value of the "latency_ms" field.
 	LatencyMs *int `json:"latency_ms,omitempty"`
 	// PingLatencyMs holds the value of the "ping_latency_ms" field.
@@ -63,11 +77,11 @@ func (*ChannelMonitorHistory) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case channelmonitorhistory.FieldID, channelmonitorhistory.FieldMonitorID, channelmonitorhistory.FieldLatencyMs, channelmonitorhistory.FieldPingLatencyMs:
+		case channelmonitorhistory.FieldID, channelmonitorhistory.FieldMonitorID, channelmonitorhistory.FieldSampleCount, channelmonitorhistory.FieldSuccessCount, channelmonitorhistory.FieldFailureCount, channelmonitorhistory.FieldRecoveredErrorCount, channelmonitorhistory.FieldSlowCount, channelmonitorhistory.FieldLatencyMs, channelmonitorhistory.FieldPingLatencyMs:
 			values[i] = new(sql.NullInt64)
-		case channelmonitorhistory.FieldModel, channelmonitorhistory.FieldStatus, channelmonitorhistory.FieldMessage:
+		case channelmonitorhistory.FieldModel, channelmonitorhistory.FieldStatus, channelmonitorhistory.FieldSource, channelmonitorhistory.FieldMessage:
 			values[i] = new(sql.NullString)
-		case channelmonitorhistory.FieldCheckedAt:
+		case channelmonitorhistory.FieldBucketStart, channelmonitorhistory.FieldCheckedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -107,6 +121,49 @@ func (_m *ChannelMonitorHistory) assignValues(columns []string, values []any) er
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = channelmonitorhistory.Status(value.String)
+			}
+		case channelmonitorhistory.FieldSource:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field source", values[i])
+			} else if value.Valid {
+				_m.Source = channelmonitorhistory.Source(value.String)
+			}
+		case channelmonitorhistory.FieldBucketStart:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field bucket_start", values[i])
+			} else if value.Valid {
+				_m.BucketStart = new(time.Time)
+				*_m.BucketStart = value.Time
+			}
+		case channelmonitorhistory.FieldSampleCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field sample_count", values[i])
+			} else if value.Valid {
+				_m.SampleCount = int(value.Int64)
+			}
+		case channelmonitorhistory.FieldSuccessCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field success_count", values[i])
+			} else if value.Valid {
+				_m.SuccessCount = int(value.Int64)
+			}
+		case channelmonitorhistory.FieldFailureCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field failure_count", values[i])
+			} else if value.Valid {
+				_m.FailureCount = int(value.Int64)
+			}
+		case channelmonitorhistory.FieldRecoveredErrorCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field recovered_error_count", values[i])
+			} else if value.Valid {
+				_m.RecoveredErrorCount = int(value.Int64)
+			}
+		case channelmonitorhistory.FieldSlowCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field slow_count", values[i])
+			} else if value.Valid {
+				_m.SlowCount = int(value.Int64)
 			}
 		case channelmonitorhistory.FieldLatencyMs:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -183,6 +240,29 @@ func (_m *ChannelMonitorHistory) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	builder.WriteString("source=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Source))
+	builder.WriteString(", ")
+	if v := _m.BucketStart; v != nil {
+		builder.WriteString("bucket_start=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("sample_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SampleCount))
+	builder.WriteString(", ")
+	builder.WriteString("success_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SuccessCount))
+	builder.WriteString(", ")
+	builder.WriteString("failure_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.FailureCount))
+	builder.WriteString(", ")
+	builder.WriteString("recovered_error_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RecoveredErrorCount))
+	builder.WriteString(", ")
+	builder.WriteString("slow_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SlowCount))
 	builder.WriteString(", ")
 	if v := _m.LatencyMs; v != nil {
 		builder.WriteString("latency_ms=")

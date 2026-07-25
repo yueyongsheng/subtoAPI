@@ -630,10 +630,15 @@ var (
 		{Name: "primary_model", Type: field.TypeString, Size: 200},
 		{Name: "extra_models", Type: field.TypeJSON},
 		{Name: "group_name", Type: field.TypeString, Nullable: true, Size: 100, Default: ""},
+		{Name: "mode", Type: field.TypeEnum, Enums: []string{"active", "hybrid"}, Default: "active"},
+		{Name: "group_id", Type: field.TypeInt64, Nullable: true},
+		{Name: "probe_api_key_id", Type: field.TypeInt64, Nullable: true},
 		{Name: "enabled", Type: field.TypeBool, Default: true},
 		{Name: "interval_seconds", Type: field.TypeInt},
 		{Name: "jitter_seconds", Type: field.TypeInt, Default: 0},
 		{Name: "last_checked_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_ping_latency_ms", Type: field.TypeInt, Nullable: true},
+		{Name: "last_ping_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_by", Type: field.TypeInt64},
 		{Name: "extra_headers", Type: field.TypeJSON},
 		{Name: "body_override_mode", Type: field.TypeString, Size: 10, Default: "off"},
@@ -648,7 +653,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channel_monitors_channel_monitor_request_templates_request_template",
-				Columns:    []*schema.Column{ChannelMonitorsColumns[19]},
+				Columns:    []*schema.Column{ChannelMonitorsColumns[24]},
 				RefColumns: []*schema.Column{ChannelMonitorRequestTemplatesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -657,7 +662,7 @@ var (
 			{
 				Name:    "channelmonitor_enabled_last_checked_at",
 				Unique:  false,
-				Columns: []*schema.Column{ChannelMonitorsColumns[11], ChannelMonitorsColumns[14]},
+				Columns: []*schema.Column{ChannelMonitorsColumns[14], ChannelMonitorsColumns[17]},
 			},
 			{
 				Name:    "channelmonitor_provider",
@@ -677,7 +682,7 @@ var (
 			{
 				Name:    "channelmonitor_template_id",
 				Unique:  false,
-				Columns: []*schema.Column{ChannelMonitorsColumns[19]},
+				Columns: []*schema.Column{ChannelMonitorsColumns[24]},
 			},
 		},
 	}
@@ -730,6 +735,13 @@ var (
 		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "model", Type: field.TypeString, Size: 200},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"operational", "degraded", "failed", "error"}},
+		{Name: "source", Type: field.TypeEnum, Enums: []string{"active_probe", "real_traffic"}, Default: "active_probe"},
+		{Name: "bucket_start", Type: field.TypeTime, Nullable: true},
+		{Name: "sample_count", Type: field.TypeInt, Default: 1},
+		{Name: "success_count", Type: field.TypeInt, Default: 0},
+		{Name: "failure_count", Type: field.TypeInt, Default: 0},
+		{Name: "recovered_error_count", Type: field.TypeInt, Default: 0},
+		{Name: "slow_count", Type: field.TypeInt, Default: 0},
 		{Name: "latency_ms", Type: field.TypeInt, Nullable: true},
 		{Name: "ping_latency_ms", Type: field.TypeInt, Nullable: true},
 		{Name: "message", Type: field.TypeString, Nullable: true, Size: 500, Default: ""},
@@ -744,7 +756,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channel_monitor_histories_channel_monitors_history",
-				Columns:    []*schema.Column{ChannelMonitorHistoriesColumns[7]},
+				Columns:    []*schema.Column{ChannelMonitorHistoriesColumns[14]},
 				RefColumns: []*schema.Column{ChannelMonitorsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -753,12 +765,17 @@ var (
 			{
 				Name:    "channelmonitorhistory_monitor_id_model_checked_at",
 				Unique:  false,
-				Columns: []*schema.Column{ChannelMonitorHistoriesColumns[7], ChannelMonitorHistoriesColumns[1], ChannelMonitorHistoriesColumns[6]},
+				Columns: []*schema.Column{ChannelMonitorHistoriesColumns[14], ChannelMonitorHistoriesColumns[1], ChannelMonitorHistoriesColumns[13]},
+			},
+			{
+				Name:    "channelmonitorhistory_monitor_id_model_source_bucket_start",
+				Unique:  true,
+				Columns: []*schema.Column{ChannelMonitorHistoriesColumns[14], ChannelMonitorHistoriesColumns[1], ChannelMonitorHistoriesColumns[3], ChannelMonitorHistoriesColumns[4]},
 			},
 			{
 				Name:    "channelmonitorhistory_checked_at",
 				Unique:  false,
-				Columns: []*schema.Column{ChannelMonitorHistoriesColumns[6]},
+				Columns: []*schema.Column{ChannelMonitorHistoriesColumns[13]},
 			},
 		},
 	}

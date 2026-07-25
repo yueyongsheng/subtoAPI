@@ -43,12 +43,19 @@ func (r *channelMonitorRepository) Create(ctx context.Context, m *service.Channe
 		SetPrimaryModel(m.PrimaryModel).
 		SetExtraModels(emptySliceIfNil(m.ExtraModels)).
 		SetGroupName(m.GroupName).
+		SetMode(channelmonitor.Mode(defaultMonitorModeRepo(m.Mode))).
 		SetEnabled(m.Enabled).
 		SetIntervalSeconds(m.IntervalSeconds).
 		SetJitterSeconds(m.JitterSeconds).
 		SetCreatedBy(m.CreatedBy).
 		SetExtraHeaders(emptyHeadersIfNilRepo(m.ExtraHeaders)).
 		SetBodyOverrideMode(defaultBodyModeRepo(m.BodyOverrideMode))
+	if m.GroupID != nil {
+		builder = builder.SetGroupID(*m.GroupID)
+	}
+	if m.ProbeAPIKeyID != nil {
+		builder = builder.SetProbeAPIKeyID(*m.ProbeAPIKeyID)
+	}
 	if m.TemplateID != nil {
 		builder = builder.SetTemplateID(*m.TemplateID)
 	}
@@ -87,11 +94,22 @@ func (r *channelMonitorRepository) Update(ctx context.Context, m *service.Channe
 		SetPrimaryModel(m.PrimaryModel).
 		SetExtraModels(emptySliceIfNil(m.ExtraModels)).
 		SetGroupName(m.GroupName).
+		SetMode(channelmonitor.Mode(defaultMonitorModeRepo(m.Mode))).
 		SetEnabled(m.Enabled).
 		SetIntervalSeconds(m.IntervalSeconds).
 		SetJitterSeconds(m.JitterSeconds).
 		SetExtraHeaders(emptyHeadersIfNilRepo(m.ExtraHeaders)).
 		SetBodyOverrideMode(defaultBodyModeRepo(m.BodyOverrideMode))
+	if m.GroupID != nil {
+		updater = updater.SetGroupID(*m.GroupID)
+	} else {
+		updater = updater.ClearGroupID()
+	}
+	if m.ProbeAPIKeyID != nil {
+		updater = updater.SetProbeAPIKeyID(*m.ProbeAPIKeyID)
+	} else {
+		updater = updater.ClearProbeAPIKeyID()
+	}
 	if m.TemplateID != nil {
 		updater = updater.SetTemplateID(*m.TemplateID)
 	} else {
@@ -191,6 +209,20 @@ func (r *channelMonitorRepository) MarkChecked(ctx context.Context, id int64, ch
 	return nil
 }
 
+func (r *channelMonitorRepository) MarkPing(ctx context.Context, id int64, latencyMs *int, checkedAt time.Time) error {
+	client := clientFromContext(ctx, r.client)
+	updater := client.ChannelMonitor.UpdateOneID(id).SetLastPingAt(checkedAt)
+	if latencyMs != nil {
+		updater = updater.SetLastPingLatencyMs(*latencyMs)
+	} else {
+		updater = updater.ClearLastPingLatencyMs()
+	}
+	if err := updater.Exec(ctx); err != nil {
+		return translatePersistenceError(err, service.ErrChannelMonitorNotFound, nil)
+	}
+	return nil
+}
+
 func (r *channelMonitorRepository) InsertHistoryBatch(ctx context.Context, rows []*service.ChannelMonitorHistoryRow) error {
 	if len(rows) == 0 {
 		return nil
@@ -198,12 +230,29 @@ func (r *channelMonitorRepository) InsertHistoryBatch(ctx context.Context, rows 
 	client := clientFromContext(ctx, r.client)
 	bulk := make([]*dbent.ChannelMonitorHistoryCreate, 0, len(rows))
 	for _, row := range rows {
+		source := row.Source
+		if source == "" {
+			source = service.MonitorSourceActiveProbe
+		}
+		sampleCount := row.SampleCount
+		if sampleCount <= 0 {
+			sampleCount = 1
+		}
 		c := client.ChannelMonitorHistory.Create().
 			SetMonitorID(row.MonitorID).
 			SetModel(row.Model).
 			SetStatus(channelmonitorhistory.Status(row.Status)).
+			SetSource(channelmonitorhistory.Source(source)).
+			SetSampleCount(sampleCount).
+			SetSuccessCount(row.SuccessCount).
+			SetFailureCount(row.FailureCount).
+			SetRecoveredErrorCount(row.RecoveredErrorCount).
+			SetSlowCount(row.SlowCount).
 			SetMessage(row.Message).
 			SetCheckedAt(row.CheckedAt)
+		if row.BucketStart != nil {
+			c = c.SetBucketStart(*row.BucketStart)
+		}
 		if row.LatencyMs != nil {
 			c = c.SetLatencyMs(*row.LatencyMs)
 		}
@@ -214,6 +263,40 @@ func (r *channelMonitorRepository) InsertHistoryBatch(ctx context.Context, rows 
 	}
 	if _, err := client.ChannelMonitorHistory.CreateBulk(bulk...).Save(ctx); err != nil {
 		return fmt.Errorf("insert history bulk: %w", err)
+	}
+	return nil
+}
+
+func (r *channelMonitorRepository) UpsertTrafficBucket(ctx context.Context, row *service.ChannelMonitorHistoryRow) error {
+	if row == nil || row.BucketStart == nil {
+		return fmt.Errorf("upsert traffic bucket: bucket_start is required")
+	}
+	const q = `
+		INSERT INTO channel_monitor_histories (
+			monitor_id, model, status, source, bucket_start,
+			sample_count, success_count, failure_count, recovered_error_count, slow_count,
+			latency_ms, ping_latency_ms, message, checked_at
+		) VALUES ($1, $2, $3, 'real_traffic', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		ON CONFLICT (monitor_id, model, source, bucket_start)
+		DO UPDATE SET
+			status = EXCLUDED.status,
+			sample_count = EXCLUDED.sample_count,
+			success_count = EXCLUDED.success_count,
+			failure_count = EXCLUDED.failure_count,
+			recovered_error_count = EXCLUDED.recovered_error_count,
+			slow_count = EXCLUDED.slow_count,
+			latency_ms = EXCLUDED.latency_ms,
+			ping_latency_ms = COALESCE(EXCLUDED.ping_latency_ms, channel_monitor_histories.ping_latency_ms),
+			message = EXCLUDED.message,
+			checked_at = EXCLUDED.checked_at
+	`
+	_, err := r.db.ExecContext(ctx, q,
+		row.MonitorID, row.Model, row.Status, *row.BucketStart,
+		row.SampleCount, row.SuccessCount, row.FailureCount, row.RecoveredErrorCount, row.SlowCount,
+		row.LatencyMs, row.PingLatencyMs, row.Message, row.CheckedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("upsert traffic bucket: %w", err)
 	}
 	return nil
 }
@@ -242,13 +325,20 @@ func (r *channelMonitorRepository) ListHistory(ctx context.Context, monitorID in
 	out := make([]*service.ChannelMonitorHistoryEntry, 0, len(rows))
 	for _, row := range rows {
 		entry := &service.ChannelMonitorHistoryEntry{
-			ID:            row.ID,
-			Model:         row.Model,
-			Status:        string(row.Status),
-			LatencyMs:     row.LatencyMs,
-			PingLatencyMs: row.PingLatencyMs,
-			Message:       row.Message,
-			CheckedAt:     row.CheckedAt,
+			ID:                  row.ID,
+			Model:               row.Model,
+			Status:              string(row.Status),
+			Source:              string(row.Source),
+			BucketStart:         row.BucketStart,
+			SampleCount:         row.SampleCount,
+			SuccessCount:        row.SuccessCount,
+			FailureCount:        row.FailureCount,
+			RecoveredErrorCount: row.RecoveredErrorCount,
+			SlowCount:           row.SlowCount,
+			LatencyMs:           row.LatencyMs,
+			PingLatencyMs:       row.PingLatencyMs,
+			Message:             row.Message,
+			CheckedAt:           row.CheckedAt,
 		}
 		out = append(out, entry)
 	}
@@ -262,7 +352,8 @@ func (r *channelMonitorRepository) ListHistory(ctx context.Context, monitorID in
 func (r *channelMonitorRepository) ListLatestPerModel(ctx context.Context, monitorID int64) ([]*service.ChannelMonitorLatest, error) {
 	const q = `
 		SELECT DISTINCT ON (model)
-		    model, status, latency_ms, ping_latency_ms, checked_at
+		    model, status, source, success_count, failure_count, recovered_error_count,
+		    latency_ms, ping_latency_ms, checked_at
 		FROM channel_monitor_histories
 		WHERE monitor_id = $1
 		ORDER BY model, checked_at DESC
@@ -277,7 +368,7 @@ func (r *channelMonitorRepository) ListLatestPerModel(ctx context.Context, monit
 	for rows.Next() {
 		l := &service.ChannelMonitorLatest{}
 		var latency, ping sql.NullInt64
-		if err := rows.Scan(&l.Model, &l.Status, &latency, &ping, &l.CheckedAt); err != nil {
+		if err := rows.Scan(&l.Model, &l.Status, &l.Source, &l.SuccessCount, &l.FailureCount, &l.RecoveredErrorCount, &latency, &ping, &l.CheckedAt); err != nil {
 			return nil, fmt.Errorf("scan latest row: %w", err)
 		}
 		assignNullInt(&l.LatencyMs, latency)
@@ -369,7 +460,8 @@ func (r *channelMonitorRepository) ListLatestForMonitorIDs(ctx context.Context, 
 	}
 	const q = `
 		SELECT DISTINCT ON (monitor_id, model)
-		    monitor_id, model, status, latency_ms, ping_latency_ms, checked_at
+		    monitor_id, model, status, source, success_count, failure_count, recovered_error_count,
+		    latency_ms, ping_latency_ms, checked_at
 		FROM channel_monitor_histories
 		WHERE monitor_id = ANY($1)
 		ORDER BY monitor_id, model, checked_at DESC
@@ -384,7 +476,7 @@ func (r *channelMonitorRepository) ListLatestForMonitorIDs(ctx context.Context, 
 		var monitorID int64
 		l := &service.ChannelMonitorLatest{}
 		var latency, ping sql.NullInt64
-		if err := rows.Scan(&monitorID, &l.Model, &l.Status, &latency, &ping, &l.CheckedAt); err != nil {
+		if err := rows.Scan(&monitorID, &l.Model, &l.Status, &l.Source, &l.SuccessCount, &l.FailureCount, &l.RecoveredErrorCount, &latency, &ping, &l.CheckedAt); err != nil {
 			return nil, fmt.Errorf("scan latest batch row: %w", err)
 		}
 		assignNullInt(&l.LatencyMs, latency)
@@ -709,25 +801,30 @@ func entToServiceMonitor(row *dbent.ChannelMonitor) *service.ChannelMonitor {
 		headers = map[string]string{}
 	}
 	out := &service.ChannelMonitor{
-		ID:               row.ID,
-		Name:             row.Name,
-		Provider:         string(row.Provider),
-		APIMode:          defaultAPIModeRepo(row.APIMode),
-		Endpoint:         row.Endpoint,
-		APIKey:           row.APIKeyEncrypted, // 仍为密文，service 层负责解密
-		PrimaryModel:     row.PrimaryModel,
-		ExtraModels:      extras,
-		GroupName:        row.GroupName,
-		Enabled:          row.Enabled,
-		IntervalSeconds:  row.IntervalSeconds,
-		JitterSeconds:    row.JitterSeconds,
-		LastCheckedAt:    row.LastCheckedAt,
-		CreatedBy:        row.CreatedBy,
-		CreatedAt:        row.CreatedAt,
-		UpdatedAt:        row.UpdatedAt,
-		ExtraHeaders:     headers,
-		BodyOverrideMode: row.BodyOverrideMode,
-		BodyOverride:     row.BodyOverride,
+		ID:                row.ID,
+		Name:              row.Name,
+		Provider:          string(row.Provider),
+		APIMode:           defaultAPIModeRepo(row.APIMode),
+		Endpoint:          row.Endpoint,
+		APIKey:            row.APIKeyEncrypted, // 仍为密文，service 层负责解密
+		PrimaryModel:      row.PrimaryModel,
+		ExtraModels:       extras,
+		GroupName:         row.GroupName,
+		Mode:              defaultMonitorModeRepo(string(row.Mode)),
+		GroupID:           row.GroupID,
+		ProbeAPIKeyID:     row.ProbeAPIKeyID,
+		Enabled:           row.Enabled,
+		IntervalSeconds:   row.IntervalSeconds,
+		JitterSeconds:     row.JitterSeconds,
+		LastCheckedAt:     row.LastCheckedAt,
+		LastPingLatencyMs: row.LastPingLatencyMs,
+		LastPingAt:        row.LastPingAt,
+		CreatedBy:         row.CreatedBy,
+		CreatedAt:         row.CreatedAt,
+		UpdatedAt:         row.UpdatedAt,
+		ExtraHeaders:      headers,
+		BodyOverrideMode:  row.BodyOverrideMode,
+		BodyOverride:      row.BodyOverride,
 	}
 	if row.TemplateID != nil {
 		id := *row.TemplateID
@@ -758,6 +855,13 @@ func defaultAPIModeRepo(apiMode string) string {
 		return "chat_completions"
 	}
 	return apiMode
+}
+
+func defaultMonitorModeRepo(mode string) string {
+	if mode == "" {
+		return service.MonitorModeActive
+	}
+	return mode
 }
 
 func emptySliceIfNil(in []string) []string {

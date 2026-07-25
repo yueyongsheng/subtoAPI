@@ -33,6 +33,23 @@ func (ChannelMonitorHistory) Fields() []ent.Field {
 			MaxLen(200),
 		field.Enum("status").
 			Values("operational", "degraded", "failed", "error"),
+		field.Enum("source").
+			Values("active_probe", "real_traffic").
+			Default("active_probe"),
+		field.Time("bucket_start").
+			Optional().
+			Nillable().
+			Comment("UTC minute bucket for real-traffic observations; NULL for active probes"),
+		field.Int("sample_count").
+			Default(1),
+		field.Int("success_count").
+			Default(0),
+		field.Int("failure_count").
+			Default(0),
+		field.Int("recovered_error_count").
+			Default(0),
+		field.Int("slow_count").
+			Default(0),
 		field.Int("latency_ms").
 			Optional().
 			Nillable(),
@@ -61,6 +78,7 @@ func (ChannelMonitorHistory) Edges() []ent.Edge {
 func (ChannelMonitorHistory) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("monitor_id", "model", "checked_at"),
+		index.Fields("monitor_id", "model", "source", "bucket_start").Unique(),
 		index.Fields("checked_at"),
 	}
 }

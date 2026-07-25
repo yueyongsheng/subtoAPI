@@ -19,12 +19,13 @@ func RegisterGatewayRoutes(
 	apiKeyService *service.APIKeyService,
 	subscriptionService *service.SubscriptionService,
 	opsService *service.OpsService,
+	channelMonitorService *service.ChannelMonitorService,
 	settingService *service.SettingService,
 	cfg *config.Config,
 ) {
 	bodyLimit := middleware.RequestBodyLimit(cfg.Gateway.MaxBodySize)
 	clientRequestID := middleware.ClientRequestID()
-	opsErrorLogger := handler.OpsErrorLoggerMiddleware(opsService)
+	opsErrorLogger := handler.OpsErrorLoggerMiddleware(opsService, channelMonitorService)
 	endpointNorm := handler.InboundEndpointMiddleware()
 
 	// 未分组 Key 拦截中间件（按协议格式区分错误响应）

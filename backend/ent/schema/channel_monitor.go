@@ -58,6 +58,18 @@ func (ChannelMonitor) Fields() []ent.Field {
 			Optional().
 			Default("").
 			MaxLen(100),
+		field.Enum("mode").
+			Values("active", "hybrid").
+			Default("active").
+			Comment("active always probes on interval; hybrid prefers real traffic and probes only when stale"),
+		field.Int64("group_id").
+			Optional().
+			Nillable().
+			Comment("Authoritative group used for passive traffic matching; group_name remains display-only"),
+		field.Int64("probe_api_key_id").
+			Optional().
+			Nillable().
+			Comment("Dedicated local API key used by active fallback probes and excluded from passive observations"),
 		field.Bool("enabled").
 			Default(true),
 		field.Int("interval_seconds").
@@ -67,6 +79,12 @@ func (ChannelMonitor) Fields() []ent.Field {
 			Range(0, 3600).
 			Comment("每次调度在 interval 基础上 ± [0, jitter] 的均匀随机偏移（秒）；0 表示固定间隔。service 层另保证 interval - jitter >= 15"),
 		field.Time("last_checked_at").
+			Optional().
+			Nillable(),
+		field.Int("last_ping_latency_ms").
+			Optional().
+			Nillable(),
+		field.Time("last_ping_at").
 			Optional().
 			Nillable(),
 		field.Int64("created_by"),

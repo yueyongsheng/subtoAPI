@@ -608,8 +608,17 @@ func (w *opsCaptureWriter) WriteString(s string) (int, error) {
 // Notes:
 // - It buffers response bodies only when status >= 400 to avoid overhead for successful traffic.
 // - Streaming errors after the response has started (SSE) may still need explicit logging.
-func OpsErrorLoggerMiddleware(ops *service.OpsService) gin.HandlerFunc {
+type ChannelHealthObserver interface {
+	ObserveChannelHealth(service.ChannelHealthObservation)
+}
+
+func OpsErrorLoggerMiddleware(ops *service.OpsService, healthObservers ...ChannelHealthObserver) gin.HandlerFunc {
+	var healthObserver ChannelHealthObserver
+	if len(healthObservers) > 0 {
+		healthObserver = healthObservers[0]
+	}
 	return func(c *gin.Context) {
+		requestStartedAt := time.Now()
 		originalWriter := c.Writer
 		w := acquireOpsCaptureWriter(originalWriter)
 		defer func() {
@@ -621,6 +630,7 @@ func OpsErrorLoggerMiddleware(ops *service.OpsService) gin.HandlerFunc {
 			releaseOpsCaptureWriter(w)
 		}()
 		c.Writer = w
+		defer observeChannelHealth(c, healthObserver, requestStartedAt)
 		c.Next()
 
 		if ops == nil {
@@ -1040,6 +1050,62 @@ func OpsErrorLoggerMiddleware(ops *service.OpsService) gin.HandlerFunc {
 
 		enqueueOpsErrorLog(ops, entry)
 	}
+}
+
+func observeChannelHealth(c *gin.Context, observer ChannelHealthObserver, startedAt time.Time) {
+	if observer == nil || c == nil || c.Writer == nil || isCountTokensRequest(c) {
+		return
+	}
+	if skipped, ok := c.Get(service.OpsSkipPassthroughKey); ok {
+		if value, _ := skipped.(bool); value {
+			return
+		}
+	}
+	apiKey := getOpsAPIKey(c)
+	if apiKey == nil || apiKey.ID <= 0 || apiKey.GroupID == nil || *apiKey.GroupID <= 0 {
+		return
+	}
+	modelValue, _ := c.Get(opsModelKey)
+	model, _ := modelValue.(string)
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return
+	}
+	status := c.Writer.Status()
+	hasUpstreamFailure := hasOpsUpstreamErrorContext(c) || hasOpsAccountAuthFailure(c) || isOpsRoutingCapacityLimited(c)
+	streamError, hasStreamError := service.GetOpsStreamError(c)
+	if hasStreamError && (streamError.ErrType == "upstream_error" || streamError.ErrType == "overloaded_error") {
+		hasUpstreamFailure = true
+	}
+
+	success := status < http.StatusBadRequest && !hasStreamError
+	qualifyingFailure := !success && hasUpstreamFailure
+	if !success && !qualifyingFailure {
+		return
+	}
+	duration := time.Since(startedAt)
+	if value, ok := c.Get(service.OpsResponseLatencyMsKey); ok {
+		switch ms := value.(type) {
+		case int64:
+			if ms >= 0 {
+				duration = time.Duration(ms) * time.Millisecond
+			}
+		case int:
+			if ms >= 0 {
+				duration = time.Duration(ms) * time.Millisecond
+			}
+		}
+	}
+	observer.ObserveChannelHealth(service.ChannelHealthObservation{
+		GroupID:           *apiKey.GroupID,
+		APIKeyID:          apiKey.ID,
+		Model:             model,
+		Success:           success,
+		RecoveredError:    success && hasUpstreamFailure,
+		QualifyingFailure: qualifyingFailure,
+		Duration:          duration,
+		ObservedAt:        time.Now(),
+	})
 }
 
 // logOpsStreamError 记录一次挂在已固化 HTTP 200 SSE 流上的就地错误。

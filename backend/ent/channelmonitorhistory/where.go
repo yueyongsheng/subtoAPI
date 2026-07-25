@@ -65,6 +65,36 @@ func Model(v string) predicate.ChannelMonitorHistory {
 	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldModel, v))
 }
 
+// BucketStart applies equality check predicate on the "bucket_start" field. It's identical to BucketStartEQ.
+func BucketStart(v time.Time) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldBucketStart, v))
+}
+
+// SampleCount applies equality check predicate on the "sample_count" field. It's identical to SampleCountEQ.
+func SampleCount(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldSampleCount, v))
+}
+
+// SuccessCount applies equality check predicate on the "success_count" field. It's identical to SuccessCountEQ.
+func SuccessCount(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldSuccessCount, v))
+}
+
+// FailureCount applies equality check predicate on the "failure_count" field. It's identical to FailureCountEQ.
+func FailureCount(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldFailureCount, v))
+}
+
+// RecoveredErrorCount applies equality check predicate on the "recovered_error_count" field. It's identical to RecoveredErrorCountEQ.
+func RecoveredErrorCount(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldRecoveredErrorCount, v))
+}
+
+// SlowCount applies equality check predicate on the "slow_count" field. It's identical to SlowCountEQ.
+func SlowCount(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldSlowCount, v))
+}
+
 // LatencyMs applies equality check predicate on the "latency_ms" field. It's identical to LatencyMsEQ.
 func LatencyMs(v int) predicate.ChannelMonitorHistory {
 	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldLatencyMs, v))
@@ -188,6 +218,276 @@ func StatusIn(vs ...Status) predicate.ChannelMonitorHistory {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.ChannelMonitorHistory {
 	return predicate.ChannelMonitorHistory(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// SourceEQ applies the EQ predicate on the "source" field.
+func SourceEQ(v Source) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldSource, v))
+}
+
+// SourceNEQ applies the NEQ predicate on the "source" field.
+func SourceNEQ(v Source) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNEQ(FieldSource, v))
+}
+
+// SourceIn applies the In predicate on the "source" field.
+func SourceIn(vs ...Source) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIn(FieldSource, vs...))
+}
+
+// SourceNotIn applies the NotIn predicate on the "source" field.
+func SourceNotIn(vs ...Source) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotIn(FieldSource, vs...))
+}
+
+// BucketStartEQ applies the EQ predicate on the "bucket_start" field.
+func BucketStartEQ(v time.Time) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldBucketStart, v))
+}
+
+// BucketStartNEQ applies the NEQ predicate on the "bucket_start" field.
+func BucketStartNEQ(v time.Time) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNEQ(FieldBucketStart, v))
+}
+
+// BucketStartIn applies the In predicate on the "bucket_start" field.
+func BucketStartIn(vs ...time.Time) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIn(FieldBucketStart, vs...))
+}
+
+// BucketStartNotIn applies the NotIn predicate on the "bucket_start" field.
+func BucketStartNotIn(vs ...time.Time) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotIn(FieldBucketStart, vs...))
+}
+
+// BucketStartGT applies the GT predicate on the "bucket_start" field.
+func BucketStartGT(v time.Time) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGT(FieldBucketStart, v))
+}
+
+// BucketStartGTE applies the GTE predicate on the "bucket_start" field.
+func BucketStartGTE(v time.Time) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGTE(FieldBucketStart, v))
+}
+
+// BucketStartLT applies the LT predicate on the "bucket_start" field.
+func BucketStartLT(v time.Time) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLT(FieldBucketStart, v))
+}
+
+// BucketStartLTE applies the LTE predicate on the "bucket_start" field.
+func BucketStartLTE(v time.Time) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLTE(FieldBucketStart, v))
+}
+
+// BucketStartIsNil applies the IsNil predicate on the "bucket_start" field.
+func BucketStartIsNil() predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIsNull(FieldBucketStart))
+}
+
+// BucketStartNotNil applies the NotNil predicate on the "bucket_start" field.
+func BucketStartNotNil() predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotNull(FieldBucketStart))
+}
+
+// SampleCountEQ applies the EQ predicate on the "sample_count" field.
+func SampleCountEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldSampleCount, v))
+}
+
+// SampleCountNEQ applies the NEQ predicate on the "sample_count" field.
+func SampleCountNEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNEQ(FieldSampleCount, v))
+}
+
+// SampleCountIn applies the In predicate on the "sample_count" field.
+func SampleCountIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIn(FieldSampleCount, vs...))
+}
+
+// SampleCountNotIn applies the NotIn predicate on the "sample_count" field.
+func SampleCountNotIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotIn(FieldSampleCount, vs...))
+}
+
+// SampleCountGT applies the GT predicate on the "sample_count" field.
+func SampleCountGT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGT(FieldSampleCount, v))
+}
+
+// SampleCountGTE applies the GTE predicate on the "sample_count" field.
+func SampleCountGTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGTE(FieldSampleCount, v))
+}
+
+// SampleCountLT applies the LT predicate on the "sample_count" field.
+func SampleCountLT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLT(FieldSampleCount, v))
+}
+
+// SampleCountLTE applies the LTE predicate on the "sample_count" field.
+func SampleCountLTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLTE(FieldSampleCount, v))
+}
+
+// SuccessCountEQ applies the EQ predicate on the "success_count" field.
+func SuccessCountEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldSuccessCount, v))
+}
+
+// SuccessCountNEQ applies the NEQ predicate on the "success_count" field.
+func SuccessCountNEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNEQ(FieldSuccessCount, v))
+}
+
+// SuccessCountIn applies the In predicate on the "success_count" field.
+func SuccessCountIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIn(FieldSuccessCount, vs...))
+}
+
+// SuccessCountNotIn applies the NotIn predicate on the "success_count" field.
+func SuccessCountNotIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotIn(FieldSuccessCount, vs...))
+}
+
+// SuccessCountGT applies the GT predicate on the "success_count" field.
+func SuccessCountGT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGT(FieldSuccessCount, v))
+}
+
+// SuccessCountGTE applies the GTE predicate on the "success_count" field.
+func SuccessCountGTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGTE(FieldSuccessCount, v))
+}
+
+// SuccessCountLT applies the LT predicate on the "success_count" field.
+func SuccessCountLT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLT(FieldSuccessCount, v))
+}
+
+// SuccessCountLTE applies the LTE predicate on the "success_count" field.
+func SuccessCountLTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLTE(FieldSuccessCount, v))
+}
+
+// FailureCountEQ applies the EQ predicate on the "failure_count" field.
+func FailureCountEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldFailureCount, v))
+}
+
+// FailureCountNEQ applies the NEQ predicate on the "failure_count" field.
+func FailureCountNEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNEQ(FieldFailureCount, v))
+}
+
+// FailureCountIn applies the In predicate on the "failure_count" field.
+func FailureCountIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIn(FieldFailureCount, vs...))
+}
+
+// FailureCountNotIn applies the NotIn predicate on the "failure_count" field.
+func FailureCountNotIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotIn(FieldFailureCount, vs...))
+}
+
+// FailureCountGT applies the GT predicate on the "failure_count" field.
+func FailureCountGT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGT(FieldFailureCount, v))
+}
+
+// FailureCountGTE applies the GTE predicate on the "failure_count" field.
+func FailureCountGTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGTE(FieldFailureCount, v))
+}
+
+// FailureCountLT applies the LT predicate on the "failure_count" field.
+func FailureCountLT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLT(FieldFailureCount, v))
+}
+
+// FailureCountLTE applies the LTE predicate on the "failure_count" field.
+func FailureCountLTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLTE(FieldFailureCount, v))
+}
+
+// RecoveredErrorCountEQ applies the EQ predicate on the "recovered_error_count" field.
+func RecoveredErrorCountEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldRecoveredErrorCount, v))
+}
+
+// RecoveredErrorCountNEQ applies the NEQ predicate on the "recovered_error_count" field.
+func RecoveredErrorCountNEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNEQ(FieldRecoveredErrorCount, v))
+}
+
+// RecoveredErrorCountIn applies the In predicate on the "recovered_error_count" field.
+func RecoveredErrorCountIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIn(FieldRecoveredErrorCount, vs...))
+}
+
+// RecoveredErrorCountNotIn applies the NotIn predicate on the "recovered_error_count" field.
+func RecoveredErrorCountNotIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotIn(FieldRecoveredErrorCount, vs...))
+}
+
+// RecoveredErrorCountGT applies the GT predicate on the "recovered_error_count" field.
+func RecoveredErrorCountGT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGT(FieldRecoveredErrorCount, v))
+}
+
+// RecoveredErrorCountGTE applies the GTE predicate on the "recovered_error_count" field.
+func RecoveredErrorCountGTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGTE(FieldRecoveredErrorCount, v))
+}
+
+// RecoveredErrorCountLT applies the LT predicate on the "recovered_error_count" field.
+func RecoveredErrorCountLT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLT(FieldRecoveredErrorCount, v))
+}
+
+// RecoveredErrorCountLTE applies the LTE predicate on the "recovered_error_count" field.
+func RecoveredErrorCountLTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLTE(FieldRecoveredErrorCount, v))
+}
+
+// SlowCountEQ applies the EQ predicate on the "slow_count" field.
+func SlowCountEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldSlowCount, v))
+}
+
+// SlowCountNEQ applies the NEQ predicate on the "slow_count" field.
+func SlowCountNEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNEQ(FieldSlowCount, v))
+}
+
+// SlowCountIn applies the In predicate on the "slow_count" field.
+func SlowCountIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIn(FieldSlowCount, vs...))
+}
+
+// SlowCountNotIn applies the NotIn predicate on the "slow_count" field.
+func SlowCountNotIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotIn(FieldSlowCount, vs...))
+}
+
+// SlowCountGT applies the GT predicate on the "slow_count" field.
+func SlowCountGT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGT(FieldSlowCount, v))
+}
+
+// SlowCountGTE applies the GTE predicate on the "slow_count" field.
+func SlowCountGTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGTE(FieldSlowCount, v))
+}
+
+// SlowCountLT applies the LT predicate on the "slow_count" field.
+func SlowCountLT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLT(FieldSlowCount, v))
+}
+
+// SlowCountLTE applies the LTE predicate on the "slow_count" field.
+func SlowCountLTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLTE(FieldSlowCount, v))
 }
 
 // LatencyMsEQ applies the EQ predicate on the "latency_ms" field.

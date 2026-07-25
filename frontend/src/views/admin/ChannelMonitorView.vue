@@ -43,6 +43,17 @@
             <span class="text-sm text-gray-900 dark:text-gray-100">{{ formatLatency(row.primary_latency_ms) }}</span>
           </template>
 
+          <template #cell-observation_source="{ row }">
+            <div class="min-w-28">
+              <div class="text-xs font-medium text-gray-700 dark:text-gray-200">
+                {{ observationSourceLabel(row.last_observation_source) }}
+              </div>
+              <div v-if="row.last_observed_at" class="mt-0.5 text-xs text-gray-400">
+                {{ formatDateTime(row.last_observed_at) }}
+              </div>
+            </div>
+          </template>
+
           <template #cell-enabled="{ row }">
             <Toggle :modelValue="row.enabled" @update:modelValue="toggleEnabled(row)" />
           </template>
@@ -142,6 +153,7 @@ import MonitorPrimaryModelCell from '@/components/admin/monitor/MonitorPrimaryMo
 import MonitorActionsCell from '@/components/admin/monitor/MonitorActionsCell.vue'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { useChannelMonitorFormat } from '@/composables/useChannelMonitorFormat'
+import { formatDateTime } from '@/utils/format'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -177,9 +189,16 @@ const columns = computed<Column[]>(() => [
   { key: 'primary_model', label: t('admin.channelMonitor.columns.primaryModel'), sortable: false },
   { key: 'availability_7d', label: t('admin.channelMonitor.columns.availability7d'), sortable: false },
   { key: 'latency', label: t('admin.channelMonitor.columns.latency'), sortable: false },
+  { key: 'observation_source', label: t('admin.channelMonitor.columns.observationSource'), sortable: false },
   { key: 'enabled', label: t('admin.channelMonitor.columns.enabled'), sortable: false },
   { key: 'actions', label: t('admin.channelMonitor.columns.actions'), sortable: false },
 ])
+
+function observationSourceLabel(source: ChannelMonitor['last_observation_source']): string {
+  if (source === 'real_traffic') return t('admin.channelMonitor.observationSource.realTraffic')
+  if (source === 'active_probe') return t('admin.channelMonitor.observationSource.activeProbe')
+  return t('admin.channelMonitor.observationSource.none')
+}
 
 const deleteConfirmMessage = computed(() => {
   const name = deleting.value?.name || ''

@@ -35,6 +35,12 @@ const (
 	FieldExtraModels = "extra_models"
 	// FieldGroupName holds the string denoting the group_name field in the database.
 	FieldGroupName = "group_name"
+	// FieldMode holds the string denoting the mode field in the database.
+	FieldMode = "mode"
+	// FieldGroupID holds the string denoting the group_id field in the database.
+	FieldGroupID = "group_id"
+	// FieldProbeAPIKeyID holds the string denoting the probe_api_key_id field in the database.
+	FieldProbeAPIKeyID = "probe_api_key_id"
 	// FieldEnabled holds the string denoting the enabled field in the database.
 	FieldEnabled = "enabled"
 	// FieldIntervalSeconds holds the string denoting the interval_seconds field in the database.
@@ -43,6 +49,10 @@ const (
 	FieldJitterSeconds = "jitter_seconds"
 	// FieldLastCheckedAt holds the string denoting the last_checked_at field in the database.
 	FieldLastCheckedAt = "last_checked_at"
+	// FieldLastPingLatencyMs holds the string denoting the last_ping_latency_ms field in the database.
+	FieldLastPingLatencyMs = "last_ping_latency_ms"
+	// FieldLastPingAt holds the string denoting the last_ping_at field in the database.
+	FieldLastPingAt = "last_ping_at"
 	// FieldCreatedBy holds the string denoting the created_by field in the database.
 	FieldCreatedBy = "created_by"
 	// FieldTemplateID holds the string denoting the template_id field in the database.
@@ -97,10 +107,15 @@ var Columns = []string{
 	FieldPrimaryModel,
 	FieldExtraModels,
 	FieldGroupName,
+	FieldMode,
+	FieldGroupID,
+	FieldProbeAPIKeyID,
 	FieldEnabled,
 	FieldIntervalSeconds,
 	FieldJitterSeconds,
 	FieldLastCheckedAt,
+	FieldLastPingLatencyMs,
+	FieldLastPingAt,
 	FieldCreatedBy,
 	FieldTemplateID,
 	FieldExtraHeaders,
@@ -184,6 +199,32 @@ func ProviderValidator(pr Provider) error {
 	}
 }
 
+// Mode defines the type for the "mode" enum field.
+type Mode string
+
+// ModeActive is the default value of the Mode enum.
+const DefaultMode = ModeActive
+
+// Mode values.
+const (
+	ModeActive Mode = "active"
+	ModeHybrid Mode = "hybrid"
+)
+
+func (m Mode) String() string {
+	return string(m)
+}
+
+// ModeValidator is a validator for the "mode" field enum values. It is called by the builders before save.
+func ModeValidator(m Mode) error {
+	switch m {
+	case ModeActive, ModeHybrid:
+		return nil
+	default:
+		return fmt.Errorf("channelmonitor: invalid enum value for mode field: %q", m)
+	}
+}
+
 // OrderOption defines the ordering options for the ChannelMonitor queries.
 type OrderOption func(*sql.Selector)
 
@@ -237,6 +278,21 @@ func ByGroupName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldGroupName, opts...).ToFunc()
 }
 
+// ByMode orders the results by the mode field.
+func ByMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMode, opts...).ToFunc()
+}
+
+// ByGroupID orders the results by the group_id field.
+func ByGroupID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldGroupID, opts...).ToFunc()
+}
+
+// ByProbeAPIKeyID orders the results by the probe_api_key_id field.
+func ByProbeAPIKeyID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProbeAPIKeyID, opts...).ToFunc()
+}
+
 // ByEnabled orders the results by the enabled field.
 func ByEnabled(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEnabled, opts...).ToFunc()
@@ -255,6 +311,16 @@ func ByJitterSeconds(opts ...sql.OrderTermOption) OrderOption {
 // ByLastCheckedAt orders the results by the last_checked_at field.
 func ByLastCheckedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastCheckedAt, opts...).ToFunc()
+}
+
+// ByLastPingLatencyMs orders the results by the last_ping_latency_ms field.
+func ByLastPingLatencyMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastPingLatencyMs, opts...).ToFunc()
+}
+
+// ByLastPingAt orders the results by the last_ping_at field.
+func ByLastPingAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastPingAt, opts...).ToFunc()
 }
 
 // ByCreatedBy orders the results by the created_by field.

@@ -492,8 +492,14 @@ export default {
         primaryModel: 'Primary Model',
         availability7d: '7d Availability',
         latency: 'Latency (ms)',
+        observationSource: 'Last Observation',
         enabled: 'Enabled',
         actions: 'Actions'
+      },
+      observationSource: {
+        realTraffic: 'Real customer traffic',
+        activeProbe: 'Active probe',
+        none: 'No observations'
       },
       form: {
         name: 'Name',
@@ -520,6 +526,15 @@ export default {
         extraModelsPlaceholder: 'Press Enter to add extra model',
         groupName: 'Group Name',
         groupNamePlaceholder: 'Optional, used to group rows in user view',
+        mode: 'Monitoring strategy',
+        modeActive: 'Scheduled probes',
+        modeHybrid: 'Prefer real traffic',
+        modeHint: {
+          active: 'Actively call models on the configured interval.',
+          hybrid: 'Use customer traffic first and probe only after one idle hour.'
+        },
+        hybridIntervalHint: 'Hybrid idle fallback is fixed at 3600 seconds',
+        hybridKeyRequired: 'Hybrid mode requires a group-bound dedicated key selected with “Use my key”',
         intervalSeconds: 'Interval (seconds)',
         intervalSecondsHint: 'Range: 15 - 3600 seconds',
         jitterSeconds: 'Random Jitter (± seconds)',

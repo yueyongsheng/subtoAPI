@@ -39,6 +39,12 @@ type ChannelMonitor struct {
 	ExtraModels []string `json:"extra_models,omitempty"`
 	// GroupName holds the value of the "group_name" field.
 	GroupName string `json:"group_name,omitempty"`
+	// active always probes on interval; hybrid prefers real traffic and probes only when stale
+	Mode channelmonitor.Mode `json:"mode,omitempty"`
+	// Authoritative group used for passive traffic matching; group_name remains display-only
+	GroupID *int64 `json:"group_id,omitempty"`
+	// Dedicated local API key used by active fallback probes and excluded from passive observations
+	ProbeAPIKeyID *int64 `json:"probe_api_key_id,omitempty"`
 	// Enabled holds the value of the "enabled" field.
 	Enabled bool `json:"enabled,omitempty"`
 	// IntervalSeconds holds the value of the "interval_seconds" field.
@@ -47,6 +53,10 @@ type ChannelMonitor struct {
 	JitterSeconds int `json:"jitter_seconds,omitempty"`
 	// LastCheckedAt holds the value of the "last_checked_at" field.
 	LastCheckedAt *time.Time `json:"last_checked_at,omitempty"`
+	// LastPingLatencyMs holds the value of the "last_ping_latency_ms" field.
+	LastPingLatencyMs *int `json:"last_ping_latency_ms,omitempty"`
+	// LastPingAt holds the value of the "last_ping_at" field.
+	LastPingAt *time.Time `json:"last_ping_at,omitempty"`
 	// CreatedBy holds the value of the "created_by" field.
 	CreatedBy int64 `json:"created_by,omitempty"`
 	// TemplateID holds the value of the "template_id" field.
@@ -114,11 +124,11 @@ func (*ChannelMonitor) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case channelmonitor.FieldEnabled:
 			values[i] = new(sql.NullBool)
-		case channelmonitor.FieldID, channelmonitor.FieldIntervalSeconds, channelmonitor.FieldJitterSeconds, channelmonitor.FieldCreatedBy, channelmonitor.FieldTemplateID:
+		case channelmonitor.FieldID, channelmonitor.FieldGroupID, channelmonitor.FieldProbeAPIKeyID, channelmonitor.FieldIntervalSeconds, channelmonitor.FieldJitterSeconds, channelmonitor.FieldLastPingLatencyMs, channelmonitor.FieldCreatedBy, channelmonitor.FieldTemplateID:
 			values[i] = new(sql.NullInt64)
-		case channelmonitor.FieldName, channelmonitor.FieldProvider, channelmonitor.FieldAPIMode, channelmonitor.FieldEndpoint, channelmonitor.FieldAPIKeyEncrypted, channelmonitor.FieldPrimaryModel, channelmonitor.FieldGroupName, channelmonitor.FieldBodyOverrideMode:
+		case channelmonitor.FieldName, channelmonitor.FieldProvider, channelmonitor.FieldAPIMode, channelmonitor.FieldEndpoint, channelmonitor.FieldAPIKeyEncrypted, channelmonitor.FieldPrimaryModel, channelmonitor.FieldGroupName, channelmonitor.FieldMode, channelmonitor.FieldBodyOverrideMode:
 			values[i] = new(sql.NullString)
-		case channelmonitor.FieldCreatedAt, channelmonitor.FieldUpdatedAt, channelmonitor.FieldLastCheckedAt:
+		case channelmonitor.FieldCreatedAt, channelmonitor.FieldUpdatedAt, channelmonitor.FieldLastCheckedAt, channelmonitor.FieldLastPingAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -203,6 +213,26 @@ func (_m *ChannelMonitor) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.GroupName = value.String
 			}
+		case channelmonitor.FieldMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mode", values[i])
+			} else if value.Valid {
+				_m.Mode = channelmonitor.Mode(value.String)
+			}
+		case channelmonitor.FieldGroupID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field group_id", values[i])
+			} else if value.Valid {
+				_m.GroupID = new(int64)
+				*_m.GroupID = value.Int64
+			}
+		case channelmonitor.FieldProbeAPIKeyID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field probe_api_key_id", values[i])
+			} else if value.Valid {
+				_m.ProbeAPIKeyID = new(int64)
+				*_m.ProbeAPIKeyID = value.Int64
+			}
 		case channelmonitor.FieldEnabled:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field enabled", values[i])
@@ -227,6 +257,20 @@ func (_m *ChannelMonitor) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.LastCheckedAt = new(time.Time)
 				*_m.LastCheckedAt = value.Time
+			}
+		case channelmonitor.FieldLastPingLatencyMs:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field last_ping_latency_ms", values[i])
+			} else if value.Valid {
+				_m.LastPingLatencyMs = new(int)
+				*_m.LastPingLatencyMs = int(value.Int64)
+			}
+		case channelmonitor.FieldLastPingAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field last_ping_at", values[i])
+			} else if value.Valid {
+				_m.LastPingAt = new(time.Time)
+				*_m.LastPingAt = value.Time
 			}
 		case channelmonitor.FieldCreatedBy:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -343,6 +387,19 @@ func (_m *ChannelMonitor) String() string {
 	builder.WriteString("group_name=")
 	builder.WriteString(_m.GroupName)
 	builder.WriteString(", ")
+	builder.WriteString("mode=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Mode))
+	builder.WriteString(", ")
+	if v := _m.GroupID; v != nil {
+		builder.WriteString("group_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.ProbeAPIKeyID; v != nil {
+		builder.WriteString("probe_api_key_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
 	builder.WriteString("enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Enabled))
 	builder.WriteString(", ")
@@ -354,6 +411,16 @@ func (_m *ChannelMonitor) String() string {
 	builder.WriteString(", ")
 	if v := _m.LastCheckedAt; v != nil {
 		builder.WriteString("last_checked_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.LastPingLatencyMs; v != nil {
+		builder.WriteString("last_ping_latency_ms=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.LastPingAt; v != nil {
+		builder.WriteString("last_ping_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")

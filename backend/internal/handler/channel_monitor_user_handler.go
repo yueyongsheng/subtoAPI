@@ -41,17 +41,19 @@ func (h *ChannelMonitorUserHandler) featureEnabled(c *gin.Context) bool {
 // --- Response ---
 
 type channelMonitorUserListItem struct {
-	ID                   int64                                `json:"id"`
-	Name                 string                               `json:"name"`
-	Provider             string                               `json:"provider"`
-	GroupName            string                               `json:"group_name"`
-	PrimaryModel         string                               `json:"primary_model"`
-	PrimaryStatus        string                               `json:"primary_status"`
-	PrimaryLatencyMs     *int                                 `json:"primary_latency_ms"`
-	PrimaryPingLatencyMs *int                                 `json:"primary_ping_latency_ms"`
-	Availability7d       float64                              `json:"availability_7d"`
-	ExtraModels          []dto.ChannelMonitorExtraModelStatus `json:"extra_models"`
-	Timeline             []channelMonitorUserTimelinePoint    `json:"timeline"`
+	ID                    int64                                `json:"id"`
+	Name                  string                               `json:"name"`
+	Provider              string                               `json:"provider"`
+	GroupName             string                               `json:"group_name"`
+	PrimaryModel          string                               `json:"primary_model"`
+	PrimaryStatus         string                               `json:"primary_status"`
+	PrimaryLatencyMs      *int                                 `json:"primary_latency_ms"`
+	PrimaryPingLatencyMs  *int                                 `json:"primary_ping_latency_ms"`
+	Availability7d        float64                              `json:"availability_7d"`
+	ExtraModels           []dto.ChannelMonitorExtraModelStatus `json:"extra_models"`
+	Timeline              []channelMonitorUserTimelinePoint    `json:"timeline"`
+	LastObservationSource string                               `json:"last_observation_source"`
+	LastObservedAt        *string                              `json:"last_observed_at"`
 }
 
 // channelMonitorUserTimelinePoint 主模型最近一次检测的 timeline 点。
@@ -61,6 +63,7 @@ type channelMonitorUserTimelinePoint struct {
 	LatencyMs     *int   `json:"latency_ms"`
 	PingLatencyMs *int   `json:"ping_latency_ms"`
 	CheckedAt     string `json:"checked_at"`
+	Source        string `json:"source"`
 }
 
 type channelMonitorUserDetailResponse struct {
@@ -97,21 +100,28 @@ func userMonitorViewToItem(v *service.UserMonitorView) channelMonitorUserListIte
 			LatencyMs:     p.LatencyMs,
 			PingLatencyMs: p.PingLatencyMs,
 			CheckedAt:     p.CheckedAt.UTC().Format(time.RFC3339),
+			Source:        p.Source,
 		})
 	}
-	return channelMonitorUserListItem{
-		ID:                   v.ID,
-		Name:                 v.Name,
-		Provider:             v.Provider,
-		GroupName:            v.GroupName,
-		PrimaryModel:         v.PrimaryModel,
-		PrimaryStatus:        v.PrimaryStatus,
-		PrimaryLatencyMs:     v.PrimaryLatencyMs,
-		PrimaryPingLatencyMs: v.PrimaryPingLatencyMs,
-		Availability7d:       v.Availability7d,
-		ExtraModels:          extras,
-		Timeline:             timeline,
+	item := channelMonitorUserListItem{
+		ID:                    v.ID,
+		Name:                  v.Name,
+		Provider:              v.Provider,
+		GroupName:             v.GroupName,
+		PrimaryModel:          v.PrimaryModel,
+		PrimaryStatus:         v.PrimaryStatus,
+		PrimaryLatencyMs:      v.PrimaryLatencyMs,
+		PrimaryPingLatencyMs:  v.PrimaryPingLatencyMs,
+		Availability7d:        v.Availability7d,
+		ExtraModels:           extras,
+		Timeline:              timeline,
+		LastObservationSource: v.LastObservationSource,
 	}
+	if v.LastObservedAt != nil {
+		value := v.LastObservedAt.UTC().Format(time.RFC3339)
+		item.LastObservedAt = &value
+	}
+	return item
 }
 
 func userMonitorDetailToResponse(d *service.UserMonitorDetail) *channelMonitorUserDetailResponse {

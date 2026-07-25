@@ -154,6 +154,74 @@ func (_u *ChannelMonitorUpdate) ClearGroupName() *ChannelMonitorUpdate {
 	return _u
 }
 
+// SetMode sets the "mode" field.
+func (_u *ChannelMonitorUpdate) SetMode(v channelmonitor.Mode) *ChannelMonitorUpdate {
+	_u.mutation.SetMode(v)
+	return _u
+}
+
+// SetNillableMode sets the "mode" field if the given value is not nil.
+func (_u *ChannelMonitorUpdate) SetNillableMode(v *channelmonitor.Mode) *ChannelMonitorUpdate {
+	if v != nil {
+		_u.SetMode(*v)
+	}
+	return _u
+}
+
+// SetGroupID sets the "group_id" field.
+func (_u *ChannelMonitorUpdate) SetGroupID(v int64) *ChannelMonitorUpdate {
+	_u.mutation.ResetGroupID()
+	_u.mutation.SetGroupID(v)
+	return _u
+}
+
+// SetNillableGroupID sets the "group_id" field if the given value is not nil.
+func (_u *ChannelMonitorUpdate) SetNillableGroupID(v *int64) *ChannelMonitorUpdate {
+	if v != nil {
+		_u.SetGroupID(*v)
+	}
+	return _u
+}
+
+// AddGroupID adds value to the "group_id" field.
+func (_u *ChannelMonitorUpdate) AddGroupID(v int64) *ChannelMonitorUpdate {
+	_u.mutation.AddGroupID(v)
+	return _u
+}
+
+// ClearGroupID clears the value of the "group_id" field.
+func (_u *ChannelMonitorUpdate) ClearGroupID() *ChannelMonitorUpdate {
+	_u.mutation.ClearGroupID()
+	return _u
+}
+
+// SetProbeAPIKeyID sets the "probe_api_key_id" field.
+func (_u *ChannelMonitorUpdate) SetProbeAPIKeyID(v int64) *ChannelMonitorUpdate {
+	_u.mutation.ResetProbeAPIKeyID()
+	_u.mutation.SetProbeAPIKeyID(v)
+	return _u
+}
+
+// SetNillableProbeAPIKeyID sets the "probe_api_key_id" field if the given value is not nil.
+func (_u *ChannelMonitorUpdate) SetNillableProbeAPIKeyID(v *int64) *ChannelMonitorUpdate {
+	if v != nil {
+		_u.SetProbeAPIKeyID(*v)
+	}
+	return _u
+}
+
+// AddProbeAPIKeyID adds value to the "probe_api_key_id" field.
+func (_u *ChannelMonitorUpdate) AddProbeAPIKeyID(v int64) *ChannelMonitorUpdate {
+	_u.mutation.AddProbeAPIKeyID(v)
+	return _u
+}
+
+// ClearProbeAPIKeyID clears the value of the "probe_api_key_id" field.
+func (_u *ChannelMonitorUpdate) ClearProbeAPIKeyID() *ChannelMonitorUpdate {
+	_u.mutation.ClearProbeAPIKeyID()
+	return _u
+}
+
 // SetEnabled sets the "enabled" field.
 func (_u *ChannelMonitorUpdate) SetEnabled(v bool) *ChannelMonitorUpdate {
 	_u.mutation.SetEnabled(v)
@@ -227,6 +295,53 @@ func (_u *ChannelMonitorUpdate) SetNillableLastCheckedAt(v *time.Time) *ChannelM
 // ClearLastCheckedAt clears the value of the "last_checked_at" field.
 func (_u *ChannelMonitorUpdate) ClearLastCheckedAt() *ChannelMonitorUpdate {
 	_u.mutation.ClearLastCheckedAt()
+	return _u
+}
+
+// SetLastPingLatencyMs sets the "last_ping_latency_ms" field.
+func (_u *ChannelMonitorUpdate) SetLastPingLatencyMs(v int) *ChannelMonitorUpdate {
+	_u.mutation.ResetLastPingLatencyMs()
+	_u.mutation.SetLastPingLatencyMs(v)
+	return _u
+}
+
+// SetNillableLastPingLatencyMs sets the "last_ping_latency_ms" field if the given value is not nil.
+func (_u *ChannelMonitorUpdate) SetNillableLastPingLatencyMs(v *int) *ChannelMonitorUpdate {
+	if v != nil {
+		_u.SetLastPingLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddLastPingLatencyMs adds value to the "last_ping_latency_ms" field.
+func (_u *ChannelMonitorUpdate) AddLastPingLatencyMs(v int) *ChannelMonitorUpdate {
+	_u.mutation.AddLastPingLatencyMs(v)
+	return _u
+}
+
+// ClearLastPingLatencyMs clears the value of the "last_ping_latency_ms" field.
+func (_u *ChannelMonitorUpdate) ClearLastPingLatencyMs() *ChannelMonitorUpdate {
+	_u.mutation.ClearLastPingLatencyMs()
+	return _u
+}
+
+// SetLastPingAt sets the "last_ping_at" field.
+func (_u *ChannelMonitorUpdate) SetLastPingAt(v time.Time) *ChannelMonitorUpdate {
+	_u.mutation.SetLastPingAt(v)
+	return _u
+}
+
+// SetNillableLastPingAt sets the "last_ping_at" field if the given value is not nil.
+func (_u *ChannelMonitorUpdate) SetNillableLastPingAt(v *time.Time) *ChannelMonitorUpdate {
+	if v != nil {
+		_u.SetLastPingAt(*v)
+	}
+	return _u
+}
+
+// ClearLastPingAt clears the value of the "last_ping_at" field.
+func (_u *ChannelMonitorUpdate) ClearLastPingAt() *ChannelMonitorUpdate {
+	_u.mutation.ClearLastPingAt()
 	return _u
 }
 
@@ -478,6 +593,11 @@ func (_u *ChannelMonitorUpdate) check() error {
 			return &ValidationError{Name: "group_name", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.group_name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Mode(); ok {
+		if err := channelmonitor.ModeValidator(v); err != nil {
+			return &ValidationError{Name: "mode", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.mode": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.IntervalSeconds(); ok {
 		if err := channelmonitor.IntervalSecondsValidator(v); err != nil {
 			return &ValidationError{Name: "interval_seconds", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.interval_seconds": %w`, err)}
@@ -543,6 +663,27 @@ func (_u *ChannelMonitorUpdate) sqlSave(ctx context.Context) (_node int, err err
 	if _u.mutation.GroupNameCleared() {
 		_spec.ClearField(channelmonitor.FieldGroupName, field.TypeString)
 	}
+	if value, ok := _u.mutation.Mode(); ok {
+		_spec.SetField(channelmonitor.FieldMode, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.GroupID(); ok {
+		_spec.SetField(channelmonitor.FieldGroupID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedGroupID(); ok {
+		_spec.AddField(channelmonitor.FieldGroupID, field.TypeInt64, value)
+	}
+	if _u.mutation.GroupIDCleared() {
+		_spec.ClearField(channelmonitor.FieldGroupID, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.ProbeAPIKeyID(); ok {
+		_spec.SetField(channelmonitor.FieldProbeAPIKeyID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedProbeAPIKeyID(); ok {
+		_spec.AddField(channelmonitor.FieldProbeAPIKeyID, field.TypeInt64, value)
+	}
+	if _u.mutation.ProbeAPIKeyIDCleared() {
+		_spec.ClearField(channelmonitor.FieldProbeAPIKeyID, field.TypeInt64)
+	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(channelmonitor.FieldEnabled, field.TypeBool, value)
 	}
@@ -563,6 +704,21 @@ func (_u *ChannelMonitorUpdate) sqlSave(ctx context.Context) (_node int, err err
 	}
 	if _u.mutation.LastCheckedAtCleared() {
 		_spec.ClearField(channelmonitor.FieldLastCheckedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LastPingLatencyMs(); ok {
+		_spec.SetField(channelmonitor.FieldLastPingLatencyMs, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedLastPingLatencyMs(); ok {
+		_spec.AddField(channelmonitor.FieldLastPingLatencyMs, field.TypeInt, value)
+	}
+	if _u.mutation.LastPingLatencyMsCleared() {
+		_spec.ClearField(channelmonitor.FieldLastPingLatencyMs, field.TypeInt)
+	}
+	if value, ok := _u.mutation.LastPingAt(); ok {
+		_spec.SetField(channelmonitor.FieldLastPingAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastPingAtCleared() {
+		_spec.ClearField(channelmonitor.FieldLastPingAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.CreatedBy(); ok {
 		_spec.SetField(channelmonitor.FieldCreatedBy, field.TypeInt64, value)
@@ -843,6 +999,74 @@ func (_u *ChannelMonitorUpdateOne) ClearGroupName() *ChannelMonitorUpdateOne {
 	return _u
 }
 
+// SetMode sets the "mode" field.
+func (_u *ChannelMonitorUpdateOne) SetMode(v channelmonitor.Mode) *ChannelMonitorUpdateOne {
+	_u.mutation.SetMode(v)
+	return _u
+}
+
+// SetNillableMode sets the "mode" field if the given value is not nil.
+func (_u *ChannelMonitorUpdateOne) SetNillableMode(v *channelmonitor.Mode) *ChannelMonitorUpdateOne {
+	if v != nil {
+		_u.SetMode(*v)
+	}
+	return _u
+}
+
+// SetGroupID sets the "group_id" field.
+func (_u *ChannelMonitorUpdateOne) SetGroupID(v int64) *ChannelMonitorUpdateOne {
+	_u.mutation.ResetGroupID()
+	_u.mutation.SetGroupID(v)
+	return _u
+}
+
+// SetNillableGroupID sets the "group_id" field if the given value is not nil.
+func (_u *ChannelMonitorUpdateOne) SetNillableGroupID(v *int64) *ChannelMonitorUpdateOne {
+	if v != nil {
+		_u.SetGroupID(*v)
+	}
+	return _u
+}
+
+// AddGroupID adds value to the "group_id" field.
+func (_u *ChannelMonitorUpdateOne) AddGroupID(v int64) *ChannelMonitorUpdateOne {
+	_u.mutation.AddGroupID(v)
+	return _u
+}
+
+// ClearGroupID clears the value of the "group_id" field.
+func (_u *ChannelMonitorUpdateOne) ClearGroupID() *ChannelMonitorUpdateOne {
+	_u.mutation.ClearGroupID()
+	return _u
+}
+
+// SetProbeAPIKeyID sets the "probe_api_key_id" field.
+func (_u *ChannelMonitorUpdateOne) SetProbeAPIKeyID(v int64) *ChannelMonitorUpdateOne {
+	_u.mutation.ResetProbeAPIKeyID()
+	_u.mutation.SetProbeAPIKeyID(v)
+	return _u
+}
+
+// SetNillableProbeAPIKeyID sets the "probe_api_key_id" field if the given value is not nil.
+func (_u *ChannelMonitorUpdateOne) SetNillableProbeAPIKeyID(v *int64) *ChannelMonitorUpdateOne {
+	if v != nil {
+		_u.SetProbeAPIKeyID(*v)
+	}
+	return _u
+}
+
+// AddProbeAPIKeyID adds value to the "probe_api_key_id" field.
+func (_u *ChannelMonitorUpdateOne) AddProbeAPIKeyID(v int64) *ChannelMonitorUpdateOne {
+	_u.mutation.AddProbeAPIKeyID(v)
+	return _u
+}
+
+// ClearProbeAPIKeyID clears the value of the "probe_api_key_id" field.
+func (_u *ChannelMonitorUpdateOne) ClearProbeAPIKeyID() *ChannelMonitorUpdateOne {
+	_u.mutation.ClearProbeAPIKeyID()
+	return _u
+}
+
 // SetEnabled sets the "enabled" field.
 func (_u *ChannelMonitorUpdateOne) SetEnabled(v bool) *ChannelMonitorUpdateOne {
 	_u.mutation.SetEnabled(v)
@@ -916,6 +1140,53 @@ func (_u *ChannelMonitorUpdateOne) SetNillableLastCheckedAt(v *time.Time) *Chann
 // ClearLastCheckedAt clears the value of the "last_checked_at" field.
 func (_u *ChannelMonitorUpdateOne) ClearLastCheckedAt() *ChannelMonitorUpdateOne {
 	_u.mutation.ClearLastCheckedAt()
+	return _u
+}
+
+// SetLastPingLatencyMs sets the "last_ping_latency_ms" field.
+func (_u *ChannelMonitorUpdateOne) SetLastPingLatencyMs(v int) *ChannelMonitorUpdateOne {
+	_u.mutation.ResetLastPingLatencyMs()
+	_u.mutation.SetLastPingLatencyMs(v)
+	return _u
+}
+
+// SetNillableLastPingLatencyMs sets the "last_ping_latency_ms" field if the given value is not nil.
+func (_u *ChannelMonitorUpdateOne) SetNillableLastPingLatencyMs(v *int) *ChannelMonitorUpdateOne {
+	if v != nil {
+		_u.SetLastPingLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddLastPingLatencyMs adds value to the "last_ping_latency_ms" field.
+func (_u *ChannelMonitorUpdateOne) AddLastPingLatencyMs(v int) *ChannelMonitorUpdateOne {
+	_u.mutation.AddLastPingLatencyMs(v)
+	return _u
+}
+
+// ClearLastPingLatencyMs clears the value of the "last_ping_latency_ms" field.
+func (_u *ChannelMonitorUpdateOne) ClearLastPingLatencyMs() *ChannelMonitorUpdateOne {
+	_u.mutation.ClearLastPingLatencyMs()
+	return _u
+}
+
+// SetLastPingAt sets the "last_ping_at" field.
+func (_u *ChannelMonitorUpdateOne) SetLastPingAt(v time.Time) *ChannelMonitorUpdateOne {
+	_u.mutation.SetLastPingAt(v)
+	return _u
+}
+
+// SetNillableLastPingAt sets the "last_ping_at" field if the given value is not nil.
+func (_u *ChannelMonitorUpdateOne) SetNillableLastPingAt(v *time.Time) *ChannelMonitorUpdateOne {
+	if v != nil {
+		_u.SetLastPingAt(*v)
+	}
+	return _u
+}
+
+// ClearLastPingAt clears the value of the "last_ping_at" field.
+func (_u *ChannelMonitorUpdateOne) ClearLastPingAt() *ChannelMonitorUpdateOne {
+	_u.mutation.ClearLastPingAt()
 	return _u
 }
 
@@ -1180,6 +1451,11 @@ func (_u *ChannelMonitorUpdateOne) check() error {
 			return &ValidationError{Name: "group_name", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.group_name": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Mode(); ok {
+		if err := channelmonitor.ModeValidator(v); err != nil {
+			return &ValidationError{Name: "mode", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.mode": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.IntervalSeconds(); ok {
 		if err := channelmonitor.IntervalSecondsValidator(v); err != nil {
 			return &ValidationError{Name: "interval_seconds", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitor.interval_seconds": %w`, err)}
@@ -1262,6 +1538,27 @@ func (_u *ChannelMonitorUpdateOne) sqlSave(ctx context.Context) (_node *ChannelM
 	if _u.mutation.GroupNameCleared() {
 		_spec.ClearField(channelmonitor.FieldGroupName, field.TypeString)
 	}
+	if value, ok := _u.mutation.Mode(); ok {
+		_spec.SetField(channelmonitor.FieldMode, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.GroupID(); ok {
+		_spec.SetField(channelmonitor.FieldGroupID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedGroupID(); ok {
+		_spec.AddField(channelmonitor.FieldGroupID, field.TypeInt64, value)
+	}
+	if _u.mutation.GroupIDCleared() {
+		_spec.ClearField(channelmonitor.FieldGroupID, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.ProbeAPIKeyID(); ok {
+		_spec.SetField(channelmonitor.FieldProbeAPIKeyID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedProbeAPIKeyID(); ok {
+		_spec.AddField(channelmonitor.FieldProbeAPIKeyID, field.TypeInt64, value)
+	}
+	if _u.mutation.ProbeAPIKeyIDCleared() {
+		_spec.ClearField(channelmonitor.FieldProbeAPIKeyID, field.TypeInt64)
+	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(channelmonitor.FieldEnabled, field.TypeBool, value)
 	}
@@ -1282,6 +1579,21 @@ func (_u *ChannelMonitorUpdateOne) sqlSave(ctx context.Context) (_node *ChannelM
 	}
 	if _u.mutation.LastCheckedAtCleared() {
 		_spec.ClearField(channelmonitor.FieldLastCheckedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LastPingLatencyMs(); ok {
+		_spec.SetField(channelmonitor.FieldLastPingLatencyMs, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedLastPingLatencyMs(); ok {
+		_spec.AddField(channelmonitor.FieldLastPingLatencyMs, field.TypeInt, value)
+	}
+	if _u.mutation.LastPingLatencyMsCleared() {
+		_spec.ClearField(channelmonitor.FieldLastPingLatencyMs, field.TypeInt)
+	}
+	if value, ok := _u.mutation.LastPingAt(); ok {
+		_spec.SetField(channelmonitor.FieldLastPingAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastPingAtCleared() {
+		_spec.ClearField(channelmonitor.FieldLastPingAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.CreatedBy(); ok {
 		_spec.SetField(channelmonitor.FieldCreatedBy, field.TypeInt64, value)

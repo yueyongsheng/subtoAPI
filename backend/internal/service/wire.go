@@ -763,8 +763,9 @@ func ProvidePaymentOrderExpiryService(paymentSvc *PaymentService, lockCache Lead
 func ProvideChannelMonitorService(
 	repo ChannelMonitorRepository,
 	encryptor SecretEncryptor,
+	apiKeyRepo APIKeyRepository,
 ) *ChannelMonitorService {
-	return NewChannelMonitorService(repo, encryptor)
+	return NewChannelMonitorService(repo, encryptor, apiKeyRepo)
 }
 
 // ProvideChannelMonitorRunner 创建并启动渠道监控调度器。

@@ -9,6 +9,8 @@ export type Provider = 'openai' | 'anthropic' | 'gemini' | 'grok'
 export type MonitorStatus = 'operational' | 'degraded' | 'failed' | 'error'
 export type BodyOverrideMode = 'off' | 'merge' | 'replace'
 export type APIMode = 'chat_completions' | 'responses'
+export type MonitorMode = 'active' | 'hybrid'
+export type ObservationSource = 'active_probe' | 'real_traffic'
 
 export interface ChannelMonitor {
   id: number
@@ -26,11 +28,16 @@ export interface ChannelMonitor {
   primary_model: string
   extra_models: string[]
   group_name: string
+  mode: MonitorMode
+  group_id: number | null
+  probe_api_key_id: number | null
   enabled: boolean
   interval_seconds: number
   /** 每次调度在 interval 基础上 ± [0, jitter] 的随机偏移（秒），0 = 固定间隔 */
   jitter_seconds: number
   last_checked_at: string | null
+  last_observation_source: ObservationSource | ''
+  last_observed_at: string | null
   created_by: number
   created_at: string
   updated_at: string
@@ -80,6 +87,9 @@ export interface CreateParams {
   primary_model: string
   extra_models?: string[]
   group_name?: string
+  mode?: MonitorMode
+  group_id?: number | null
+  probe_api_key_id?: number | null
   enabled?: boolean
   interval_seconds: number
   jitter_seconds?: number
@@ -92,6 +102,8 @@ export interface CreateParams {
 // Update request: api_key 空串 = 不修改；clear_template=true 时把 template_id 置空
 export type UpdateParams = Partial<CreateParams> & {
   clear_template?: boolean
+  clear_group_id?: boolean
+  clear_probe_api_key_id?: boolean
 }
 
 export interface CheckResult {
@@ -111,6 +123,13 @@ export interface HistoryItem {
   id: number
   model: string
   status: MonitorStatus
+  source: ObservationSource
+  bucket_start: string | null
+  sample_count: number
+  success_count: number
+  failure_count: number
+  recovered_error_count: number
+  slow_count: number
   latency_ms: number | null
   ping_latency_ms: number | null
   message: string

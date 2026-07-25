@@ -29,6 +29,7 @@ type MonitorScheduler interface {
 type monitorRunnerSvc interface {
 	ListEnabledMonitors(ctx context.Context) ([]*ChannelMonitor, error)
 	RunCheck(ctx context.Context, id int64) ([]*CheckResult, error)
+	RunHybridCycle(ctx context.Context, id int64) error
 }
 
 // ChannelMonitorRunner 渠道监控调度器。
@@ -47,6 +48,7 @@ type monitorRunnerSvc interface {
 type ChannelMonitorRunner struct {
 	svc            monitorRunnerSvc
 	settingService *SettingService
+	observer       *ChannelMonitorService
 
 	pool         pond.Pool
 	parentCtx    context.Context
@@ -70,6 +72,7 @@ type scheduledMonitor struct {
 	name     string
 	interval time.Duration
 	jitter   time.Duration // 每轮 ± [0, jitter] 的均匀随机偏移；0 = 固定间隔
+	mode     string
 	cancel   context.CancelFunc
 }
 
@@ -94,7 +97,9 @@ func (t *scheduledMonitor) nextDelay() time.Duration {
 // pool 在构造时即建好：避免 Start 在 mu 内赋值、fire/Stop 在 mu 外读取的竞态隐患，
 // 且 pond.NewPool 创建本身近似零开销，提前建池不会浪费资源。
 func NewChannelMonitorRunner(svc *ChannelMonitorService, settingService *SettingService) *ChannelMonitorRunner {
-	return newChannelMonitorRunner(svc, settingService)
+	r := newChannelMonitorRunner(svc, settingService)
+	r.observer = svc
+	return r
 }
 
 // newChannelMonitorRunner 内部构造，接受最小化接口，便于单元测试注入 stub。
@@ -124,6 +129,9 @@ func (r *ChannelMonitorRunner) Start() {
 	}
 	r.started = true
 	r.mu.Unlock()
+	if r.observer != nil {
+		r.observer.StartTrafficObserver(context.Background())
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), monitorStartupLoadTimeout)
 	defer cancel()
@@ -151,6 +159,10 @@ func (r *ChannelMonitorRunner) Schedule(m *ChannelMonitor) {
 		return
 	}
 	interval := time.Duration(m.IntervalSeconds) * time.Second
+	mode := normalizeMonitorMode(m.Mode)
+	if mode == MonitorModeHybrid {
+		interval = monitorHybridTickInterval
+	}
 	if interval <= 0 {
 		// Create/Update 已通过 validateInterval 校验区间，正常路径不可能到这里。
 		// 真触发说明数据库中存在违反约束的数据或校验链路有 bug，记 Error 暴露问题。
@@ -187,6 +199,7 @@ func (r *ChannelMonitorRunner) Schedule(m *ChannelMonitor) {
 		name:     m.Name,
 		interval: interval,
 		jitter:   jitter,
+		mode:     mode,
 		cancel:   cancel,
 	}
 	r.tasks[m.ID] = task
@@ -230,6 +243,9 @@ func (r *ChannelMonitorRunner) Stop() {
 
 	r.wg.Wait()
 	r.pool.StopAndWait()
+	if r.observer != nil {
+		r.observer.StopTrafficObserver()
+	}
 }
 
 // runScheduled 单个监控的循环：立即触发首次（满足"新建/启用即跑"），
@@ -238,7 +254,9 @@ func (r *ChannelMonitorRunner) Stop() {
 func (r *ChannelMonitorRunner) runScheduled(ctx context.Context, task *scheduledMonitor) {
 	defer r.wg.Done()
 
-	r.fire(ctx, task)
+	if task.mode != MonitorModeHybrid {
+		r.fire(ctx, task)
+	}
 
 	timer := time.NewTimer(task.nextDelay())
 	defer timer.Stop()
@@ -265,7 +283,7 @@ func (r *ChannelMonitorRunner) fire(ctx context.Context, task *scheduledMonitor)
 		return
 	}
 	if _, ok := r.pool.TrySubmit(func() {
-		r.runOne(task.id, task.name)
+		r.runOne(task.id, task.name, task.mode)
 	}); !ok {
 		// 池满：丢弃本次检测，但必须释放已占用的 inFlight 槽，否则该 monitor 会被永久卡住。
 		r.releaseInFlight(task.id)
@@ -295,7 +313,7 @@ func (r *ChannelMonitorRunner) releaseInFlight(id int64) {
 
 // runOne 执行单个监控的检测。所有错误只记日志，不熔断。
 // 任务结束时（含 panic recover）必须释放 in-flight 槽。
-func (r *ChannelMonitorRunner) runOne(id int64, name string) {
+func (r *ChannelMonitorRunner) runOne(id int64, name, mode string) {
 	ctx, cancel := context.WithTimeout(context.Background(), monitorRequestTimeout+monitorPingTimeout+monitorRunOneBuffer)
 	defer cancel()
 
@@ -308,7 +326,13 @@ func (r *ChannelMonitorRunner) runOne(id int64, name string) {
 		}
 	}()
 
-	if _, err := r.svc.RunCheck(ctx, id); err != nil {
+	var err error
+	if mode == MonitorModeHybrid {
+		err = r.svc.RunHybridCycle(ctx, id)
+	} else {
+		_, err = r.svc.RunCheck(ctx, id)
+	}
+	if err != nil {
 		slog.Warn("channel_monitor: run check failed",
 			"monitor_id", id, "name", name, "error", err)
 	}

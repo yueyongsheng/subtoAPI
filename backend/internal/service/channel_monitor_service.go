@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -25,7 +26,9 @@ type ChannelMonitorRepository interface {
 	// 调度器辅助
 	ListEnabled(ctx context.Context) ([]*ChannelMonitor, error)
 	MarkChecked(ctx context.Context, id int64, checkedAt time.Time) error
+	MarkPing(ctx context.Context, id int64, latencyMs *int, checkedAt time.Time) error
 	InsertHistoryBatch(ctx context.Context, rows []*ChannelMonitorHistoryRow) error
+	UpsertTrafficBucket(ctx context.Context, row *ChannelMonitorHistoryRow) error
 	DeleteHistoryBefore(ctx context.Context, before time.Time) (int64, error)
 
 	// 历史记录
@@ -59,16 +62,20 @@ type ChannelMonitorRepository interface {
 
 // ChannelMonitorService 渠道监控管理服务。
 type ChannelMonitorService struct {
-	repo      ChannelMonitorRepository
-	encryptor SecretEncryptor
+	repo       ChannelMonitorRepository
+	encryptor  SecretEncryptor
+	apiKeyRepo APIKeyRepository
+	observer   channelMonitorObserver
 	// scheduler 由 wire 通过 SetScheduler 注入；CRUD 后调用对应钩子即时同步任务。
 	// 测试或未注入场景下保持 nil，所有钩子调用变为 no-op。
 	scheduler MonitorScheduler
 }
 
 // NewChannelMonitorService 创建渠道监控服务实例。
-func NewChannelMonitorService(repo ChannelMonitorRepository, encryptor SecretEncryptor) *ChannelMonitorService {
-	return &ChannelMonitorService{repo: repo, encryptor: encryptor}
+func NewChannelMonitorService(repo ChannelMonitorRepository, encryptor SecretEncryptor, apiKeyRepo APIKeyRepository) *ChannelMonitorService {
+	s := &ChannelMonitorService{repo: repo, encryptor: encryptor, apiKeyRepo: apiKeyRepo}
+	s.observer.init()
+	return s
 }
 
 // ---------- CRUD ----------
@@ -104,8 +111,15 @@ func (s *ChannelMonitorService) Get(ctx context.Context, id int64) (*ChannelMoni
 
 // Create 创建监控（内部加密 api_key）。
 func (s *ChannelMonitorService) Create(ctx context.Context, p ChannelMonitorCreateParams) (*ChannelMonitor, error) {
+	p.Mode = normalizeMonitorMode(p.Mode)
 	if err := validateCreateParams(p); err != nil {
 		return nil, err
+	}
+	if err := s.validateHybridBinding(ctx, p.Mode, p.GroupID, p.ProbeAPIKeyID, p.CreatedBy, p.APIKey); err != nil {
+		return nil, err
+	}
+	if p.Mode == MonitorModeHybrid && p.IntervalSeconds != int(monitorHybridIdleInterval/time.Second) {
+		return nil, ErrChannelMonitorHybridBinding
 	}
 	if err := validateBodyModeForProtocol(p.Provider, p.APIMode, p.BodyOverrideMode, p.BodyOverride); err != nil {
 		return nil, err
@@ -126,6 +140,9 @@ func (s *ChannelMonitorService) Create(ctx context.Context, p ChannelMonitorCrea
 		PrimaryModel:     normalizeMonitorPrimaryModel(p.Provider, p.PrimaryModel),
 		ExtraModels:      normalizeModels(p.ExtraModels),
 		GroupName:        strings.TrimSpace(p.GroupName),
+		Mode:             p.Mode,
+		GroupID:          p.GroupID,
+		ProbeAPIKeyID:    p.ProbeAPIKeyID,
 		Enabled:          p.Enabled,
 		IntervalSeconds:  p.IntervalSeconds,
 		JitterSeconds:    p.JitterSeconds,
@@ -144,6 +161,7 @@ func (s *ChannelMonitorService) Create(ctx context.Context, p ChannelMonitorCrea
 	if s.scheduler != nil {
 		s.scheduler.Schedule(m)
 	}
+	s.refreshTrafficObserverIndex(ctx)
 	return m, nil
 }
 
@@ -170,6 +188,9 @@ func validateCreateParams(p ChannelMonitorCreateParams) error {
 	if normalizeMonitorPrimaryModel(p.Provider, p.PrimaryModel) == "" {
 		return ErrChannelMonitorMissingPrimaryModel
 	}
+	if !isValidMonitorMode(p.Mode) {
+		return ErrChannelMonitorInvalidMode
+	}
 	return nil
 }
 
@@ -187,6 +208,19 @@ func (s *ChannelMonitorService) Update(ctx context.Context, id int64, p ChannelM
 	if err != nil {
 		return nil, err
 	}
+	plainForValidation := newPlainAPIKey
+	if !apiKeyUpdated && existing.Mode == MonitorModeHybrid {
+		plainForValidation, err = s.encryptor.Decrypt(existing.APIKey)
+		if err != nil {
+			return nil, ErrChannelMonitorAPIKeyDecryptFailed
+		}
+	}
+	if err := s.validateHybridBinding(ctx, existing.Mode, existing.GroupID, existing.ProbeAPIKeyID, existing.CreatedBy, plainForValidation); err != nil {
+		return nil, err
+	}
+	if existing.Mode == MonitorModeHybrid && existing.IntervalSeconds != int(monitorHybridIdleInterval/time.Second) {
+		return nil, ErrChannelMonitorHybridBinding
+	}
 
 	if err := s.repo.Update(ctx, existing); err != nil {
 		return nil, fmt.Errorf("update channel monitor: %w", err)
@@ -203,6 +237,7 @@ func (s *ChannelMonitorService) Update(ctx context.Context, id int64, p ChannelM
 		// IntervalSeconds 变化也会被自然吸收（旧 task 取消 + 新 task 用新 interval）。
 		s.scheduler.Schedule(existing)
 	}
+	s.refreshTrafficObserverIndex(ctx)
 	return existing, nil
 }
 
@@ -231,6 +266,7 @@ func (s *ChannelMonitorService) Delete(ctx context.Context, id int64) error {
 	if s.scheduler != nil {
 		s.scheduler.Unschedule(id)
 	}
+	s.refreshTrafficObserverIndex(ctx)
 	return nil
 }
 
@@ -275,10 +311,26 @@ func (s *ChannelMonitorService) RunCheck(ctx context.Context, id int64) ([]*Chec
 func (s *ChannelMonitorService) persistCheckResults(ctx context.Context, m *ChannelMonitor, results []*CheckResult) {
 	rows := make([]*ChannelMonitorHistoryRow, 0, len(results))
 	for _, r := range results {
+		successCount := 0
+		failureCount := 0
+		slowCount := 0
+		if r.Status == MonitorStatusOperational || r.Status == MonitorStatusDegraded {
+			successCount = 1
+			if r.Status == MonitorStatusDegraded {
+				slowCount = 1
+			}
+		} else {
+			failureCount = 1
+		}
 		rows = append(rows, &ChannelMonitorHistoryRow{
 			MonitorID:     m.ID,
 			Model:         r.Model,
 			Status:        r.Status,
+			Source:        MonitorSourceActiveProbe,
+			SampleCount:   1,
+			SuccessCount:  successCount,
+			FailureCount:  failureCount,
+			SlowCount:     slowCount,
 			LatencyMs:     r.LatencyMs,
 			PingLatencyMs: r.PingLatencyMs,
 			Message:       r.Message,
@@ -292,6 +344,11 @@ func (s *ChannelMonitorService) persistCheckResults(ctx context.Context, m *Chan
 	if err := s.repo.MarkChecked(ctx, m.ID, time.Now()); err != nil {
 		slog.Error("channel_monitor: mark checked failed",
 			"monitor_id", m.ID, "error", err)
+	}
+	if len(results) > 0 {
+		if err := s.repo.MarkPing(ctx, m.ID, results[0].PingLatencyMs, time.Now()); err != nil {
+			slog.Error("channel_monitor: mark ping failed", "monitor_id", m.ID, "error", err)
+		}
 	}
 }
 
@@ -510,6 +567,25 @@ func applyMonitorUpdate(existing *ChannelMonitor, p ChannelMonitorUpdateParams) 
 	if p.GroupName != nil {
 		existing.GroupName = strings.TrimSpace(*p.GroupName)
 	}
+	if p.Mode != nil {
+		mode := normalizeMonitorMode(*p.Mode)
+		if !isValidMonitorMode(mode) {
+			return ErrChannelMonitorInvalidMode
+		}
+		existing.Mode = mode
+	}
+	if p.ClearGroupID {
+		existing.GroupID = nil
+	} else if p.GroupID != nil {
+		id := *p.GroupID
+		existing.GroupID = &id
+	}
+	if p.ClearProbeAPIKeyID {
+		existing.ProbeAPIKeyID = nil
+	} else if p.ProbeAPIKeyID != nil {
+		id := *p.ProbeAPIKeyID
+		existing.ProbeAPIKeyID = &id
+	}
 	if p.Enabled != nil {
 		existing.Enabled = *p.Enabled
 	}
@@ -529,6 +605,36 @@ func applyMonitorUpdate(existing *ChannelMonitor, p ChannelMonitorUpdateParams) 
 		}
 	}
 	return applyMonitorAdvancedUpdate(existing, p, providerChanged)
+}
+
+func normalizeMonitorMode(mode string) string {
+	mode = strings.TrimSpace(mode)
+	if mode == "" {
+		return MonitorModeActive
+	}
+	return mode
+}
+
+func isValidMonitorMode(mode string) bool {
+	mode = normalizeMonitorMode(mode)
+	return mode == MonitorModeActive || mode == MonitorModeHybrid
+}
+
+func (s *ChannelMonitorService) validateHybridBinding(ctx context.Context, mode string, groupID, probeAPIKeyID *int64, ownerID int64, plainKey string) error {
+	if normalizeMonitorMode(mode) == MonitorModeActive {
+		return nil
+	}
+	if mode != MonitorModeHybrid || groupID == nil || *groupID <= 0 || probeAPIKeyID == nil || *probeAPIKeyID <= 0 || s.apiKeyRepo == nil {
+		return ErrChannelMonitorHybridBinding
+	}
+	key, err := s.apiKeyRepo.GetByID(ctx, *probeAPIKeyID)
+	if err != nil || key == nil || key.Status != StatusAPIKeyActive || key.UserID != ownerID || key.GroupID == nil || *key.GroupID != *groupID {
+		return ErrChannelMonitorHybridBinding
+	}
+	if strings.TrimSpace(plainKey) == "" || subtle.ConstantTimeCompare([]byte(strings.TrimSpace(plainKey)), []byte(key.Key)) != 1 {
+		return ErrChannelMonitorHybridBinding
+	}
+	return nil
 }
 
 // applyMonitorAdvancedUpdate 处理自定义请求快照相关字段，从 applyMonitorUpdate 拆出避免过长。

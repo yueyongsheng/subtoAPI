@@ -204,6 +204,9 @@ func buildStatusSummary(
 		if l, ok := latestByModel[primary]; ok {
 			summary.PrimaryStatus = l.Status
 			summary.PrimaryLatencyMs = l.LatencyMs
+			summary.LastObservationSource = l.Source
+			observedAt := l.CheckedAt
+			summary.LastObservedAt = &observedAt
 		}
 		if a, ok := availByModel[primary]; ok {
 			summary.Availability7d = a.AvailabilityPct
@@ -229,18 +232,21 @@ func buildUserViewFromSummary(
 	timelineEntries []*ChannelMonitorHistoryEntry,
 ) *UserMonitorView {
 	view := &UserMonitorView{
-		ID:               m.ID,
-		Name:             m.Name,
-		Provider:         m.Provider,
-		GroupName:        m.GroupName,
-		PrimaryModel:     m.PrimaryModel,
-		PrimaryStatus:    summary.PrimaryStatus,
-		PrimaryLatencyMs: summary.PrimaryLatencyMs,
-		Availability7d:   summary.Availability7d,
-		ExtraModels:      summary.ExtraModels,
-		Timeline:         buildTimelinePoints(timelineEntries),
+		ID:                    m.ID,
+		Name:                  m.Name,
+		Provider:              m.Provider,
+		GroupName:             m.GroupName,
+		PrimaryModel:          m.PrimaryModel,
+		PrimaryStatus:         summary.PrimaryStatus,
+		PrimaryLatencyMs:      summary.PrimaryLatencyMs,
+		PrimaryPingLatencyMs:  m.LastPingLatencyMs,
+		LastObservationSource: summary.LastObservationSource,
+		LastObservedAt:        summary.LastObservedAt,
+		Availability7d:        summary.Availability7d,
+		ExtraModels:           summary.ExtraModels,
+		Timeline:              buildTimelinePoints(timelineEntries),
 	}
-	if primaryLatest != nil {
+	if view.PrimaryPingLatencyMs == nil && primaryLatest != nil {
 		view.PrimaryPingLatencyMs = primaryLatest.PingLatencyMs
 	}
 	return view
@@ -255,6 +261,7 @@ func buildTimelinePoints(entries []*ChannelMonitorHistoryEntry) []UserMonitorTim
 			LatencyMs:     e.LatencyMs,
 			PingLatencyMs: e.PingLatencyMs,
 			CheckedAt:     e.CheckedAt,
+			Source:        e.Source,
 		})
 	}
 	return out

@@ -492,8 +492,14 @@ export default {
         primaryModel: '主模型',
         availability7d: '7 天可用率',
         latency: '延迟 (ms)',
+        observationSource: '最后观测',
         enabled: '启用',
         actions: '操作'
+      },
+      observationSource: {
+        realTraffic: '真实客户流量',
+        activeProbe: '主动探测',
+        none: '暂无观测'
       },
       form: {
         name: '名称',
@@ -520,6 +526,15 @@ export default {
         extraModelsPlaceholder: '回车添加附加模型',
         groupName: '分组名称',
         groupNamePlaceholder: '可选，用于在用户视图中聚合显示',
+        mode: '监控策略',
+        modeActive: '固定主动探测',
+        modeHybrid: '真实流量优先',
+        modeHint: {
+          active: '按配置间隔主动请求模型。',
+          hybrid: '真实客户请求更新状态；空闲满 1 小时才主动探测。'
+        },
+        hybridIntervalHint: '混合模式空闲探测固定为 3600 秒',
+        hybridKeyRequired: '混合模式必须从“使用我的 Key”选择绑定了分组的专用探测 Key',
         intervalSeconds: '检测间隔 (秒)',
         intervalSecondsHint: '范围：15 - 3600 秒',
         jitterSeconds: '随机抖动 (± 秒)',

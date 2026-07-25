@@ -44,6 +44,9 @@ type channelMonitorCreateRequest struct {
 	PrimaryModel     string            `json:"primary_model" binding:"max=200"`
 	ExtraModels      []string          `json:"extra_models"`
 	GroupName        string            `json:"group_name" binding:"max=100"`
+	Mode             string            `json:"mode" binding:"omitempty,oneof=active hybrid"`
+	GroupID          *int64            `json:"group_id" binding:"omitempty,min=1"`
+	ProbeAPIKeyID    *int64            `json:"probe_api_key_id" binding:"omitempty,min=1"`
 	Enabled          *bool             `json:"enabled"`
 	IntervalSeconds  int               `json:"interval_seconds" binding:"required,min=15,max=3600"`
 	JitterSeconds    int               `json:"jitter_seconds" binding:"omitempty,min=0,max=3585"`
@@ -54,46 +57,56 @@ type channelMonitorCreateRequest struct {
 }
 
 type channelMonitorUpdateRequest struct {
-	Name             *string            `json:"name" binding:"omitempty,max=100"`
-	Provider         *string            `json:"provider" binding:"omitempty,oneof=openai anthropic gemini grok"`
-	APIMode          *string            `json:"api_mode" binding:"omitempty,oneof=chat_completions responses"`
-	Endpoint         *string            `json:"endpoint" binding:"omitempty,max=500"`
-	APIKey           *string            `json:"api_key" binding:"omitempty,max=2000"`
-	PrimaryModel     *string            `json:"primary_model" binding:"omitempty,max=200"`
-	ExtraModels      *[]string          `json:"extra_models"`
-	GroupName        *string            `json:"group_name" binding:"omitempty,max=100"`
-	Enabled          *bool              `json:"enabled"`
-	IntervalSeconds  *int               `json:"interval_seconds" binding:"omitempty,min=15,max=3600"`
-	JitterSeconds    *int               `json:"jitter_seconds" binding:"omitempty,min=0,max=3585"`
-	TemplateID       *int64             `json:"template_id"`
-	ClearTemplate    bool               `json:"clear_template"` // true 时把 template_id 置空，忽略 TemplateID
-	ExtraHeaders     *map[string]string `json:"extra_headers"`
-	BodyOverrideMode *string            `json:"body_override_mode" binding:"omitempty,oneof=off merge replace"`
-	BodyOverride     *map[string]any    `json:"body_override"`
+	Name               *string            `json:"name" binding:"omitempty,max=100"`
+	Provider           *string            `json:"provider" binding:"omitempty,oneof=openai anthropic gemini grok"`
+	APIMode            *string            `json:"api_mode" binding:"omitempty,oneof=chat_completions responses"`
+	Endpoint           *string            `json:"endpoint" binding:"omitempty,max=500"`
+	APIKey             *string            `json:"api_key" binding:"omitempty,max=2000"`
+	PrimaryModel       *string            `json:"primary_model" binding:"omitempty,max=200"`
+	ExtraModels        *[]string          `json:"extra_models"`
+	GroupName          *string            `json:"group_name" binding:"omitempty,max=100"`
+	Mode               *string            `json:"mode" binding:"omitempty,oneof=active hybrid"`
+	GroupID            *int64             `json:"group_id" binding:"omitempty,min=1"`
+	ClearGroupID       bool               `json:"clear_group_id"`
+	ProbeAPIKeyID      *int64             `json:"probe_api_key_id" binding:"omitempty,min=1"`
+	ClearProbeAPIKeyID bool               `json:"clear_probe_api_key_id"`
+	Enabled            *bool              `json:"enabled"`
+	IntervalSeconds    *int               `json:"interval_seconds" binding:"omitempty,min=15,max=3600"`
+	JitterSeconds      *int               `json:"jitter_seconds" binding:"omitempty,min=0,max=3585"`
+	TemplateID         *int64             `json:"template_id"`
+	ClearTemplate      bool               `json:"clear_template"` // true 时把 template_id 置空，忽略 TemplateID
+	ExtraHeaders       *map[string]string `json:"extra_headers"`
+	BodyOverrideMode   *string            `json:"body_override_mode" binding:"omitempty,oneof=off merge replace"`
+	BodyOverride       *map[string]any    `json:"body_override"`
 }
 
 type channelMonitorResponse struct {
-	ID                  int64                                `json:"id"`
-	Name                string                               `json:"name"`
-	Provider            string                               `json:"provider"`
-	APIMode             string                               `json:"api_mode"`
-	Endpoint            string                               `json:"endpoint"`
-	APIKeyMasked        string                               `json:"api_key_masked"`
-	APIKeyDecryptFailed bool                                 `json:"api_key_decrypt_failed"`
-	PrimaryModel        string                               `json:"primary_model"`
-	ExtraModels         []string                             `json:"extra_models"`
-	GroupName           string                               `json:"group_name"`
-	Enabled             bool                                 `json:"enabled"`
-	IntervalSeconds     int                                  `json:"interval_seconds"`
-	JitterSeconds       int                                  `json:"jitter_seconds"`
-	LastCheckedAt       *string                              `json:"last_checked_at"`
-	CreatedBy           int64                                `json:"created_by"`
-	CreatedAt           string                               `json:"created_at"`
-	UpdatedAt           string                               `json:"updated_at"`
-	PrimaryStatus       string                               `json:"primary_status"`
-	PrimaryLatencyMs    *int                                 `json:"primary_latency_ms"`
-	Availability7d      float64                              `json:"availability_7d"`
-	ExtraModelsStatus   []dto.ChannelMonitorExtraModelStatus `json:"extra_models_status"`
+	ID                    int64                                `json:"id"`
+	Name                  string                               `json:"name"`
+	Provider              string                               `json:"provider"`
+	APIMode               string                               `json:"api_mode"`
+	Endpoint              string                               `json:"endpoint"`
+	APIKeyMasked          string                               `json:"api_key_masked"`
+	APIKeyDecryptFailed   bool                                 `json:"api_key_decrypt_failed"`
+	PrimaryModel          string                               `json:"primary_model"`
+	ExtraModels           []string                             `json:"extra_models"`
+	GroupName             string                               `json:"group_name"`
+	Mode                  string                               `json:"mode"`
+	GroupID               *int64                               `json:"group_id"`
+	ProbeAPIKeyID         *int64                               `json:"probe_api_key_id"`
+	Enabled               bool                                 `json:"enabled"`
+	IntervalSeconds       int                                  `json:"interval_seconds"`
+	JitterSeconds         int                                  `json:"jitter_seconds"`
+	LastCheckedAt         *string                              `json:"last_checked_at"`
+	CreatedBy             int64                                `json:"created_by"`
+	CreatedAt             string                               `json:"created_at"`
+	UpdatedAt             string                               `json:"updated_at"`
+	PrimaryStatus         string                               `json:"primary_status"`
+	PrimaryLatencyMs      *int                                 `json:"primary_latency_ms"`
+	Availability7d        float64                              `json:"availability_7d"`
+	LastObservationSource string                               `json:"last_observation_source"`
+	LastObservedAt        *string                              `json:"last_observed_at"`
+	ExtraModelsStatus     []dto.ChannelMonitorExtraModelStatus `json:"extra_models_status"`
 	// 请求自定义快照：前端编辑 / 展示「高级设置」用
 	TemplateID       *int64            `json:"template_id"`
 	ExtraHeaders     map[string]string `json:"extra_headers"`
@@ -111,13 +124,20 @@ type channelMonitorCheckResultResponse struct {
 }
 
 type channelMonitorHistoryItemResponse struct {
-	ID            int64  `json:"id"`
-	Model         string `json:"model"`
-	Status        string `json:"status"`
-	LatencyMs     *int   `json:"latency_ms"`
-	PingLatencyMs *int   `json:"ping_latency_ms"`
-	Message       string `json:"message"`
-	CheckedAt     string `json:"checked_at"`
+	ID                  int64   `json:"id"`
+	Model               string  `json:"model"`
+	Status              string  `json:"status"`
+	Source              string  `json:"source"`
+	BucketStart         *string `json:"bucket_start"`
+	SampleCount         int     `json:"sample_count"`
+	SuccessCount        int     `json:"success_count"`
+	FailureCount        int     `json:"failure_count"`
+	RecoveredErrorCount int     `json:"recovered_error_count"`
+	SlowCount           int     `json:"slow_count"`
+	LatencyMs           *int    `json:"latency_ms"`
+	PingLatencyMs       *int    `json:"ping_latency_ms"`
+	Message             string  `json:"message"`
+	CheckedAt           string  `json:"checked_at"`
 }
 
 // maskAPIKey 对 API Key 明文做脱敏：前 4 字符 + "***"，长度 ≤ 4 时只显示 "***"。
@@ -151,6 +171,9 @@ func channelMonitorToResponse(m *service.ChannelMonitor) *channelMonitorResponse
 		PrimaryModel:        m.PrimaryModel,
 		ExtraModels:         extras,
 		GroupName:           m.GroupName,
+		Mode:                m.Mode,
+		GroupID:             m.GroupID,
+		ProbeAPIKeyID:       m.ProbeAPIKeyID,
 		Enabled:             m.Enabled,
 		IntervalSeconds:     m.IntervalSeconds,
 		JitterSeconds:       m.JitterSeconds,
@@ -182,15 +205,26 @@ func checkResultToResponse(r *service.CheckResult) channelMonitorCheckResultResp
 }
 
 func historyEntryToResponse(e *service.ChannelMonitorHistoryEntry) channelMonitorHistoryItemResponse {
-	return channelMonitorHistoryItemResponse{
-		ID:            e.ID,
-		Model:         e.Model,
-		Status:        e.Status,
-		LatencyMs:     e.LatencyMs,
-		PingLatencyMs: e.PingLatencyMs,
-		Message:       e.Message,
-		CheckedAt:     e.CheckedAt.UTC().Format(time.RFC3339),
+	resp := channelMonitorHistoryItemResponse{
+		ID:                  e.ID,
+		Model:               e.Model,
+		Status:              e.Status,
+		Source:              e.Source,
+		SampleCount:         e.SampleCount,
+		SuccessCount:        e.SuccessCount,
+		FailureCount:        e.FailureCount,
+		RecoveredErrorCount: e.RecoveredErrorCount,
+		SlowCount:           e.SlowCount,
+		LatencyMs:           e.LatencyMs,
+		PingLatencyMs:       e.PingLatencyMs,
+		Message:             e.Message,
+		CheckedAt:           e.CheckedAt.UTC().Format(time.RFC3339),
 	}
+	if e.BucketStart != nil {
+		value := e.BucketStart.UTC().Format(time.RFC3339)
+		resp.BucketStart = &value
+	}
+	return resp
 }
 
 // ParseChannelMonitorID 提取并校验路径参数 :id（admin 与 user handler 共享）。
@@ -267,6 +301,11 @@ func buildListItemResponse(m *service.ChannelMonitor, summary service.MonitorSta
 	resp := channelMonitorToResponse(m)
 	resp.PrimaryStatus = summary.PrimaryStatus
 	resp.PrimaryLatencyMs = summary.PrimaryLatencyMs
+	resp.LastObservationSource = summary.LastObservationSource
+	if summary.LastObservedAt != nil {
+		value := summary.LastObservedAt.UTC().Format(time.RFC3339)
+		resp.LastObservedAt = &value
+	}
 	resp.Availability7d = summary.Availability7d
 	resp.ExtraModelsStatus = make([]dto.ChannelMonitorExtraModelStatus, 0, len(summary.ExtraModels))
 	for _, e := range summary.ExtraModels {
@@ -317,6 +356,9 @@ func (h *ChannelMonitorHandler) Create(c *gin.Context) {
 		PrimaryModel:     req.PrimaryModel,
 		ExtraModels:      req.ExtraModels,
 		GroupName:        req.GroupName,
+		Mode:             req.Mode,
+		GroupID:          req.GroupID,
+		ProbeAPIKeyID:    req.ProbeAPIKeyID,
 		Enabled:          enabled,
 		IntervalSeconds:  req.IntervalSeconds,
 		JitterSeconds:    req.JitterSeconds,
@@ -346,22 +388,27 @@ func (h *ChannelMonitorHandler) Update(c *gin.Context) {
 	}
 
 	m, err := h.monitorService.Update(c.Request.Context(), id, service.ChannelMonitorUpdateParams{
-		Name:             req.Name,
-		Provider:         req.Provider,
-		APIMode:          req.APIMode,
-		Endpoint:         req.Endpoint,
-		APIKey:           req.APIKey,
-		PrimaryModel:     req.PrimaryModel,
-		ExtraModels:      req.ExtraModels,
-		GroupName:        req.GroupName,
-		Enabled:          req.Enabled,
-		IntervalSeconds:  req.IntervalSeconds,
-		JitterSeconds:    req.JitterSeconds,
-		TemplateID:       req.TemplateID,
-		ClearTemplate:    req.ClearTemplate,
-		ExtraHeaders:     req.ExtraHeaders,
-		BodyOverrideMode: req.BodyOverrideMode,
-		BodyOverride:     req.BodyOverride,
+		Name:               req.Name,
+		Provider:           req.Provider,
+		APIMode:            req.APIMode,
+		Endpoint:           req.Endpoint,
+		APIKey:             req.APIKey,
+		PrimaryModel:       req.PrimaryModel,
+		ExtraModels:        req.ExtraModels,
+		GroupName:          req.GroupName,
+		Mode:               req.Mode,
+		GroupID:            req.GroupID,
+		ClearGroupID:       req.ClearGroupID,
+		ProbeAPIKeyID:      req.ProbeAPIKeyID,
+		ClearProbeAPIKeyID: req.ClearProbeAPIKeyID,
+		Enabled:            req.Enabled,
+		IntervalSeconds:    req.IntervalSeconds,
+		JitterSeconds:      req.JitterSeconds,
+		TemplateID:         req.TemplateID,
+		ClearTemplate:      req.ClearTemplate,
+		ExtraHeaders:       req.ExtraHeaders,
+		BodyOverrideMode:   req.BodyOverrideMode,
+		BodyOverride:       req.BodyOverride,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)

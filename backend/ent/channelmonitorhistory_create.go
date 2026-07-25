@@ -41,6 +41,104 @@ func (_c *ChannelMonitorHistoryCreate) SetStatus(v channelmonitorhistory.Status)
 	return _c
 }
 
+// SetSource sets the "source" field.
+func (_c *ChannelMonitorHistoryCreate) SetSource(v channelmonitorhistory.Source) *ChannelMonitorHistoryCreate {
+	_c.mutation.SetSource(v)
+	return _c
+}
+
+// SetNillableSource sets the "source" field if the given value is not nil.
+func (_c *ChannelMonitorHistoryCreate) SetNillableSource(v *channelmonitorhistory.Source) *ChannelMonitorHistoryCreate {
+	if v != nil {
+		_c.SetSource(*v)
+	}
+	return _c
+}
+
+// SetBucketStart sets the "bucket_start" field.
+func (_c *ChannelMonitorHistoryCreate) SetBucketStart(v time.Time) *ChannelMonitorHistoryCreate {
+	_c.mutation.SetBucketStart(v)
+	return _c
+}
+
+// SetNillableBucketStart sets the "bucket_start" field if the given value is not nil.
+func (_c *ChannelMonitorHistoryCreate) SetNillableBucketStart(v *time.Time) *ChannelMonitorHistoryCreate {
+	if v != nil {
+		_c.SetBucketStart(*v)
+	}
+	return _c
+}
+
+// SetSampleCount sets the "sample_count" field.
+func (_c *ChannelMonitorHistoryCreate) SetSampleCount(v int) *ChannelMonitorHistoryCreate {
+	_c.mutation.SetSampleCount(v)
+	return _c
+}
+
+// SetNillableSampleCount sets the "sample_count" field if the given value is not nil.
+func (_c *ChannelMonitorHistoryCreate) SetNillableSampleCount(v *int) *ChannelMonitorHistoryCreate {
+	if v != nil {
+		_c.SetSampleCount(*v)
+	}
+	return _c
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (_c *ChannelMonitorHistoryCreate) SetSuccessCount(v int) *ChannelMonitorHistoryCreate {
+	_c.mutation.SetSuccessCount(v)
+	return _c
+}
+
+// SetNillableSuccessCount sets the "success_count" field if the given value is not nil.
+func (_c *ChannelMonitorHistoryCreate) SetNillableSuccessCount(v *int) *ChannelMonitorHistoryCreate {
+	if v != nil {
+		_c.SetSuccessCount(*v)
+	}
+	return _c
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (_c *ChannelMonitorHistoryCreate) SetFailureCount(v int) *ChannelMonitorHistoryCreate {
+	_c.mutation.SetFailureCount(v)
+	return _c
+}
+
+// SetNillableFailureCount sets the "failure_count" field if the given value is not nil.
+func (_c *ChannelMonitorHistoryCreate) SetNillableFailureCount(v *int) *ChannelMonitorHistoryCreate {
+	if v != nil {
+		_c.SetFailureCount(*v)
+	}
+	return _c
+}
+
+// SetRecoveredErrorCount sets the "recovered_error_count" field.
+func (_c *ChannelMonitorHistoryCreate) SetRecoveredErrorCount(v int) *ChannelMonitorHistoryCreate {
+	_c.mutation.SetRecoveredErrorCount(v)
+	return _c
+}
+
+// SetNillableRecoveredErrorCount sets the "recovered_error_count" field if the given value is not nil.
+func (_c *ChannelMonitorHistoryCreate) SetNillableRecoveredErrorCount(v *int) *ChannelMonitorHistoryCreate {
+	if v != nil {
+		_c.SetRecoveredErrorCount(*v)
+	}
+	return _c
+}
+
+// SetSlowCount sets the "slow_count" field.
+func (_c *ChannelMonitorHistoryCreate) SetSlowCount(v int) *ChannelMonitorHistoryCreate {
+	_c.mutation.SetSlowCount(v)
+	return _c
+}
+
+// SetNillableSlowCount sets the "slow_count" field if the given value is not nil.
+func (_c *ChannelMonitorHistoryCreate) SetNillableSlowCount(v *int) *ChannelMonitorHistoryCreate {
+	if v != nil {
+		_c.SetSlowCount(*v)
+	}
+	return _c
+}
+
 // SetLatencyMs sets the "latency_ms" field.
 func (_c *ChannelMonitorHistoryCreate) SetLatencyMs(v int) *ChannelMonitorHistoryCreate {
 	_c.mutation.SetLatencyMs(v)
@@ -137,6 +235,30 @@ func (_c *ChannelMonitorHistoryCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *ChannelMonitorHistoryCreate) defaults() {
+	if _, ok := _c.mutation.Source(); !ok {
+		v := channelmonitorhistory.DefaultSource
+		_c.mutation.SetSource(v)
+	}
+	if _, ok := _c.mutation.SampleCount(); !ok {
+		v := channelmonitorhistory.DefaultSampleCount
+		_c.mutation.SetSampleCount(v)
+	}
+	if _, ok := _c.mutation.SuccessCount(); !ok {
+		v := channelmonitorhistory.DefaultSuccessCount
+		_c.mutation.SetSuccessCount(v)
+	}
+	if _, ok := _c.mutation.FailureCount(); !ok {
+		v := channelmonitorhistory.DefaultFailureCount
+		_c.mutation.SetFailureCount(v)
+	}
+	if _, ok := _c.mutation.RecoveredErrorCount(); !ok {
+		v := channelmonitorhistory.DefaultRecoveredErrorCount
+		_c.mutation.SetRecoveredErrorCount(v)
+	}
+	if _, ok := _c.mutation.SlowCount(); !ok {
+		v := channelmonitorhistory.DefaultSlowCount
+		_c.mutation.SetSlowCount(v)
+	}
 	if _, ok := _c.mutation.Message(); !ok {
 		v := channelmonitorhistory.DefaultMessage
 		_c.mutation.SetMessage(v)
@@ -167,6 +289,29 @@ func (_c *ChannelMonitorHistoryCreate) check() error {
 		if err := channelmonitorhistory.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitorHistory.status": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.Source(); !ok {
+		return &ValidationError{Name: "source", err: errors.New(`ent: missing required field "ChannelMonitorHistory.source"`)}
+	}
+	if v, ok := _c.mutation.Source(); ok {
+		if err := channelmonitorhistory.SourceValidator(v); err != nil {
+			return &ValidationError{Name: "source", err: fmt.Errorf(`ent: validator failed for field "ChannelMonitorHistory.source": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.SampleCount(); !ok {
+		return &ValidationError{Name: "sample_count", err: errors.New(`ent: missing required field "ChannelMonitorHistory.sample_count"`)}
+	}
+	if _, ok := _c.mutation.SuccessCount(); !ok {
+		return &ValidationError{Name: "success_count", err: errors.New(`ent: missing required field "ChannelMonitorHistory.success_count"`)}
+	}
+	if _, ok := _c.mutation.FailureCount(); !ok {
+		return &ValidationError{Name: "failure_count", err: errors.New(`ent: missing required field "ChannelMonitorHistory.failure_count"`)}
+	}
+	if _, ok := _c.mutation.RecoveredErrorCount(); !ok {
+		return &ValidationError{Name: "recovered_error_count", err: errors.New(`ent: missing required field "ChannelMonitorHistory.recovered_error_count"`)}
+	}
+	if _, ok := _c.mutation.SlowCount(); !ok {
+		return &ValidationError{Name: "slow_count", err: errors.New(`ent: missing required field "ChannelMonitorHistory.slow_count"`)}
 	}
 	if v, ok := _c.mutation.Message(); ok {
 		if err := channelmonitorhistory.MessageValidator(v); err != nil {
@@ -213,6 +358,34 @@ func (_c *ChannelMonitorHistoryCreate) createSpec() (*ChannelMonitorHistory, *sq
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(channelmonitorhistory.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.Source(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSource, field.TypeEnum, value)
+		_node.Source = value
+	}
+	if value, ok := _c.mutation.BucketStart(); ok {
+		_spec.SetField(channelmonitorhistory.FieldBucketStart, field.TypeTime, value)
+		_node.BucketStart = &value
+	}
+	if value, ok := _c.mutation.SampleCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSampleCount, field.TypeInt, value)
+		_node.SampleCount = value
+	}
+	if value, ok := _c.mutation.SuccessCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSuccessCount, field.TypeInt, value)
+		_node.SuccessCount = value
+	}
+	if value, ok := _c.mutation.FailureCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldFailureCount, field.TypeInt, value)
+		_node.FailureCount = value
+	}
+	if value, ok := _c.mutation.RecoveredErrorCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldRecoveredErrorCount, field.TypeInt, value)
+		_node.RecoveredErrorCount = value
+	}
+	if value, ok := _c.mutation.SlowCount(); ok {
+		_spec.SetField(channelmonitorhistory.FieldSlowCount, field.TypeInt, value)
+		_node.SlowCount = value
 	}
 	if value, ok := _c.mutation.LatencyMs(); ok {
 		_spec.SetField(channelmonitorhistory.FieldLatencyMs, field.TypeInt, value)
@@ -332,6 +505,126 @@ func (u *ChannelMonitorHistoryUpsert) SetStatus(v channelmonitorhistory.Status) 
 // UpdateStatus sets the "status" field to the value that was provided on create.
 func (u *ChannelMonitorHistoryUpsert) UpdateStatus() *ChannelMonitorHistoryUpsert {
 	u.SetExcluded(channelmonitorhistory.FieldStatus)
+	return u
+}
+
+// SetSource sets the "source" field.
+func (u *ChannelMonitorHistoryUpsert) SetSource(v channelmonitorhistory.Source) *ChannelMonitorHistoryUpsert {
+	u.Set(channelmonitorhistory.FieldSource, v)
+	return u
+}
+
+// UpdateSource sets the "source" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsert) UpdateSource() *ChannelMonitorHistoryUpsert {
+	u.SetExcluded(channelmonitorhistory.FieldSource)
+	return u
+}
+
+// SetBucketStart sets the "bucket_start" field.
+func (u *ChannelMonitorHistoryUpsert) SetBucketStart(v time.Time) *ChannelMonitorHistoryUpsert {
+	u.Set(channelmonitorhistory.FieldBucketStart, v)
+	return u
+}
+
+// UpdateBucketStart sets the "bucket_start" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsert) UpdateBucketStart() *ChannelMonitorHistoryUpsert {
+	u.SetExcluded(channelmonitorhistory.FieldBucketStart)
+	return u
+}
+
+// ClearBucketStart clears the value of the "bucket_start" field.
+func (u *ChannelMonitorHistoryUpsert) ClearBucketStart() *ChannelMonitorHistoryUpsert {
+	u.SetNull(channelmonitorhistory.FieldBucketStart)
+	return u
+}
+
+// SetSampleCount sets the "sample_count" field.
+func (u *ChannelMonitorHistoryUpsert) SetSampleCount(v int) *ChannelMonitorHistoryUpsert {
+	u.Set(channelmonitorhistory.FieldSampleCount, v)
+	return u
+}
+
+// UpdateSampleCount sets the "sample_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsert) UpdateSampleCount() *ChannelMonitorHistoryUpsert {
+	u.SetExcluded(channelmonitorhistory.FieldSampleCount)
+	return u
+}
+
+// AddSampleCount adds v to the "sample_count" field.
+func (u *ChannelMonitorHistoryUpsert) AddSampleCount(v int) *ChannelMonitorHistoryUpsert {
+	u.Add(channelmonitorhistory.FieldSampleCount, v)
+	return u
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (u *ChannelMonitorHistoryUpsert) SetSuccessCount(v int) *ChannelMonitorHistoryUpsert {
+	u.Set(channelmonitorhistory.FieldSuccessCount, v)
+	return u
+}
+
+// UpdateSuccessCount sets the "success_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsert) UpdateSuccessCount() *ChannelMonitorHistoryUpsert {
+	u.SetExcluded(channelmonitorhistory.FieldSuccessCount)
+	return u
+}
+
+// AddSuccessCount adds v to the "success_count" field.
+func (u *ChannelMonitorHistoryUpsert) AddSuccessCount(v int) *ChannelMonitorHistoryUpsert {
+	u.Add(channelmonitorhistory.FieldSuccessCount, v)
+	return u
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (u *ChannelMonitorHistoryUpsert) SetFailureCount(v int) *ChannelMonitorHistoryUpsert {
+	u.Set(channelmonitorhistory.FieldFailureCount, v)
+	return u
+}
+
+// UpdateFailureCount sets the "failure_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsert) UpdateFailureCount() *ChannelMonitorHistoryUpsert {
+	u.SetExcluded(channelmonitorhistory.FieldFailureCount)
+	return u
+}
+
+// AddFailureCount adds v to the "failure_count" field.
+func (u *ChannelMonitorHistoryUpsert) AddFailureCount(v int) *ChannelMonitorHistoryUpsert {
+	u.Add(channelmonitorhistory.FieldFailureCount, v)
+	return u
+}
+
+// SetRecoveredErrorCount sets the "recovered_error_count" field.
+func (u *ChannelMonitorHistoryUpsert) SetRecoveredErrorCount(v int) *ChannelMonitorHistoryUpsert {
+	u.Set(channelmonitorhistory.FieldRecoveredErrorCount, v)
+	return u
+}
+
+// UpdateRecoveredErrorCount sets the "recovered_error_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsert) UpdateRecoveredErrorCount() *ChannelMonitorHistoryUpsert {
+	u.SetExcluded(channelmonitorhistory.FieldRecoveredErrorCount)
+	return u
+}
+
+// AddRecoveredErrorCount adds v to the "recovered_error_count" field.
+func (u *ChannelMonitorHistoryUpsert) AddRecoveredErrorCount(v int) *ChannelMonitorHistoryUpsert {
+	u.Add(channelmonitorhistory.FieldRecoveredErrorCount, v)
+	return u
+}
+
+// SetSlowCount sets the "slow_count" field.
+func (u *ChannelMonitorHistoryUpsert) SetSlowCount(v int) *ChannelMonitorHistoryUpsert {
+	u.Set(channelmonitorhistory.FieldSlowCount, v)
+	return u
+}
+
+// UpdateSlowCount sets the "slow_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsert) UpdateSlowCount() *ChannelMonitorHistoryUpsert {
+	u.SetExcluded(channelmonitorhistory.FieldSlowCount)
+	return u
+}
+
+// AddSlowCount adds v to the "slow_count" field.
+func (u *ChannelMonitorHistoryUpsert) AddSlowCount(v int) *ChannelMonitorHistoryUpsert {
+	u.Add(channelmonitorhistory.FieldSlowCount, v)
 	return u
 }
 
@@ -492,6 +785,146 @@ func (u *ChannelMonitorHistoryUpsertOne) SetStatus(v channelmonitorhistory.Statu
 func (u *ChannelMonitorHistoryUpsertOne) UpdateStatus() *ChannelMonitorHistoryUpsertOne {
 	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetSource sets the "source" field.
+func (u *ChannelMonitorHistoryUpsertOne) SetSource(v channelmonitorhistory.Source) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetSource(v)
+	})
+}
+
+// UpdateSource sets the "source" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertOne) UpdateSource() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateSource()
+	})
+}
+
+// SetBucketStart sets the "bucket_start" field.
+func (u *ChannelMonitorHistoryUpsertOne) SetBucketStart(v time.Time) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetBucketStart(v)
+	})
+}
+
+// UpdateBucketStart sets the "bucket_start" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertOne) UpdateBucketStart() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateBucketStart()
+	})
+}
+
+// ClearBucketStart clears the value of the "bucket_start" field.
+func (u *ChannelMonitorHistoryUpsertOne) ClearBucketStart() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.ClearBucketStart()
+	})
+}
+
+// SetSampleCount sets the "sample_count" field.
+func (u *ChannelMonitorHistoryUpsertOne) SetSampleCount(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetSampleCount(v)
+	})
+}
+
+// AddSampleCount adds v to the "sample_count" field.
+func (u *ChannelMonitorHistoryUpsertOne) AddSampleCount(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddSampleCount(v)
+	})
+}
+
+// UpdateSampleCount sets the "sample_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertOne) UpdateSampleCount() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateSampleCount()
+	})
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (u *ChannelMonitorHistoryUpsertOne) SetSuccessCount(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetSuccessCount(v)
+	})
+}
+
+// AddSuccessCount adds v to the "success_count" field.
+func (u *ChannelMonitorHistoryUpsertOne) AddSuccessCount(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddSuccessCount(v)
+	})
+}
+
+// UpdateSuccessCount sets the "success_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertOne) UpdateSuccessCount() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateSuccessCount()
+	})
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (u *ChannelMonitorHistoryUpsertOne) SetFailureCount(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetFailureCount(v)
+	})
+}
+
+// AddFailureCount adds v to the "failure_count" field.
+func (u *ChannelMonitorHistoryUpsertOne) AddFailureCount(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddFailureCount(v)
+	})
+}
+
+// UpdateFailureCount sets the "failure_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertOne) UpdateFailureCount() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateFailureCount()
+	})
+}
+
+// SetRecoveredErrorCount sets the "recovered_error_count" field.
+func (u *ChannelMonitorHistoryUpsertOne) SetRecoveredErrorCount(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetRecoveredErrorCount(v)
+	})
+}
+
+// AddRecoveredErrorCount adds v to the "recovered_error_count" field.
+func (u *ChannelMonitorHistoryUpsertOne) AddRecoveredErrorCount(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddRecoveredErrorCount(v)
+	})
+}
+
+// UpdateRecoveredErrorCount sets the "recovered_error_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertOne) UpdateRecoveredErrorCount() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateRecoveredErrorCount()
+	})
+}
+
+// SetSlowCount sets the "slow_count" field.
+func (u *ChannelMonitorHistoryUpsertOne) SetSlowCount(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetSlowCount(v)
+	})
+}
+
+// AddSlowCount adds v to the "slow_count" field.
+func (u *ChannelMonitorHistoryUpsertOne) AddSlowCount(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddSlowCount(v)
+	})
+}
+
+// UpdateSlowCount sets the "slow_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertOne) UpdateSlowCount() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateSlowCount()
 	})
 }
 
@@ -829,6 +1262,146 @@ func (u *ChannelMonitorHistoryUpsertBulk) SetStatus(v channelmonitorhistory.Stat
 func (u *ChannelMonitorHistoryUpsertBulk) UpdateStatus() *ChannelMonitorHistoryUpsertBulk {
 	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetSource sets the "source" field.
+func (u *ChannelMonitorHistoryUpsertBulk) SetSource(v channelmonitorhistory.Source) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetSource(v)
+	})
+}
+
+// UpdateSource sets the "source" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertBulk) UpdateSource() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateSource()
+	})
+}
+
+// SetBucketStart sets the "bucket_start" field.
+func (u *ChannelMonitorHistoryUpsertBulk) SetBucketStart(v time.Time) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetBucketStart(v)
+	})
+}
+
+// UpdateBucketStart sets the "bucket_start" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertBulk) UpdateBucketStart() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateBucketStart()
+	})
+}
+
+// ClearBucketStart clears the value of the "bucket_start" field.
+func (u *ChannelMonitorHistoryUpsertBulk) ClearBucketStart() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.ClearBucketStart()
+	})
+}
+
+// SetSampleCount sets the "sample_count" field.
+func (u *ChannelMonitorHistoryUpsertBulk) SetSampleCount(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetSampleCount(v)
+	})
+}
+
+// AddSampleCount adds v to the "sample_count" field.
+func (u *ChannelMonitorHistoryUpsertBulk) AddSampleCount(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddSampleCount(v)
+	})
+}
+
+// UpdateSampleCount sets the "sample_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertBulk) UpdateSampleCount() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateSampleCount()
+	})
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (u *ChannelMonitorHistoryUpsertBulk) SetSuccessCount(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetSuccessCount(v)
+	})
+}
+
+// AddSuccessCount adds v to the "success_count" field.
+func (u *ChannelMonitorHistoryUpsertBulk) AddSuccessCount(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddSuccessCount(v)
+	})
+}
+
+// UpdateSuccessCount sets the "success_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertBulk) UpdateSuccessCount() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateSuccessCount()
+	})
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (u *ChannelMonitorHistoryUpsertBulk) SetFailureCount(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetFailureCount(v)
+	})
+}
+
+// AddFailureCount adds v to the "failure_count" field.
+func (u *ChannelMonitorHistoryUpsertBulk) AddFailureCount(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddFailureCount(v)
+	})
+}
+
+// UpdateFailureCount sets the "failure_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertBulk) UpdateFailureCount() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateFailureCount()
+	})
+}
+
+// SetRecoveredErrorCount sets the "recovered_error_count" field.
+func (u *ChannelMonitorHistoryUpsertBulk) SetRecoveredErrorCount(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetRecoveredErrorCount(v)
+	})
+}
+
+// AddRecoveredErrorCount adds v to the "recovered_error_count" field.
+func (u *ChannelMonitorHistoryUpsertBulk) AddRecoveredErrorCount(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddRecoveredErrorCount(v)
+	})
+}
+
+// UpdateRecoveredErrorCount sets the "recovered_error_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertBulk) UpdateRecoveredErrorCount() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateRecoveredErrorCount()
+	})
+}
+
+// SetSlowCount sets the "slow_count" field.
+func (u *ChannelMonitorHistoryUpsertBulk) SetSlowCount(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetSlowCount(v)
+	})
+}
+
+// AddSlowCount adds v to the "slow_count" field.
+func (u *ChannelMonitorHistoryUpsertBulk) AddSlowCount(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddSlowCount(v)
+	})
+}
+
+// UpdateSlowCount sets the "slow_count" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertBulk) UpdateSlowCount() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateSlowCount()
 	})
 }
 
