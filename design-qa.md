@@ -77,3 +77,25 @@ QA date: 2026-07-24
 - Selecting each package updates the payment amount and credited USD balance consistently. Only WeChat Pay is visible.
 
 result: passed
+
+---
+
+# Four-Tier Recharge Package Design QA
+
+QA date: 2026-07-25
+
+## Scope
+
+- Replace the five promotional recharge cards with four cards while preserving the current payment page styling.
+- Mark the second package as `推荐` and the fourth package as `大额推荐`.
+- Keep the server-provided package list as the only source of recharge amounts.
+
+## Verified States
+
+- Desktop at 1440 x 900: four equal-width cards render in one row with the existing spacing, border, radius, typography, and color treatment.
+- Mobile at 390 x 844: cards render as a 2 x 2 grid; labels, amounts, badges, and balance copy remain within their cards without overlap.
+- Selection: the second package enters the selected visual state and exposes `aria-pressed="true"` after activation.
+- Content: the cards display `38 -> 1000`, `72 -> 2000`, `105 -> 3000`, and `170 -> 5000`; the second and fourth badges display the requested Chinese copy.
+- Source comparison: the implementation was compared in one view against the existing five-card payment page reference and retains its visual system while reducing the card count.
+
+final result: passed

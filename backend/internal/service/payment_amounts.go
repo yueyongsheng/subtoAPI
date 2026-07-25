@@ -16,11 +16,10 @@ type RechargePackage struct {
 }
 
 var promotionalRechargePackages = []RechargePackage{
-	{PayAmount: 36, CreditedAmount: 1000},
-	{PayAmount: 66, CreditedAmount: 2000, Badge: "recommended"},
-	{PayAmount: 96, CreditedAmount: 3000},
-	{PayAmount: 156, CreditedAmount: 5000},
-	{PayAmount: 300, CreditedAmount: 10000, Badge: "best_value"},
+	{PayAmount: 38, CreditedAmount: 1000},
+	{PayAmount: 72, CreditedAmount: 2000, Badge: "recommended"},
+	{PayAmount: 105, CreditedAmount: 3000},
+	{PayAmount: 170, CreditedAmount: 5000, Badge: "best_value"},
 }
 
 func PromotionalRechargePackages() []RechargePackage {

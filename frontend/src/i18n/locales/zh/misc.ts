@@ -322,7 +322,7 @@ export default {
       balanceSuffix: '余额',
       badges: {
         recommended: '推荐',
-        best_value: '大额优选',
+        best_value: '大额推荐',
       },
     },
     enterAmount: '输入金额',

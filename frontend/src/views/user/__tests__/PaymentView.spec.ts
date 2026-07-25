@@ -106,11 +106,10 @@ function checkoutInfoFixture(overrides: Partial<CheckoutInfoResponse> = {}) {
     global_max: 0,
     plans: [],
     recharge_packages: [
-      { pay_amount: 36, credited_amount: 1000 },
-      { pay_amount: 66, credited_amount: 2000, badge: 'recommended' },
-      { pay_amount: 96, credited_amount: 3000 },
-      { pay_amount: 156, credited_amount: 5000 },
-      { pay_amount: 300, credited_amount: 10000, badge: 'best_value' },
+      { pay_amount: 38, credited_amount: 1000 },
+      { pay_amount: 72, credited_amount: 2000, badge: 'recommended' },
+      { pay_amount: 105, credited_amount: 3000 },
+      { pay_amount: 170, credited_amount: 5000, badge: 'best_value' },
     ],
     balance_disabled: false,
     balance_recharge_multiplier: 1,
@@ -283,12 +282,12 @@ describe('PaymentView promotional recharge packages', () => {
     createOrder.mockReset().mockResolvedValue({
       order_id: 321,
       amount: 2000,
-      pay_amount: 66,
+      pay_amount: 72,
       fee_rate: 0,
       expires_at: '2099-01-01T00:10:00.000Z',
       payment_type: 'wxpay',
-      qr_code: 'weixin://wxpay/bizpayurl?pr=package-66',
-      out_trade_no: 'sub2_package_66',
+      qr_code: 'weixin://wxpay/bizpayurl?pr=package-72',
+      out_trade_no: 'sub2_package_72',
     })
     getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture())
 
@@ -299,7 +298,7 @@ describe('PaymentView promotional recharge packages', () => {
           RechargePackageSelector: {
             props: ['packages', 'modelValue'],
             emits: ['update:modelValue'],
-            template: '<button data-test="select-package-66" @click="$emit(\'update:modelValue\', 66)">select package</button>',
+            template: '<button data-test="select-package-72" @click="$emit(\'update:modelValue\', 72)">select package</button>',
           },
           Teleport: true,
           Transition: false,
@@ -308,7 +307,7 @@ describe('PaymentView promotional recharge packages', () => {
     })
     await flushPromises()
 
-    await wrapper.find('[data-test="select-package-66"]').trigger('click')
+    await wrapper.find('[data-test="select-package-72"]').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('$2000.00')
 
@@ -317,7 +316,7 @@ describe('PaymentView promotional recharge packages', () => {
     await flushPromises()
 
     expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({
-      amount: 66,
+      amount: 72,
       order_type: 'balance',
       payment_type: 'wxpay',
     }))

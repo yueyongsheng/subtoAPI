@@ -245,11 +245,10 @@ func TestCalculateCreditedBalanceUsesPromotionalPackage(t *testing.T) {
 		payAmount      float64
 		creditedAmount float64
 	}{
-		{payAmount: 36, creditedAmount: 1000},
-		{payAmount: 66, creditedAmount: 2000},
-		{payAmount: 96, creditedAmount: 3000},
-		{payAmount: 156, creditedAmount: 5000},
-		{payAmount: 300, creditedAmount: 10000},
+		{payAmount: 38, creditedAmount: 1000},
+		{payAmount: 72, creditedAmount: 2000},
+		{payAmount: 105, creditedAmount: 3000},
+		{payAmount: 170, creditedAmount: 5000},
 	}
 	for _, tt := range tests {
 		got := calculateCreditedBalance(tt.payAmount, 25)
@@ -263,14 +262,19 @@ func TestPromotionalRechargePackagesAreReturnedInDisplayOrder(t *testing.T) {
 	t.Parallel()
 
 	packages := PromotionalRechargePackages()
-	if len(packages) != 5 {
-		t.Fatalf("package count = %d, want 5", len(packages))
+	if len(packages) != 4 {
+		t.Fatalf("package count = %d, want 4", len(packages))
 	}
-	if packages[0].PayAmount != 36 || packages[0].CreditedAmount != 1000 {
-		t.Fatalf("first package = %+v, want pay 36 and credit 1000", packages[0])
+	want := []RechargePackage{
+		{PayAmount: 38, CreditedAmount: 1000},
+		{PayAmount: 72, CreditedAmount: 2000, Badge: "recommended"},
+		{PayAmount: 105, CreditedAmount: 3000},
+		{PayAmount: 170, CreditedAmount: 5000, Badge: "best_value"},
 	}
-	if packages[1].Badge != "recommended" || packages[4].Badge != "best_value" {
-		t.Fatalf("package badges = %q/%q, want recommended/best_value", packages[1].Badge, packages[4].Badge)
+	for i := range want {
+		if packages[i] != want[i] {
+			t.Fatalf("package %d = %+v, want %+v", i, packages[i], want[i])
+		}
 	}
 }
 

@@ -3,7 +3,7 @@
     <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
       {{ t('payment.promotion.title') }}
     </label>
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <button
         v-for="pkg in packages"
         :key="pkg.pay_amount"
