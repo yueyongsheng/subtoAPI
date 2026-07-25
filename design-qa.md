@@ -97,5 +97,6 @@ QA date: 2026-07-25
 - Selection: the second package enters the selected visual state and exposes `aria-pressed="true"` after activation.
 - Content: the cards display `38 -> 1000`, `72 -> 2000`, `105 -> 3000`, and `170 -> 5000`; the second and fourth badges display the requested Chinese copy.
 - Source comparison: the implementation was compared in one view against the existing five-card payment page reference and retains its visual system while reducing the card count.
+- Production: `release-v0.1.156.19` shows the same four cards on desktop and at 390 px; selecting the second card displays payment `72 CNY` and credited balance `2000 USD` without creating an order.
 
 final result: passed
