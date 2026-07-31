@@ -94,7 +94,13 @@ interface Props {
 interface Emits {
   (e: 'update:startDate', value: string): void
   (e: 'update:endDate', value: string): void
-  (e: 'change', range: { startDate: string; endDate: string; preset: string | null }): void
+  (e: 'change', range: {
+    startDate: string
+    endDate: string
+    preset: string | null
+    startTime?: string
+    endTime?: string
+  }): void
 }
 
 const props = defineProps<Props>()
@@ -268,12 +274,20 @@ const toggle = () => {
 }
 
 const apply = () => {
+  const exactRange = activePreset.value === 'last24Hours'
+    ? (() => {
+        const end = new Date()
+        const start = new Date(end.getTime() - 24 * 60 * 60 * 1000)
+        return { startTime: start.toISOString(), endTime: end.toISOString() }
+      })()
+    : {}
   emit('update:startDate', localStartDate.value)
   emit('update:endDate', localEndDate.value)
   emit('change', {
     startDate: localStartDate.value,
     endDate: localEndDate.value,
-    preset: activePreset.value
+    preset: activePreset.value,
+    ...exactRange
   })
   isOpen.value = false
 }

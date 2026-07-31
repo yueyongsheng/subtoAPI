@@ -31,9 +31,36 @@ func NewDashboardHandler(dashboardService *service.DashboardService, aggregation
 	}
 }
 
-// parseTimeRange parses start_date, end_date query parameters
+func parseExactTimeRange(c *gin.Context) (time.Time, time.Time, bool, error) {
+	startRaw := strings.TrimSpace(c.Query("start_time"))
+	endRaw := strings.TrimSpace(c.Query("end_time"))
+	if startRaw == "" && endRaw == "" {
+		return time.Time{}, time.Time{}, false, nil
+	}
+	if startRaw == "" || endRaw == "" {
+		return time.Time{}, time.Time{}, true, errors.New("start_time and end_time must be provided together")
+	}
+	startTime, err := time.Parse(time.RFC3339, startRaw)
+	if err != nil {
+		return time.Time{}, time.Time{}, true, errors.New("invalid start_time, use RFC3339")
+	}
+	endTime, err := time.Parse(time.RFC3339, endRaw)
+	if err != nil {
+		return time.Time{}, time.Time{}, true, errors.New("invalid end_time, use RFC3339")
+	}
+	if !startTime.Before(endTime) {
+		return time.Time{}, time.Time{}, true, errors.New("start_time must be before end_time")
+	}
+	return startTime, endTime, true, nil
+}
+
+// parseTimeRange parses exact timestamps first, then falls back to calendar dates.
 // Uses user's timezone if provided, otherwise falls back to server timezone
 func parseTimeRange(c *gin.Context) (time.Time, time.Time) {
+	if startTime, endTime, present, err := parseExactTimeRange(c); present && err == nil {
+		return startTime, endTime
+	}
+
 	userTZ := c.Query("timezone") // Get user's timezone from request
 	now := timezone.NowInUserLocation(userTZ)
 	startDate := c.Query("start_date")

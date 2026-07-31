@@ -1010,7 +1010,7 @@ default:
   user_concurrency: 5
   # Initial balance for new users
   # 新用户初始余额
-  user_balance: 0
+  user_balance: 0.1
 
   # API key settings
   # API 密钥设置

@@ -32,6 +32,20 @@ func TestParseTimeRange(t *testing.T) {
 	require.False(t, end.IsZero())
 }
 
+func TestParseTimeRangePrefersExactRFC3339Bounds(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet,
+		"/?start_date=2024-01-01&end_date=2024-01-02&start_time=2024-02-03T04:05:06Z&end_time=2024-02-04T05:06:07Z",
+		nil,
+	)
+
+	start, end := parseTimeRange(c)
+	require.Equal(t, time.Date(2024, 2, 3, 4, 5, 6, 0, time.UTC), start)
+	require.Equal(t, time.Date(2024, 2, 4, 5, 6, 7, 0, time.UTC), end)
+}
+
 func TestParseOpsViewParam(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()

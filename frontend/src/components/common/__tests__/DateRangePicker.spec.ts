@@ -54,7 +54,9 @@ describe('DateRangePicker', () => {
   })
 
   it('emits range updates with last24Hours preset when applied', async () => {
-    const now = new Date()
+    vi.useFakeTimers()
+    const now = new Date('2026-07-31T11:05:43.000Z')
+    vi.setSystemTime(now)
     const today = formatLocalDate(now)
 
     const wrapper = mount(DateRangePicker, {
@@ -89,8 +91,12 @@ describe('DateRangePicker', () => {
       {
         startDate: expectedStart,
         endDate: expectedEnd,
-        preset: 'last24Hours'
+        preset: 'last24Hours',
+        startTime: '2026-07-30T11:05:43.000Z',
+        endTime: '2026-07-31T11:05:43.000Z'
       }
     ])
+
+    vi.useRealTimers()
   })
 })

@@ -239,6 +239,8 @@ const balanceHistoryUser = ref<AdminUser | null>(null)
 
 const breakdownFilters = computed(() => {
   const f: Record<string, any> = {}
+  if (filters.value.start_time) f.start_time = filters.value.start_time
+  if (filters.value.end_time) f.end_time = filters.value.end_time
   if (filters.value.user_id) f.user_id = filters.value.user_id
   if (filters.value.api_key_id) f.api_key_id = filters.value.api_key_id
   if (filters.value.account_id) f.account_id = filters.value.account_id
@@ -279,11 +281,10 @@ const formatLD = (d: Date) => {
   const day = String(d.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
-const getLast24HoursRangeDates = (): { start: string; end: string } => {
+const getTodayRangeDates = (): { start: string; end: string } => {
   const end = new Date()
-  const start = new Date(end.getTime() - 24 * 60 * 60 * 1000)
   return {
-    start: formatLD(start),
+    start: formatLD(end),
     end: formatLD(end)
   }
 }
@@ -293,7 +294,7 @@ const getGranularityForRange = (start: string, end: string): 'day' | 'hour' => {
   const daysDiff = Math.ceil((endTime - startTime) / (1000 * 60 * 60 * 24))
   return daysDiff <= 1 ? 'hour' : 'day'
 }
-const defaultRange = getLast24HoursRangeDates()
+const defaultRange = getTodayRangeDates()
 const startDate = ref(defaultRange.start); const endDate = ref(defaultRange.end)
 const filters = ref<AdminUsageQueryParams>({ user_id: undefined, model: undefined, group_id: undefined, request_type: undefined, billing_type: null, start_date: startDate.value, end_date: endDate.value })
 const pagination = reactive({ page: 1, page_size: getPersistedPageSize(), total: 0 })
@@ -335,13 +336,21 @@ const applyRouteQueryFilters = () => {
   granularity.value = getGranularityForRange(startDate.value, endDate.value)
 }
 
-const onDateRangeChange = (range: { startDate: string; endDate: string; preset: string | null }) => {
+const onDateRangeChange = (range: {
+  startDate: string
+  endDate: string
+  preset: string | null
+  startTime?: string
+  endTime?: string
+}) => {
   startDate.value = range.startDate
   endDate.value = range.endDate
   filters.value = {
     ...filters.value,
     start_date: range.startDate,
-    end_date: range.endDate
+    end_date: range.endDate,
+    start_time: range.startTime,
+    end_time: range.endTime
   }
   granularity.value = getGranularityForRange(range.startDate, range.endDate)
   applyFilters()
@@ -422,6 +431,8 @@ const loadModelStats = async (source: ModelDistributionSource, force = false) =>
     const baseParams = {
       start_date: filters.value.start_date || startDate.value,
       end_date: filters.value.end_date || endDate.value,
+      start_time: filters.value.start_time,
+      end_time: filters.value.end_time,
       user_id: filters.value.user_id,
       model: filters.value.model,
       api_key_id: filters.value.api_key_id,
@@ -470,6 +481,8 @@ const loadChartData = async () => {
     const snapshot = await adminAPI.dashboard.getSnapshotV2({
       start_date: filters.value.start_date || startDate.value,
       end_date: filters.value.end_date || endDate.value,
+      start_time: filters.value.start_time,
+      end_time: filters.value.end_time,
       granularity: granularity.value,
       user_id: filters.value.user_id,
       model: filters.value.model,
@@ -514,7 +527,7 @@ const refreshData = () => {
   if (rankingMounted.value) rankingRef.value?.reload()
 }
 const resetFilters = () => {
-  const range = getLast24HoursRangeDates()
+  const range = getTodayRangeDates()
   startDate.value = range.start
   endDate.value = range.end
   filters.value = { start_date: startDate.value, end_date: endDate.value, request_type: undefined, billing_type: null, billing_mode: undefined }
@@ -777,8 +790,8 @@ const loadAdminErrors = async () => {
       page: errPage.value,
       page_size: errPageSize.value,
       view: 'all',
-      start_time: toRFC3339(filters.value.start_date),
-      end_time: toRFC3339(filters.value.end_date, true),
+      start_time: filters.value.start_time || toRFC3339(filters.value.start_date),
+      end_time: filters.value.end_time || toRFC3339(filters.value.end_date, true),
       user_id: filters.value.user_id ?? undefined,
       api_key_id: filters.value.api_key_id ?? undefined,
       account_id: filters.value.account_id ?? undefined,
