@@ -46,11 +46,11 @@ func TestResolveRebateRatePercent_PerUserOverride(t *testing.T) {
 		svc.resolveRebateRatePercent(context.Background(), &AffiliateSummary{AffRebateRatePercent: &tooLow}), 1e-9)
 }
 
-func TestGetAffiliateRebateRatePercentDefaultsToTen(t *testing.T) {
+func TestGetAffiliateRebateRatePercentDefaultsToFive(t *testing.T) {
 	t.Parallel()
 
 	settings := NewSettingService(&settingRepoStub{values: map[string]string{}}, nil)
-	require.InDelta(t, 10.0, settings.GetAffiliateRebateRatePercent(context.Background()), 1e-9)
+	require.InDelta(t, 5.0, settings.GetAffiliateRebateRatePercent(context.Background()), 1e-9)
 }
 
 // TestIsEnabled_NilSettingServiceReturnsDefault verifies that IsEnabled

@@ -48,6 +48,19 @@ func TestMigration178ReducesAffiliateRebateRateToTenPercent(t *testing.T) {
 	require.NotContains(t, sql, "affiliate_enabled")
 }
 
+func TestMigration181ReducesAffiliateRebateRateToFivePercent(t *testing.T) {
+	content, err := FS.ReadFile("181_reduce_affiliate_rebate_rate_to_five_percent.sql")
+	require.NoError(t, err)
+
+	sql := string(content)
+	require.Contains(t, sql, "('affiliate_rebate_rate', '5', NOW())")
+	require.Contains(t, sql, "ON CONFLICT (key) DO UPDATE")
+	require.Contains(t, sql, "settings.value ~ '^10([.]0+)?$'")
+	require.NotContains(t, sql, "affiliate_enabled")
+	require.NotContains(t, sql, "user_affiliates")
+	require.NotContains(t, sql, "user_affiliate_ledger")
+}
+
 func TestMigration180ConvertsLegacyRechargeBalancesAndPricingExactlyOnce(t *testing.T) {
 	content, err := FS.ReadFile("180_convert_legacy_recharge_balances_to_one_to_one.sql")
 	require.NoError(t, err)
