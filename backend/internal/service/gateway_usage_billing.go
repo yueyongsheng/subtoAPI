@@ -376,6 +376,7 @@ func syncBalanceCacheAfterDeduction(ctx context.Context, p *postUsageBillingPara
 			slog.Warn("invalidate balance cache after exhausted deduction failed",
 				"user_id", p.User.ID,
 				"new_balance", *result.NewBalance,
+				"balance_overdrafted", result.BalanceOverdrafted,
 				"error", err,
 			)
 		}
