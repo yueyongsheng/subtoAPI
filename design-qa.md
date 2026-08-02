@@ -55,6 +55,8 @@ final result: passed
 - 手机上半屏：`C:\Users\Administrator\.codex\visualizations\2026\08\02\model-plaza-redesign\mobile.png`
 - 手机下半屏：`C:\Users\Administrator\.codex\visualizations\2026\08\02\model-plaza-redesign\mobile-lower.png`
 - 并排对照：`C:\Users\Administrator\.codex\visualizations\2026\08\02\model-plaza-redesign\comparison.png`
+- 生产实现：`https://api-yue88.xyz/model-plaza`
+- 生产截图：`C:\Users\Administrator\.codex\visualizations\2026\08\02\model-plaza-redesign\production.png`
 - 桌面视口：用户 Chrome 默认桌面视口；手机视口：390 x 844。
 
 ## 对照结论
@@ -65,6 +67,8 @@ final result: passed
 - [x] Plus/Pro、Standard/Fast 和搜索交互已实测；Pro + Fast + `luna` 状态只展示目标模型且价格同步切换。
 - [x] 390px 手机端改为纵向价格卡片，上下半屏均无横向溢出、文字截断、遮挡或价格跳位。
 - [x] 页面控制台无应用报错；仅观察到用户浏览器扩展警告和本地域名 Turnstile 警告，与模型广场实现无关。
+- [x] `release-v0.1.156.26` 生产页已验证六模型默认状态、Plus/Pro、Standard/Fast 和搜索交互；生产页面控制台无错误。
+- [x] 发布后超过 30 分钟的 34 轮公网健康检查全部成功，最终应用 0 重启且关键错误为 0。
 
 ## 差异与取舍
 
