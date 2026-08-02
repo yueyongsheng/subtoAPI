@@ -9,23 +9,40 @@ const { getCatalog } = vi.hoisted(() => ({
 
 const messages: Record<string, string> = {
   'modelPlaza.searchPlaceholder': '搜索模型...',
+  'modelPlaza.filtersLabel': '模型价格筛选',
+  'modelPlaza.platformLabel': '平台',
+  'modelPlaza.modelLabel': '模型',
   'modelPlaza.groupLabel': '计费分组',
   'modelPlaza.serviceTierLabel': '服务档位',
   'modelPlaza.modelCount': '模型数量',
   'modelPlaza.priceUnit': 'USD / 1M Token',
   'modelPlaza.customRate': '已应用你的专属倍率',
   'modelPlaza.peakRate': '高峰倍率',
+  'modelPlaza.pricingTableLabel': '模型价格对照表',
+  'modelPlaza.groupPriceDescription': '实付价格已包含当前分组倍率',
+  'modelPlaza.actualPrice': '实付价格',
+  'modelPlaza.basePrice': '基础价格',
+  'modelPlaza.discountRate': '计费倍率',
+  'modelPlaza.baseInput': '基础输入',
+  'modelPlaza.baseOutput': '基础输出',
+  'modelPlaza.baseCacheRead': '基础缓存读取',
+  'modelPlaza.cacheWriteShort': '写入',
+  'modelPlaza.cacheReadShort': '读取',
+  'modelPlaza.longCachePrice': '长上下文读取',
   'modelPlaza.retry': '重新加载',
   'modelPlaza.loadError': '模型价格加载失败',
   'modelPlaza.emptyTitle': '未找到可用模型',
   'modelPlaza.emptyDescription': '请调整搜索条件',
   'modelPlaza.tiers.standard': 'Standard',
   'modelPlaza.tiers.fast': 'Fast',
+  'modelPlaza.groups.plus': 'ChatGPT Plus 分组',
+  'modelPlaza.groups.pro': 'ChatGPT Pro 分组',
   'modelPlaza.columns.model': '模型',
   'modelPlaza.columns.input': '输入',
   'modelPlaza.columns.output': '输出',
   'modelPlaza.columns.cacheWrite': '缓存写入',
   'modelPlaza.columns.cacheRead': '缓存读取',
+  'modelPlaza.columns.cache': '缓存',
   'modelPlaza.columns.context': '长上下文',
   'modelPlaza.longContextRule': '长上下文规则',
   'common.refresh': '刷新',
@@ -76,6 +93,8 @@ const catalog = {
     {
       name: 'gpt-5.6-sol',
       platform: 'openai' as const,
+      base_standard: { input: 5, output: 30, cache_write: 6.25, cache_read: 0.5 },
+      base_fast: { input: 10, output: 60, cache_write: 12.5, cache_read: 1 },
       long_context_threshold: 272000,
       long_context_input_multiplier: 2,
       long_context_output_multiplier: 1.5,
@@ -95,6 +114,8 @@ const catalog = {
     {
       name: 'gpt-5.6-luna',
       platform: 'openai' as const,
+      base_standard: { input: 0.2, output: 1.2, cache_write: 0.25, cache_read: 0.02 },
+      base_fast: { input: 0.4, output: 2.4, cache_write: 0.5, cache_read: 0.04 },
       long_context_threshold: 272000,
       long_context_input_multiplier: 2,
       long_context_output_multiplier: 1.5,
@@ -136,6 +157,9 @@ describe('ModelPlazaView', () => {
     expect(wrapper.text()).toContain('$0.60')
     expect(wrapper.text()).toContain('$3.60')
     expect(wrapper.text()).toContain('$0.024')
+    expect(wrapper.text()).toContain('基础价格')
+    expect(wrapper.text()).toContain('$5.00')
+    expect(wrapper.text()).toContain('$30.00')
   })
 
   it('switches between Fast and user group prices without another request', async () => {

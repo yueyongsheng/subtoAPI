@@ -41,6 +41,45 @@ final result: passed
 
 ---
 
+# 模型广场价格对照版设计验收
+
+验收日期：2026-08-02
+
+final result: passed
+
+## 对照范围
+
+- 用户参考图：`C:\Users\ADMINI~1\AppData\Local\Temp\codex-clipboard-59e2573f-b5d6-402f-a426-69a625c121e0.png`
+- 本地实现：`http://127.0.0.1:4173/model-plaza`
+- 桌面实现图：`C:\Users\Administrator\.codex\visualizations\2026\08\02\model-plaza-redesign\desktop.png`
+- 手机上半屏：`C:\Users\Administrator\.codex\visualizations\2026\08\02\model-plaza-redesign\mobile.png`
+- 手机下半屏：`C:\Users\Administrator\.codex\visualizations\2026\08\02\model-plaza-redesign\mobile-lower.png`
+- 并排对照：`C:\Users\Administrator\.codex\visualizations\2026\08\02\model-plaza-redesign\comparison.png`
+- 桌面视口：用户 Chrome 默认桌面视口；手机视口：390 x 844。
+
+## 对照结论
+
+- [x] 平台、计费分组、服务档位和模型搜索按参考图的密集筛选带组织，并保留悦享 API 现有导航、字体、色彩与间距系统。
+- [x] 桌面主表将“实付价格”和“基础价格”横向对照，突出绿色实付区，同时展示计费倍率。
+- [x] 输入与输出明确区分 `<=272K` 和 `272K-1M`，缓存展示写入、读取与长上下文读取；基础价格由后端计费源直接返回，前端不反推。
+- [x] Plus/Pro、Standard/Fast 和搜索交互已实测；Pro + Fast + `luna` 状态只展示目标模型且价格同步切换。
+- [x] 390px 手机端改为纵向价格卡片，上下半屏均无横向溢出、文字截断、遮挡或价格跳位。
+- [x] 页面控制台无应用报错；仅观察到用户浏览器扩展警告和本地域名 Turnstile 警告，与模型广场实现无关。
+
+## 差异与取舍
+
+- 参考图包含多家平台和大量分组；当前业务只展示用户实际可用的 OpenAI、Plus 和 Pro，不制造无效筛选项。
+- 参考图为单独倍率筛选行；当前两个分组按钮直接携带有效倍率，减少重复控件并保留同样的价格解释能力。
+- 参考图的 `0.299x` 是其平台价格；实现必须显示悦享 API 当前用户的真实 Plus/Pro 计费倍率和 BillingService 价格。
+
+## 问题分级
+
+- P0：无。
+- P1：无。
+- P2：无。
+
+---
+
 # Promotional Recharge Packages Design QA
 
 QA date: 2026-07-24

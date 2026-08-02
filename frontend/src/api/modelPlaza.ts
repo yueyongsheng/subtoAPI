@@ -17,6 +17,8 @@ export interface ModelPlazaGroupPrice {
 export interface ModelPlazaModel {
   name: string
   platform: GroupPlatform
+  base_standard: ModelPlazaTierPrice
+  base_fast: ModelPlazaTierPrice
   prices: ModelPlazaGroupPrice[]
   long_context_threshold: number
   long_context_input_multiplier: number

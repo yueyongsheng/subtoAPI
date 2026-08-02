@@ -473,13 +473,27 @@ export default {
   modelPlaza: {
     title: 'Model Plaza',
     description: 'Browse available models and the prices charged to your account',
+    filtersLabel: 'Model pricing filters',
+    platformLabel: 'Platform',
     searchPlaceholder: 'Search models...',
+    modelLabel: 'Model',
     groupLabel: 'Billing group',
     serviceTierLabel: 'Service tier',
     modelCount: '{count} models',
     priceUnit: '{currency} / 1M tokens',
     customRate: 'Your custom rate is applied',
     peakRate: 'Peak {start}-{end} · {rate}',
+    pricingTableLabel: 'Model price comparison',
+    groupPriceDescription: 'Charged prices include the current {rate} group multiplier',
+    actualPrice: 'Charged price',
+    basePrice: 'Base price',
+    discountRate: 'Rate',
+    baseInput: 'Base input',
+    baseOutput: 'Base output',
+    baseCacheRead: 'Base cache read',
+    cacheWriteShort: 'Write',
+    cacheReadShort: 'Read',
+    longCachePrice: 'Long-context read {price}',
     retry: 'Retry',
     loadError: 'Failed to load model pricing',
     emptyTitle: 'No models found',
@@ -488,12 +502,17 @@ export default {
       standard: 'Standard',
       fast: 'Fast'
     },
+    groups: {
+      plus: 'ChatGPT Plus',
+      pro: 'ChatGPT Pro'
+    },
     columns: {
       model: 'Model',
       input: 'Input',
       output: 'Output',
       cacheWrite: 'Cache write',
       cacheRead: 'Cache read',
+      cache: 'Cache',
       context: 'Long context'
     },
     longContextRule: 'When input context exceeds {threshold}, input and cache are billed at {inputRate}; output is billed at {outputRate}.'

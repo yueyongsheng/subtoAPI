@@ -35,8 +35,10 @@ func TestUserModelPlazaResponse_DoesNotExposeChannelOrAccountFields(t *testing.T
 			RateMultiplier: 0.12,
 		}},
 		Models: []userModelPlazaModel{{
-			Name:     "gpt-5.6-sol",
-			Platform: "openai",
+			Name:         "gpt-5.6-sol",
+			Platform:     "openai",
+			BaseStandard: userModelPlazaTier{Input: 5, Output: 30, CacheWrite: 6.25, CacheRead: 0.5},
+			BaseFast:     userModelPlazaTier{Input: 10, Output: 60, CacheWrite: 12.5, CacheRead: 1},
 			Prices: []userModelPlazaGroupPrice{{
 				GroupID:  1,
 				Standard: userModelPlazaTier{Input: 0.6, Output: 3.6},
@@ -51,4 +53,24 @@ func TestUserModelPlazaResponse_DoesNotExposeChannelOrAccountFields(t *testing.T
 	require.NotContains(t, serialized, "account")
 	require.NotContains(t, serialized, "cost_multiplier")
 	require.Contains(t, serialized, "rate_multiplier")
+	require.Contains(t, serialized, "base_standard")
+	require.Contains(t, serialized, "base_fast")
+}
+
+func TestUserModelPlazaResponse_BaseAndFinalPricesUseSamePublishedTier(t *testing.T) {
+	published := service.PublishedTokenPrices{
+		Input:      2e-6,
+		Output:     12e-6,
+		CacheWrite: 2.5e-6,
+		CacheRead:  0.2e-6,
+	}
+
+	base := scalePublishedTier(published, 1)
+	final := scalePublishedTier(published, 0.12)
+
+	require.InDelta(t, 2, base.Input, 1e-12)
+	require.InDelta(t, 12, base.Output, 1e-12)
+	require.InDelta(t, 0.24, final.Input, 1e-12)
+	require.InDelta(t, 1.44, final.Output, 1e-12)
+	require.InDelta(t, base.CacheRead*0.12, final.CacheRead, 1e-12)
 }

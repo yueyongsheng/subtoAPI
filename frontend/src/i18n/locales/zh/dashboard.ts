@@ -478,13 +478,27 @@ export default {
   modelPlaza: {
     title: '模型广场',
     description: '查看当前可用模型与账户实际扣费标准',
+    filtersLabel: '模型价格筛选',
+    platformLabel: '平台',
     searchPlaceholder: '搜索模型...',
+    modelLabel: '模型',
     groupLabel: '计费分组',
     serviceTierLabel: '服务档位',
     modelCount: '{count} 个模型',
     priceUnit: '{currency} / 1M Token',
     customRate: '已应用你的专属倍率',
     peakRate: '高峰 {start}-{end} · {rate}',
+    pricingTableLabel: '模型价格对照表',
+    groupPriceDescription: '实付价格已包含当前分组 {rate} 倍率',
+    actualPrice: '实付价格',
+    basePrice: '基础价格',
+    discountRate: '计费倍率',
+    baseInput: '基础输入',
+    baseOutput: '基础输出',
+    baseCacheRead: '基础缓存读取',
+    cacheWriteShort: '写入',
+    cacheReadShort: '读取',
+    longCachePrice: '长上下文读取 {price}',
     retry: '重新加载',
     loadError: '模型价格加载失败',
     emptyTitle: '未找到可用模型',
@@ -493,12 +507,17 @@ export default {
       standard: 'Standard',
       fast: 'Fast'
     },
+    groups: {
+      plus: 'ChatGPT Plus 分组',
+      pro: 'ChatGPT Pro 分组'
+    },
     columns: {
       model: '模型',
       input: '输入',
       output: '输出',
       cacheWrite: '缓存写入',
       cacheRead: '缓存读取',
+      cache: '缓存',
       context: '长上下文'
     },
     longContextRule: '单次输入上下文超过 {threshold} 时，输入与缓存按 {inputRate}、输出按 {outputRate} 计费。'

@@ -135,6 +135,8 @@ type userModelPlazaGroupPrice struct {
 type userModelPlazaModel struct {
 	Name                        string                     `json:"name"`
 	Platform                    string                     `json:"platform"`
+	BaseStandard                userModelPlazaTier         `json:"base_standard"`
+	BaseFast                    userModelPlazaTier         `json:"base_fast"`
 	Prices                      []userModelPlazaGroupPrice `json:"prices"`
 	LongContextThreshold        int                        `json:"long_context_threshold"`
 	LongContextInputMultiplier  float64                    `json:"long_context_input_multiplier"`
@@ -312,6 +314,8 @@ func (h *AvailableChannelHandler) ListModels(c *gin.Context) {
 		models = append(models, userModelPlazaModel{
 			Name:                        candidate.Name,
 			Platform:                    candidate.Platform,
+			BaseStandard:                scalePublishedTier(published.Standard, 1),
+			BaseFast:                    scalePublishedTier(published.Fast, 1),
 			Prices:                      prices,
 			LongContextThreshold:        published.LongContextThreshold,
 			LongContextInputMultiplier:  published.LongContextInputRate,
