@@ -459,6 +459,20 @@ func TestPricingService_InitializeUsesFallbackWhenDynamicSourceUnavailable(t *te
 			require.InDelta(t, tt.cache, got.CacheReadInputTokenCost, 1e-12)
 		})
 	}
+
+	billingSvc := NewBillingService(cfg, svc)
+	for _, tt := range tests {
+		t.Run(tt.model+"_billing_policy", func(t *testing.T) {
+			got, err := billingSvc.GetModelPricing(tt.model)
+			require.NoError(t, err)
+			require.InDelta(t, tt.input, got.InputPricePerToken, 1e-12)
+			require.InDelta(t, tt.output, got.OutputPricePerToken, 1e-12)
+			require.InDelta(t, tt.cache, got.CacheReadPricePerToken, 1e-12)
+			require.Equal(t, 272000, got.LongContextInputThreshold)
+			require.InDelta(t, 2.0, got.LongContextInputMultiplier, 1e-12)
+			require.InDelta(t, 1.5, got.LongContextOutputMultiplier, 1e-12)
+		})
+	}
 }
 
 func TestGetModelPricing_CodexAutoReviewUsesStaticFallbackWhenRemoteMissing(t *testing.T) {
