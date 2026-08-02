@@ -100,3 +100,40 @@ QA date: 2026-07-25
 - Production: `release-v0.1.156.19` shows the same four cards on desktop and at 390 px; selecting the second card displays payment `72 CNY` and credited balance `2000 USD` without creating an order.
 
 final result: passed
+
+---
+
+# 模型广场设计验收
+
+验收日期：2026-08-02
+
+final result: passed
+
+## 对照范围
+
+- 参考页面：`https://ohlao.cfd/monitor`
+- 参考截图：`C:\Users\ADMINI~1\AppData\Local\Temp\codex-clipboard-b420c8b5-a8bc-4558-a5a0-0ce61bc0c48f.png`
+- 生产页面：`https://api-yue88.xyz/model-plaza`
+- 桌面视口：生产浏览器默认桌面视口
+- 移动视口：390 x 844
+- 并排对照：`C:\Users\Administrator\.codex\visualizations\2026\07\31\019fb763-2272-78d3-ba2d-33acd3eb4ac5\model-plaza\comparison.png`
+
+## 视觉与交互结论
+
+- [x] 顶栏和用户侧栏均提供“模型广场”入口，位置与现有导航层级一致。
+- [x] 页面沿用悦享 API 现有浅色后台、品牌蓝、紧凑间距、表格和移动卡片规范，没有照搬第三方品牌视觉。
+- [x] 六个收费模型完整展示输入、输出、缓存写入和缓存读取价格；价格单位明确为 USD / 1M Token。
+- [x] Plus/Pro 分组、Standard/Fast 服务档位、模型搜索和手动刷新均完成真实交互验证。
+- [x] 390px 手机端无横向溢出、文字截断或控件重叠，六个模型卡片和页尾说明均完整可读。
+- [x] 页面价格直接来自 BillingService 当前生效计费规则，并包含用户分组倍率；不暴露上游账号、渠道和供应商成本。
+
+## 差异说明
+
+- OHLAO 参考页主要展示渠道健康状态；本次目标是让用户查看平台收费，因此主体使用更适合价格横向比较的桌面表格和移动卡片。
+- 保留参考页顶栏快捷入口的发现方式，同时遵循悦享 API 已有导航与组件体系。
+
+## 问题分级
+
+- P0：无。
+- P1：无。
+- P2：无。
