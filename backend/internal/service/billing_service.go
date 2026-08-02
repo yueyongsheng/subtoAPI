@@ -110,6 +110,27 @@ type ModelPricing struct {
 	ImageOutputPriceExplicit           bool    // 是否由渠道定价显式设定（为 true 时即使 == 0 也不回退）
 }
 
+// PublishedTokenPrices is a read-only price snapshot for user-facing catalog
+// pages. Values use the same USD-per-token unit as ModelPricing; presentation
+// layers can scale them to USD per million tokens without reimplementing the
+// billing tier rules.
+type PublishedTokenPrices struct {
+	Input      float64
+	Output     float64
+	CacheWrite float64
+	CacheRead  float64
+}
+
+// PublishedModelPricing exposes the two OpenAI service tiers and the active
+// long-context policy without leaking internal pricing-source details.
+type PublishedModelPricing struct {
+	Standard              PublishedTokenPrices
+	Fast                  PublishedTokenPrices
+	LongContextThreshold  int
+	LongContextInputRate  float64
+	LongContextOutputRate float64
+}
+
 const (
 	openAIGPT54LongContextInputThreshold   = 272000
 	openAIGPT54LongContextInputMultiplier  = 2.0
@@ -126,6 +147,67 @@ func usePriorityServiceTierPricing(serviceTier string, pricing *ModelPricing) bo
 	}
 	return pricing.InputPricePerTokenPriority > 0 || pricing.OutputPricePerTokenPriority > 0 ||
 		pricing.CacheCreationPricePerTokenPriority > 0 || pricing.CacheReadPricePerTokenPriority > 0
+}
+
+// GetPublishedModelPricing returns the same unit prices selected by the live
+// token billing path for standard and priority (Fast) requests.
+func (s *BillingService) GetPublishedModelPricing(model string) (*PublishedModelPricing, error) {
+	pricing, err := s.GetModelPricing(model)
+	if err != nil {
+		return nil, err
+	}
+
+	standard := publishedTokenPricesForTier(pricing, "")
+	fast := publishedTokenPricesForTier(pricing, "priority")
+	return &PublishedModelPricing{
+		Standard:              standard,
+		Fast:                  fast,
+		LongContextThreshold:  pricing.LongContextInputThreshold,
+		LongContextInputRate:  pricing.LongContextInputMultiplier,
+		LongContextOutputRate: pricing.LongContextOutputMultiplier,
+	}, nil
+}
+
+func publishedTokenPricesForTier(pricing *ModelPricing, serviceTier string) PublishedTokenPrices {
+	if pricing == nil {
+		return PublishedTokenPrices{}
+	}
+
+	prices := PublishedTokenPrices{
+		Input:      pricing.InputPricePerToken,
+		Output:     pricing.OutputPricePerToken,
+		CacheWrite: pricing.CacheCreationPricePerToken,
+		CacheRead:  pricing.CacheReadPricePerToken,
+	}
+	cacheUsesBreakdown := pricing.SupportsCacheBreakdown && (pricing.CacheCreation5mPrice > 0 || pricing.CacheCreation1hPrice > 0)
+	if cacheUsesBreakdown && pricing.CacheCreation5mPrice > 0 {
+		prices.CacheWrite = pricing.CacheCreation5mPrice
+	}
+
+	if usePriorityServiceTierPricing(serviceTier, pricing) {
+		if pricing.InputPricePerTokenPriority > 0 {
+			prices.Input = pricing.InputPricePerTokenPriority
+		}
+		if pricing.OutputPricePerTokenPriority > 0 {
+			prices.Output = pricing.OutputPricePerTokenPriority
+		}
+		// The live cache breakdown path bills 5m/1h prices directly and does
+		// not replace them with the generic priority cache-creation price.
+		if !cacheUsesBreakdown && pricing.CacheCreationPricePerTokenPriority > 0 {
+			prices.CacheWrite = pricing.CacheCreationPricePerTokenPriority
+		}
+		if pricing.CacheReadPricePerTokenPriority > 0 {
+			prices.CacheRead = pricing.CacheReadPricePerTokenPriority
+		}
+		return prices
+	}
+
+	multiplier := serviceTierCostMultiplier(serviceTier)
+	prices.Input *= multiplier
+	prices.Output *= multiplier
+	prices.CacheWrite *= multiplier
+	prices.CacheRead *= multiplier
+	return prices
 }
 
 func serviceTierCostMultiplier(serviceTier string) float64 {
@@ -734,6 +816,8 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 			return s.fallbackPrices["gpt-5.5-pro"]
 		case "gpt-5.5":
 			return s.fallbackPrices["gpt-5.5"]
+		case "codex-auto-review":
+			return s.fallbackPrices["codex-auto-review"]
 		case "gpt-5.4-mini":
 			return s.fallbackPrices["gpt-5.4-mini"]
 		case "gpt-5.4-nano":

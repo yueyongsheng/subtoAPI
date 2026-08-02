@@ -2,6 +2,7 @@ package handler
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -24,6 +25,7 @@ type AvailableChannelHandler struct {
 	channelService *service.ChannelService
 	apiKeyService  *service.APIKeyService
 	settingService *service.SettingService
+	billingService *service.BillingService
 }
 
 // NewAvailableChannelHandler 创建用户侧可用渠道 handler。
@@ -31,11 +33,13 @@ func NewAvailableChannelHandler(
 	channelService *service.ChannelService,
 	apiKeyService *service.APIKeyService,
 	settingService *service.SettingService,
+	billingService *service.BillingService,
 ) *AvailableChannelHandler {
 	return &AvailableChannelHandler{
 		channelService: channelService,
 		apiKeyService:  apiKeyService,
 		settingService: settingService,
+		billingService: billingService,
 	}
 }
 
@@ -115,6 +119,53 @@ type userAvailableChannel struct {
 	Platforms   []userChannelPlatformSection `json:"platforms"`
 }
 
+type userModelPlazaTier struct {
+	Input      float64 `json:"input"`
+	Output     float64 `json:"output"`
+	CacheWrite float64 `json:"cache_write"`
+	CacheRead  float64 `json:"cache_read"`
+}
+
+type userModelPlazaGroupPrice struct {
+	GroupID  int64              `json:"group_id"`
+	Standard userModelPlazaTier `json:"standard"`
+	Fast     userModelPlazaTier `json:"fast"`
+}
+
+type userModelPlazaModel struct {
+	Name                        string                     `json:"name"`
+	Platform                    string                     `json:"platform"`
+	Prices                      []userModelPlazaGroupPrice `json:"prices"`
+	LongContextThreshold        int                        `json:"long_context_threshold"`
+	LongContextInputMultiplier  float64                    `json:"long_context_input_multiplier"`
+	LongContextOutputMultiplier float64                    `json:"long_context_output_multiplier"`
+}
+
+type userModelPlazaGroup struct {
+	ID                 int64   `json:"id"`
+	Name               string  `json:"name"`
+	Platform           string  `json:"platform"`
+	RateMultiplier     float64 `json:"rate_multiplier"`
+	IsCustomRate       bool    `json:"is_custom_rate"`
+	PeakRateEnabled    bool    `json:"peak_rate_enabled"`
+	PeakStart          string  `json:"peak_start"`
+	PeakEnd            string  `json:"peak_end"`
+	PeakRateMultiplier float64 `json:"peak_rate_multiplier"`
+}
+
+type userModelPlazaResponse struct {
+	Currency string                `json:"currency"`
+	Unit     string                `json:"unit"`
+	Groups   []userModelPlazaGroup `json:"groups"`
+	Models   []userModelPlazaModel `json:"models"`
+}
+
+type modelPlazaCandidate struct {
+	Name     string
+	Platform string
+	GroupIDs map[int64]struct{}
+}
+
 // List 列出当前用户可见的「可用渠道」。
 // GET /api/v1/channels/available
 func (h *AvailableChannelHandler) List(c *gin.Context) {
@@ -168,6 +219,159 @@ func (h *AvailableChannelHandler) List(c *gin.Context) {
 	}
 
 	response.Success(c, out)
+}
+
+// ListModels returns the authenticated user's visible model catalog with final
+// Standard/Fast prices for every accessible group. Prices are computed from the
+// live BillingService snapshot and already include the user's effective group
+// multiplier; upstream account costs and channel internals are never exposed.
+// GET /api/v1/models/catalog
+func (h *AvailableChannelHandler) ListModels(c *gin.Context) {
+	subject, ok := middleware.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	userGroups, err := h.apiKeyService.GetAvailableGroups(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	userRates, err := h.apiKeyService.GetUserGroupRates(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	channels, err := h.channelService.ListAvailable(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	groupByID := make(map[int64]service.Group, len(userGroups))
+	for i := range userGroups {
+		groupByID[userGroups[i].ID] = userGroups[i]
+	}
+
+	candidates := make(map[string]*modelPlazaCandidate)
+	for _, ch := range channels {
+		if ch.Status != service.StatusActive {
+			continue
+		}
+		for _, model := range ch.SupportedModels {
+			key := model.Platform + "\x00" + strings.ToLower(model.Name)
+			candidate, exists := candidates[key]
+			if !exists {
+				candidate = &modelPlazaCandidate{
+					Name:     model.Name,
+					Platform: model.Platform,
+					GroupIDs: make(map[int64]struct{}),
+				}
+				candidates[key] = candidate
+			}
+			for _, groupRef := range ch.Groups {
+				if groupRef.Platform != model.Platform {
+					continue
+				}
+				if _, allowed := groupByID[groupRef.ID]; allowed {
+					candidate.GroupIDs[groupRef.ID] = struct{}{}
+				}
+			}
+		}
+	}
+
+	models := make([]userModelPlazaModel, 0, len(candidates))
+	usedGroupIDs := make(map[int64]struct{})
+	for _, candidate := range candidates {
+		published, pricingErr := h.billingService.GetPublishedModelPricing(candidate.Name)
+		if pricingErr != nil || len(candidate.GroupIDs) == 0 {
+			continue
+		}
+		groupIDs := make([]int64, 0, len(candidate.GroupIDs))
+		for groupID := range candidate.GroupIDs {
+			groupIDs = append(groupIDs, groupID)
+		}
+		sort.Slice(groupIDs, func(i, j int) bool { return groupIDs[i] < groupIDs[j] })
+
+		prices := make([]userModelPlazaGroupPrice, 0, len(groupIDs))
+		for _, groupID := range groupIDs {
+			group := groupByID[groupID]
+			rate := group.RateMultiplier
+			if customRate, exists := userRates[groupID]; exists {
+				rate = customRate
+			}
+			prices = append(prices, userModelPlazaGroupPrice{
+				GroupID:  groupID,
+				Standard: scalePublishedTier(published.Standard, rate),
+				Fast:     scalePublishedTier(published.Fast, rate),
+			})
+			usedGroupIDs[groupID] = struct{}{}
+		}
+
+		models = append(models, userModelPlazaModel{
+			Name:                        candidate.Name,
+			Platform:                    candidate.Platform,
+			Prices:                      prices,
+			LongContextThreshold:        published.LongContextThreshold,
+			LongContextInputMultiplier:  published.LongContextInputRate,
+			LongContextOutputMultiplier: published.LongContextOutputRate,
+		})
+	}
+
+	sort.SliceStable(models, func(i, j int) bool {
+		if models[i].Platform != models[j].Platform {
+			return models[i].Platform < models[j].Platform
+		}
+		return strings.ToLower(models[i].Name) < strings.ToLower(models[j].Name)
+	})
+
+	groups := make([]userModelPlazaGroup, 0, len(usedGroupIDs))
+	for i := range userGroups {
+		group := userGroups[i]
+		if _, used := usedGroupIDs[group.ID]; !used {
+			continue
+		}
+		rate := group.RateMultiplier
+		_, custom := userRates[group.ID]
+		if custom {
+			rate = userRates[group.ID]
+		}
+		groups = append(groups, userModelPlazaGroup{
+			ID:                 group.ID,
+			Name:               group.Name,
+			Platform:           group.Platform,
+			RateMultiplier:     rate,
+			IsCustomRate:       custom,
+			PeakRateEnabled:    group.PeakRateEnabled,
+			PeakStart:          group.PeakStart,
+			PeakEnd:            group.PeakEnd,
+			PeakRateMultiplier: group.PeakRateMultiplier,
+		})
+	}
+	sort.SliceStable(groups, func(i, j int) bool {
+		if groups[i].RateMultiplier != groups[j].RateMultiplier {
+			return groups[i].RateMultiplier < groups[j].RateMultiplier
+		}
+		return strings.ToLower(groups[i].Name) < strings.ToLower(groups[j].Name)
+	})
+
+	response.Success(c, userModelPlazaResponse{
+		Currency: "USD",
+		Unit:     "per_million_tokens",
+		Groups:   groups,
+		Models:   models,
+	})
+}
+
+func scalePublishedTier(prices service.PublishedTokenPrices, rate float64) userModelPlazaTier {
+	const perMillion = 1_000_000
+	return userModelPlazaTier{
+		Input:      prices.Input * rate * perMillion,
+		Output:     prices.Output * rate * perMillion,
+		CacheWrite: prices.CacheWrite * rate * perMillion,
+		CacheRead:  prices.CacheRead * rate * perMillion,
+	}
 }
 
 // buildPlatformSections 把一个渠道按 visibleGroups 的平台集合拆成有序的 section 列表：

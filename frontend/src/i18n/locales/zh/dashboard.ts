@@ -475,6 +475,35 @@ export default {
     }
   },
 
+  modelPlaza: {
+    title: '模型广场',
+    description: '查看当前可用模型与账户实际扣费标准',
+    searchPlaceholder: '搜索模型...',
+    groupLabel: '计费分组',
+    serviceTierLabel: '服务档位',
+    modelCount: '{count} 个模型',
+    priceUnit: '{currency} / 1M Token',
+    customRate: '已应用你的专属倍率',
+    peakRate: '高峰 {start}-{end} · {rate}',
+    retry: '重新加载',
+    loadError: '模型价格加载失败',
+    emptyTitle: '未找到可用模型',
+    emptyDescription: '请调整搜索条件，或联系管理员确认分组配置。',
+    tiers: {
+      standard: 'Standard',
+      fast: 'Fast'
+    },
+    columns: {
+      model: '模型',
+      input: '输入',
+      output: '输出',
+      cacheWrite: '缓存写入',
+      cacheRead: '缓存读取',
+      context: '长上下文'
+    },
+    longContextRule: '单次输入上下文超过 {threshold} 时，输入与缓存按 {inputRate}、输出按 {outputRate} 计费。'
+  },
+
   // Available Channels (user-facing)
   availableChannels: {
     title: '可用渠道',

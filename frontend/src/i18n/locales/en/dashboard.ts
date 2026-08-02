@@ -470,6 +470,35 @@ export default {
     }
   },
 
+  modelPlaza: {
+    title: 'Model Plaza',
+    description: 'Browse available models and the prices charged to your account',
+    searchPlaceholder: 'Search models...',
+    groupLabel: 'Billing group',
+    serviceTierLabel: 'Service tier',
+    modelCount: '{count} models',
+    priceUnit: '{currency} / 1M tokens',
+    customRate: 'Your custom rate is applied',
+    peakRate: 'Peak {start}-{end} · {rate}',
+    retry: 'Retry',
+    loadError: 'Failed to load model pricing',
+    emptyTitle: 'No models found',
+    emptyDescription: 'Adjust the search or contact support to confirm your group access.',
+    tiers: {
+      standard: 'Standard',
+      fast: 'Fast'
+    },
+    columns: {
+      model: 'Model',
+      input: 'Input',
+      output: 'Output',
+      cacheWrite: 'Cache write',
+      cacheRead: 'Cache read',
+      context: 'Long context'
+    },
+    longContextRule: 'When input context exceeds {threshold}, input and cache are billed at {inputRate}; output is billed at {outputRate}.'
+  },
+
   // Available Channels (user-facing)
   availableChannels: {
     title: 'Available Channels',

@@ -49,6 +49,12 @@ describe('AppSidebar commerce navigation', () => {
   })
 })
 
+describe('AppSidebar model plaza navigation', () => {
+  it('keeps the user price catalog visible in every interface mode', () => {
+    expect(componentSource).toContain("{ path: '/model-plaza', label: t('nav.modelPlaza'), icon: PriceTagIcon }")
+  })
+})
+
 describe('AppSidebar header styles', () => {
   it('does not clip the version badge dropdown', () => {
     const sidebarHeaderBlockMatch = styleSource.match(/\.sidebar-header\s*\{[\s\S]*?\n {2}\}/)
