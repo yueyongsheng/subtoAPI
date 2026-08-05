@@ -238,32 +238,51 @@ func TestCalculateCreditedBalanceStillUsesRechargeMultiplier(t *testing.T) {
 	}
 }
 
-func TestCalculateCreditedBalanceDoesNotOverrideRechargeMultiplierForFormerPackages(t *testing.T) {
+func TestCalculateCreditedBalanceUsesPromotionalPackages(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		payAmount      float64
 		creditedAmount float64
 	}{
-		{payAmount: 38, creditedAmount: 38},
-		{payAmount: 72, creditedAmount: 72},
-		{payAmount: 105, creditedAmount: 105},
-		{payAmount: 170, creditedAmount: 170},
+		{payAmount: 38, creditedAmount: 1000},
+		{payAmount: 72, creditedAmount: 2000},
+		{payAmount: 105, creditedAmount: 3000},
+		{payAmount: 170, creditedAmount: 5000},
 	}
 	for _, tt := range tests {
-		got := calculateCreditedBalance(tt.payAmount, 1)
+		got := calculateCreditedBalance(tt.payAmount, 25)
 		if got != tt.creditedAmount {
 			t.Fatalf("calculateCreditedBalance(%v) = %v, want %v", tt.payAmount, got, tt.creditedAmount)
 		}
 	}
 }
 
-func TestPromotionalRechargePackagesAreDisabled(t *testing.T) {
+func TestCalculateCreditedBalanceRequiresExactPackageAmount(t *testing.T) {
+	t.Parallel()
+
+	if got := calculateCreditedBalance(38.001, 25); got != 950.03 {
+		t.Fatalf("near-package credited balance = %v, want 950.03", got)
+	}
+}
+
+func TestPromotionalRechargePackagesAreReturnedInDisplayOrder(t *testing.T) {
 	t.Parallel()
 
 	packages := PromotionalRechargePackages()
-	if len(packages) != 0 {
-		t.Fatalf("package count = %d, want 0", len(packages))
+	if len(packages) != 4 {
+		t.Fatalf("package count = %d, want 4", len(packages))
+	}
+	want := []RechargePackage{
+		{PayAmount: 38, CreditedAmount: 1000},
+		{PayAmount: 72, CreditedAmount: 2000, Badge: "recommended"},
+		{PayAmount: 105, CreditedAmount: 3000},
+		{PayAmount: 170, CreditedAmount: 5000, Badge: "best_value"},
+	}
+	for i := range want {
+		if packages[i] != want[i] {
+			t.Fatalf("package %d = %+v, want %+v", i, packages[i], want[i])
+		}
 	}
 }
 

@@ -25,25 +25,31 @@ var (
 	openAIModelDatePattern     = regexp.MustCompile(`-\d{8}$`)
 	openAIModelBasePattern     = regexp.MustCompile(`^(gpt-\d+(?:\.\d+)?)(?:-|$)`)
 	openAIGPT54FallbackPricing = &LiteLLMModelPricing{
-		InputCostPerToken:               2.5e-06, // $2.5 per MTok
-		OutputCostPerToken:              1.5e-05, // $15 per MTok
-		CacheReadInputTokenCost:         2.5e-07, // $0.25 per MTok
-		LongContextInputTokenThreshold:  272000,
-		LongContextInputCostMultiplier:  2.0,
-		LongContextOutputCostMultiplier: 1.5,
-		LiteLLMProvider:                 "openai",
-		Mode:                            "chat",
-		SupportsPromptCaching:           true,
+		InputCostPerToken:                   8.75e-06, // $8.75 per MTok
+		InputCostPerTokenPriority:           17.5e-06,
+		OutputCostPerToken:                  52.5e-06, // $52.5 per MTok
+		OutputCostPerTokenPriority:          105e-06,
+		CacheCreationInputTokenCost:         8.75e-06,
+		CacheCreationInputTokenCostPriority: 17.5e-06,
+		CacheReadInputTokenCost:             0.875e-06, // $0.875 per MTok
+		CacheReadInputTokenCostPriority:     1.75e-06,
+		LongContextInputTokenThreshold:      272000,
+		LongContextInputCostMultiplier:      2.0,
+		LongContextOutputCostMultiplier:     1.5,
+		SupportsServiceTier:                 true,
+		LiteLLMProvider:                     "openai",
+		Mode:                                "chat",
+		SupportsPromptCaching:               true,
 	}
 	openAIGPT56SolFallbackPricing = &LiteLLMModelPricing{
-		InputCostPerToken:                   5e-06,
-		InputCostPerTokenPriority:           1e-05,
-		OutputCostPerToken:                  3e-05,
-		OutputCostPerTokenPriority:          6e-05,
-		CacheCreationInputTokenCost:         6.25e-06,
-		CacheCreationInputTokenCostPriority: 1.25e-05,
-		CacheReadInputTokenCost:             5e-07,
-		CacheReadInputTokenCostPriority:     1e-06,
+		InputCostPerToken:                   17.5e-06,
+		InputCostPerTokenPriority:           35e-06,
+		OutputCostPerToken:                  105e-06,
+		OutputCostPerTokenPriority:          210e-06,
+		CacheCreationInputTokenCost:         21.875e-06,
+		CacheCreationInputTokenCostPriority: 43.75e-06,
+		CacheReadInputTokenCost:             1.75e-06,
+		CacheReadInputTokenCostPriority:     3.5e-06,
 		LongContextInputTokenThreshold:      openAIGPT54LongContextInputThreshold,
 		LongContextInputCostMultiplier:      openAIGPT54LongContextInputMultiplier,
 		LongContextOutputCostMultiplier:     openAIGPT54LongContextOutputMultiplier,
@@ -53,14 +59,14 @@ var (
 		SupportsPromptCaching:               true,
 	}
 	openAIGPT56TerraFallbackPricing = &LiteLLMModelPricing{
-		InputCostPerToken:                   2e-06,
-		InputCostPerTokenPriority:           4e-06,
-		OutputCostPerToken:                  1.2e-05,
-		OutputCostPerTokenPriority:          2.4e-05,
-		CacheCreationInputTokenCost:         2.5e-06,
-		CacheCreationInputTokenCostPriority: 5e-06,
-		CacheReadInputTokenCost:             2e-07,
-		CacheReadInputTokenCostPriority:     4e-07,
+		InputCostPerToken:                   7e-06,
+		InputCostPerTokenPriority:           14e-06,
+		OutputCostPerToken:                  42e-06,
+		OutputCostPerTokenPriority:          84e-06,
+		CacheCreationInputTokenCost:         8.75e-06,
+		CacheCreationInputTokenCostPriority: 17.5e-06,
+		CacheReadInputTokenCost:             0.7e-06,
+		CacheReadInputTokenCostPriority:     1.4e-06,
 		LongContextInputTokenThreshold:      openAIGPT54LongContextInputThreshold,
 		LongContextInputCostMultiplier:      openAIGPT54LongContextInputMultiplier,
 		LongContextOutputCostMultiplier:     openAIGPT54LongContextOutputMultiplier,
@@ -70,14 +76,14 @@ var (
 		SupportsPromptCaching:               true,
 	}
 	openAIGPT56LunaFallbackPricing = &LiteLLMModelPricing{
-		InputCostPerToken:                   2e-07,
-		InputCostPerTokenPriority:           4e-07,
-		OutputCostPerToken:                  1.2e-06,
-		OutputCostPerTokenPriority:          2.4e-06,
-		CacheCreationInputTokenCost:         2.5e-07,
-		CacheCreationInputTokenCostPriority: 5e-07,
-		CacheReadInputTokenCost:             2e-08,
-		CacheReadInputTokenCostPriority:     4e-08,
+		InputCostPerToken:                   0.7e-06,
+		InputCostPerTokenPriority:           1.4e-06,
+		OutputCostPerToken:                  4.2e-06,
+		OutputCostPerTokenPriority:          8.4e-06,
+		CacheCreationInputTokenCost:         0.875e-06,
+		CacheCreationInputTokenCostPriority: 1.75e-06,
+		CacheReadInputTokenCost:             0.07e-06,
+		CacheReadInputTokenCostPriority:     0.14e-06,
 		LongContextInputTokenThreshold:      openAIGPT54LongContextInputThreshold,
 		LongContextInputCostMultiplier:      openAIGPT54LongContextInputMultiplier,
 		LongContextOutputCostMultiplier:     openAIGPT54LongContextOutputMultiplier,
@@ -501,7 +507,49 @@ func (s *PricingService) parsePricingData(body []byte) (map[string]*LiteLLMModel
 		return nil, fmt.Errorf("no valid pricing entries found")
 	}
 
-	return result, nil
+	return applyPlatformPricingOverrides(result), nil
+}
+
+// applyPlatformPricingOverrides is the authoritative business price layer for
+// the six paid OpenAI models. It runs after every local or remote parse so a
+// periodic LiteLLM refresh cannot silently restore upstream prices.
+func applyPlatformPricingOverrides(data map[string]*LiteLLMModelPricing) map[string]*LiteLLMModelPricing {
+	if data == nil {
+		data = make(map[string]*LiteLLMModelPricing)
+	}
+	overrides := map[string]LiteLLMModelPricing{
+		"gpt-5.6-sol":       newPlatformOpenAIPricing(17.5e-06, 105e-06, 21.875e-06, 1.75e-06),
+		"gpt-5.5":           newPlatformOpenAIPricing(17.5e-06, 105e-06, 21.875e-06, 1.75e-06),
+		"codex-auto-review": newPlatformOpenAIPricing(17.5e-06, 105e-06, 21.875e-06, 1.75e-06),
+		"gpt-5.6-terra":     newPlatformOpenAIPricing(7e-06, 42e-06, 8.75e-06, 0.7e-06),
+		"gpt-5.4":           newPlatformOpenAIPricing(8.75e-06, 52.5e-06, 8.75e-06, 0.875e-06),
+		"gpt-5.6-luna":      newPlatformOpenAIPricing(0.7e-06, 4.2e-06, 0.875e-06, 0.07e-06),
+	}
+	for model, override := range overrides {
+		pricing := override
+		data[model] = &pricing
+	}
+	return data
+}
+
+func newPlatformOpenAIPricing(input, output, cacheWrite, cacheRead float64) LiteLLMModelPricing {
+	return LiteLLMModelPricing{
+		InputCostPerToken:                   input,
+		InputCostPerTokenPriority:           input * 2,
+		OutputCostPerToken:                  output,
+		OutputCostPerTokenPriority:          output * 2,
+		CacheCreationInputTokenCost:         cacheWrite,
+		CacheCreationInputTokenCostPriority: cacheWrite * 2,
+		CacheReadInputTokenCost:             cacheRead,
+		CacheReadInputTokenCostPriority:     cacheRead * 2,
+		LongContextInputTokenThreshold:      openAIGPT54LongContextInputThreshold,
+		LongContextInputCostMultiplier:      openAIGPT54LongContextInputMultiplier,
+		LongContextOutputCostMultiplier:     openAIGPT54LongContextOutputMultiplier,
+		SupportsServiceTier:                 true,
+		LiteLLMProvider:                     "openai",
+		Mode:                                "chat",
+		SupportsPromptCaching:               true,
+	}
 }
 
 // loadPricingData 从本地文件加载价格数据

@@ -111,6 +111,41 @@ func TestCreateOrderInTx_WritesProviderSnapshot(t *testing.T) {
 	require.NotContains(t, order.ProviderSnapshot, "instance_name")
 }
 
+func TestCreateOrderInTx_PersistsPackagePaymentAndCreditSnapshots(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	user, err := client.User.Create().
+		SetEmail("package-snapshot@example.com").
+		SetPasswordHash("hash").
+		SetUsername("package-snapshot-user").
+		Save(ctx)
+	require.NoError(t, err)
+
+	creditedAmount := calculateCreditedBalance(38, 25)
+	svc := &PaymentService{entClient: client}
+	order, err := svc.createOrderInTx(
+		ctx,
+		CreateOrderRequest{
+			UserID:      user.ID,
+			PaymentType: payment.TypeWxpay,
+			OrderType:   payment.OrderTypeBalance,
+			ClientIP:    "127.0.0.1",
+			SrcHost:     "app.example.com",
+		},
+		&User{ID: user.ID, Email: user.Email, Username: user.Username},
+		nil,
+		&PaymentConfig{MaxPendingOrders: 3, OrderTimeoutMin: 30},
+		creditedAmount,
+		38,
+		0,
+		38,
+		nil,
+	)
+	require.NoError(t, err)
+	require.InDelta(t, 1000, order.Amount, 1e-12)
+	require.InDelta(t, 38, order.PayAmount, 1e-12)
+}
+
 func TestBuildPaymentOrderProviderSnapshot_UsesWxpayJSAPIAppIDForOpenIDOrders(t *testing.T) {
 	t.Parallel()
 

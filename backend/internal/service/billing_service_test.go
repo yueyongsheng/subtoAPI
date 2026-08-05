@@ -195,9 +195,9 @@ func TestGetModelPricing_OpenAIGPT54Fallback(t *testing.T) {
 	pricing, err := svc.GetModelPricing("gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, pricing)
-	require.InDelta(t, 2.5e-6, pricing.InputPricePerToken, 1e-12)
-	require.InDelta(t, 15e-6, pricing.OutputPricePerToken, 1e-12)
-	require.InDelta(t, 0.25e-6, pricing.CacheReadPricePerToken, 1e-12)
+	require.InDelta(t, 8.75e-6, pricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 52.5e-6, pricing.OutputPricePerToken, 1e-12)
+	require.InDelta(t, 0.875e-6, pricing.CacheReadPricePerToken, 1e-12)
 	require.Equal(t, 272000, pricing.LongContextInputThreshold)
 	require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
 	require.InDelta(t, 1.5, pricing.LongContextOutputMultiplier, 1e-12)
@@ -213,8 +213,8 @@ func TestGetModelPricing_OpenAICompactAliasesFallback(t *testing.T) {
 		cacheRead   float64
 		longContext int
 	}{
-		{model: "gpt5.5", inputPrice: 5e-6, outputPrice: 30e-6, cacheRead: 0.5e-6, longContext: 272000},
-		{model: "openai/gpt5.4", inputPrice: 2.5e-6, outputPrice: 15e-6, cacheRead: 0.25e-6, longContext: 272000},
+		{model: "gpt5.5", inputPrice: 17.5e-6, outputPrice: 105e-6, cacheRead: 1.75e-6, longContext: 272000},
+		{model: "openai/gpt5.4", inputPrice: 8.75e-6, outputPrice: 52.5e-6, cacheRead: 0.875e-6, longContext: 272000},
 		{model: "gpt5.4-mini", inputPrice: 7.5e-7, outputPrice: 4.5e-6, cacheRead: 7.5e-8, longContext: 0},
 		{model: "gpt5.3codexspark", inputPrice: 1.5e-6, outputPrice: 12e-6, cacheRead: 0.15e-6, longContext: 0},
 	}
@@ -255,8 +255,8 @@ func TestCalculateCost_OpenAIGPT54LongContextAppliesWholeSessionMultipliers(t *t
 	cost, err := svc.CalculateCost("gpt-5.4-2026-03-05", tokens, 1.0)
 	require.NoError(t, err)
 
-	expectedInput := float64(tokens.InputTokens) * 2.5e-6 * 2.0
-	expectedOutput := float64(tokens.OutputTokens) * 15e-6 * 1.5
+	expectedInput := float64(tokens.InputTokens) * 8.75e-6 * 2.0
+	expectedOutput := float64(tokens.OutputTokens) * 52.5e-6 * 1.5
 	require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
 	require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
 	require.InDelta(t, expectedInput+expectedOutput, cost.TotalCost, 1e-10)
@@ -291,8 +291,8 @@ func TestCalculateCost_OpenAIGPT55ProUsesGPT55PricingPolicy(t *testing.T) {
 	cost, err := svc.CalculateCost("gpt-5.5-pro", tokens, 1.0)
 	require.NoError(t, err)
 
-	expectedInput := float64(tokens.InputTokens) * 5e-6 * 2.0
-	expectedOutput := float64(tokens.OutputTokens) * 30e-6 * 1.5
+	expectedInput := float64(tokens.InputTokens) * 17.5e-6 * 2.0
+	expectedOutput := float64(tokens.OutputTokens) * 105e-6 * 1.5
 	require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
 	require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
 	require.InDelta(t, expectedInput+expectedOutput, cost.TotalCost, 1e-10)
@@ -300,8 +300,6 @@ func TestCalculateCost_OpenAIGPT55ProUsesGPT55PricingPolicy(t *testing.T) {
 }
 
 // 回归测试 #2293：长上下文计费触发时，cache_read_tokens 也应应用 LongContextInputMultiplier。
-// 修复前：CacheReadCost = tokens * 0.25e-6 （漏乘倍率，少计费用）。
-// 修复后：CacheReadCost = tokens * 0.25e-6 * LongContextInputMultiplier(=2.0)。
 func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheRead(t *testing.T) {
 	svc := newTestBillingService()
 
@@ -315,9 +313,9 @@ func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheRead(t *tes
 	cost, err := svc.CalculateCost("gpt-5.4-2026-03-05", tokens, 1.0)
 	require.NoError(t, err)
 
-	expectedInput := float64(tokens.InputTokens) * 2.5e-6 * 2.0
-	expectedOutput := float64(tokens.OutputTokens) * 15e-6 * 1.5
-	expectedCacheRead := float64(tokens.CacheReadTokens) * 0.25e-6 * 2.0
+	expectedInput := float64(tokens.InputTokens) * 8.75e-6 * 2.0
+	expectedOutput := float64(tokens.OutputTokens) * 52.5e-6 * 1.5
+	expectedCacheRead := float64(tokens.CacheReadTokens) * 0.875e-6 * 2.0
 
 	require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
 	require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
@@ -343,7 +341,7 @@ func TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheReadAtBasePrice(t *test
 	cost, err := svc.CalculateCost("gpt-5.4-2026-03-05", tokens, 1.0)
 	require.NoError(t, err)
 
-	expectedCacheRead := float64(tokens.CacheReadTokens) * 0.25e-6
+	expectedCacheRead := float64(tokens.CacheReadTokens) * 0.875e-6
 	require.InDelta(t, expectedCacheRead, cost.CacheReadCost, 1e-10,
 		"cache_read_cost should remain at base price when below long-context threshold")
 }
@@ -366,8 +364,8 @@ func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheCreation(t 
 	cost, err := svc.CalculateCost("gpt-5.4-2026-03-05", tokens, 1.0)
 	require.NoError(t, err)
 
-	// gpt-5.4 fallback: CacheCreationPricePerToken = 2.5e-6, LongContextInputMultiplier = 2.0
-	expectedCacheCreation := float64(tokens.CacheCreationTokens) * 2.5e-6 * 2.0
+	// gpt-5.4 fallback: CacheCreationPricePerToken = 8.75e-6, LongContextInputMultiplier = 2.0
+	expectedCacheCreation := float64(tokens.CacheCreationTokens) * 8.75e-6 * 2.0
 	require.InDelta(t, expectedCacheCreation, cost.CacheCreationCost, 1e-10,
 		"cache_creation_cost should be scaled by LongContextInputMultiplier when long-context pricing applies")
 }
@@ -387,7 +385,7 @@ func TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheCreationAtBasePrice(t *
 	cost, err := svc.CalculateCost("gpt-5.4-2026-03-05", tokens, 1.0)
 	require.NoError(t, err)
 
-	expectedCacheCreation := float64(tokens.CacheCreationTokens) * 2.5e-6
+	expectedCacheCreation := float64(tokens.CacheCreationTokens) * 8.75e-6
 	require.InDelta(t, expectedCacheCreation, cost.CacheCreationCost, 1e-10,
 		"cache_creation_cost should remain at base price when below long-context threshold")
 }
@@ -451,11 +449,11 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 		{name: "claude generic model fallback sonnet", model: "claude-foo-bar", expectedInput: 3e-6},
 		{name: "gemini explicit fallback", model: "gemini-3-1-pro", expectedInput: 2e-6},
 		{name: "gemini unknown no fallback", model: "gemini-2.0-pro", expectNilPricing: true},
-		{name: "openai gpt5.4", model: "gpt-5.4", expectedInput: 2.5e-6},
+		{name: "openai gpt5.4", model: "gpt-5.4", expectedInput: 8.75e-6},
 		{name: "openai gpt5.4 mini", model: "gpt-5.4-mini", expectedInput: 7.5e-7},
 		{name: "openai gpt5.3 codex", model: "gpt-5.3-codex", expectedInput: 1.5e-6},
 		{name: "openai gpt5.3 codex spark", model: "gpt-5.3-codex-spark", expectedInput: 1.5e-6},
-		{name: "openai legacy gpt5.1 falls back to gpt5.4", model: "gpt-5.1", expectedInput: 2.5e-6},
+		{name: "openai legacy gpt5.1 falls back to gpt5.4", model: "gpt-5.1", expectedInput: 8.75e-6},
 		{name: "openai legacy gpt5.1 codex falls back to gpt5.3 codex", model: "gpt-5.1-codex", expectedInput: 1.5e-6},
 		{name: "openai legacy codex mini latest falls back to gpt5.3 codex", model: "codex-mini-latest", expectedInput: 1.5e-6},
 		{name: "openai unknown no fallback", model: "gpt-unknown-model", expectNilPricing: true},

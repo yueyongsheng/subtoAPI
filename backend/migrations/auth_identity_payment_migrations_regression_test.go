@@ -99,6 +99,38 @@ func TestMigration180ConvertsLegacyRechargeBalancesAndPricingExactlyOnce(t *test
 	require.NotContains(t, sql, "promo_code_usages")
 }
 
+func TestMigration182ConvertsLiveBalancesToGJXUnitsExactlyOnce(t *testing.T) {
+	content, err := FS.ReadFile("182_convert_balances_to_gjx_twenty_five.sql")
+	require.NoError(t, err)
+
+	sql := string(content)
+	require.Contains(t, sql, "1to25_balance_cutover_v1")
+	require.Contains(t, sql, "current recharge multiplier to be 1")
+	require.Contains(t, sql, "balance * 25")
+	require.Contains(t, sql, "frozen_balance * 25")
+	require.Contains(t, sql, "total_recharged * 25")
+	require.Contains(t, sql, "balance_notify_threshold * 25")
+	require.Contains(t, sql, "aff_quota * 25")
+	require.Contains(t, sql, "aff_frozen_quota * 25")
+	require.Contains(t, sql, "aff_history_quota * 25")
+	require.Contains(t, sql, "frozen_until IS NOT NULL")
+	require.Contains(t, sql, "type = 'balance'")
+	require.Contains(t, sql, "status = 'unused'")
+	require.Contains(t, sql, "bonus_amount * 25")
+	require.Contains(t, sql, "status IN ('PENDING', 'PAID', 'RECHARGING', 'REFUND_REQUESTED', 'REFUNDING', 'REFUND_PENDING')")
+	require.Contains(t, sql, "('default_balance', '5.00000000'")
+	require.Contains(t, sql, "('auth_source_default_email_balance', '5.00000000'")
+	require.Contains(t, sql, "('auth_source_default_dingtalk_balance', '5.00000000'")
+	require.Contains(t, sql, "('BALANCE_RECHARGE_MULTIPLIER', '25.00000000'")
+	require.Contains(t, sql, "rate_multiplier = 1.0000")
+	require.Contains(t, sql, "rate_multiplier = 1.8800")
+	require.Contains(t, sql, "restrict_models = TRUE")
+	require.NotContains(t, sql, "UPDATE accounts")
+	require.NotContains(t, sql, "UPDATE usage_logs")
+	require.NotContains(t, sql, "UPDATE payment_orders")
+	require.NotContains(t, sql, "promo_code_usages")
+}
+
 func TestAuthIdentityReportTypeWideningRunsBeforeLongReportWritersAndStillReconcilesAt121(t *testing.T) {
 	preflightContent, err := FS.ReadFile("108a_widen_auth_identity_migration_report_type.sql")
 	require.NoError(t, err)

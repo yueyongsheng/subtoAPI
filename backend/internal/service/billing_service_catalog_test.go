@@ -21,12 +21,12 @@ func TestGetPublishedModelPricing_OpenAITiersMatchLiveBilling(t *testing.T) {
 		fastOutput    float64
 		fastCacheRead float64
 	}{
-		{"gpt-5.6-sol", 5e-6, 30e-6, 6.25e-6, 0.5e-6, 10e-6, 60e-6, 1e-6},
-		{"gpt-5.6-terra", 2e-6, 12e-6, 2.5e-6, 0.2e-6, 4e-6, 24e-6, 0.4e-6},
-		{"gpt-5.6-luna", 0.2e-6, 1.2e-6, 0.25e-6, 0.02e-6, 0.4e-6, 2.4e-6, 0.04e-6},
-		{"gpt-5.5", 5e-6, 30e-6, 6.25e-6, 0.5e-6, 10e-6, 60e-6, 1e-6},
-		{"codex-auto-review", 5e-6, 30e-6, 6.25e-6, 0.5e-6, 10e-6, 60e-6, 1e-6},
-		{"gpt-5.4", 2.5e-6, 15e-6, 2.5e-6, 0.25e-6, 5e-6, 30e-6, 0.5e-6},
+		{"gpt-5.6-sol", 17.5e-6, 105e-6, 21.875e-6, 1.75e-6, 35e-6, 210e-6, 3.5e-6},
+		{"gpt-5.6-terra", 7e-6, 42e-6, 8.75e-6, 0.7e-6, 14e-6, 84e-6, 1.4e-6},
+		{"gpt-5.6-luna", 0.7e-6, 4.2e-6, 0.875e-6, 0.07e-6, 1.4e-6, 8.4e-6, 0.14e-6},
+		{"gpt-5.5", 17.5e-6, 105e-6, 21.875e-6, 1.75e-6, 35e-6, 210e-6, 3.5e-6},
+		{"codex-auto-review", 17.5e-6, 105e-6, 21.875e-6, 1.75e-6, 35e-6, 210e-6, 3.5e-6},
+		{"gpt-5.4", 8.75e-6, 52.5e-6, 8.75e-6, 0.875e-6, 17.5e-6, 105e-6, 1.75e-6},
 	}
 
 	for _, tt := range tests {

@@ -18,6 +18,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAffiliateRebateBaseAmountUsesActualCreditedBalance(t *testing.T) {
+	order := &dbent.PaymentOrder{
+		OrderType: payment.OrderTypeBalance,
+		Amount:    1000,
+		PayAmount: 38,
+	}
+	require.InDelta(t, 1000, affiliateRebateBaseAmount(order), 1e-12)
+	require.InDelta(t, 50, affiliateRebateBaseAmount(order)*0.05, 1e-12)
+}
+
 type paymentFulfillmentTestProvider struct {
 	key            string
 	supportedTypes []payment.PaymentType

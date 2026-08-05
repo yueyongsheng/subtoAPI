@@ -112,7 +112,7 @@ function checkoutInfoFixture(overrides: Partial<CheckoutInfoResponse> = {}) {
       { pay_amount: 170, credited_amount: 5000, badge: 'best_value' },
     ],
     balance_disabled: false,
-    balance_recharge_multiplier: 1,
+    balance_recharge_multiplier: 25,
     subscription_usd_to_cny_rate: 0,
     recharge_fee_rate: 0,
     help_text: '',

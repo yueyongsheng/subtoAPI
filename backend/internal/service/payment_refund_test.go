@@ -193,6 +193,11 @@ func TestCalculateGatewayRefundAmountUsesCurrencyPrecision(t *testing.T) {
 	require.InDelta(t, 52, calculateGatewayRefundAmount(100, 103, 50, "JPY"), 1e-12)
 }
 
+func TestCalculateGatewayRefundAmountPreservesPromotionalPackageRatio(t *testing.T) {
+	require.InDelta(t, 9.50, calculateGatewayRefundAmount(1000, 38, 250, "CNY"), 1e-12)
+	require.InDelta(t, 38.00, calculateGatewayRefundAmount(1000, 38, 1000, "CNY"), 1e-12)
+}
+
 func TestFormatGatewayRefundAmountUsesOrderCurrency(t *testing.T) {
 	order := &dbent.PaymentOrder{
 		ProviderSnapshot: map[string]any{

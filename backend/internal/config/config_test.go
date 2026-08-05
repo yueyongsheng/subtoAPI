@@ -103,7 +103,7 @@ func TestLoadDefaultSignupBalanceIsPointOneUSD(t *testing.T) {
 
 	cfg, err := Load()
 	require.NoError(t, err)
-	require.InDelta(t, 0.1, cfg.Default.UserBalance, 1e-12)
+	require.InDelta(t, 5.0, cfg.Default.UserBalance, 1e-12)
 }
 
 func TestLoadDefaultOpenAIFirstOutputTimeoutsDisabled(t *testing.T) {
