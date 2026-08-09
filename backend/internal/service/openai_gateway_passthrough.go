@@ -461,6 +461,11 @@ func shouldFailoverOpenAIPassthroughResponse(account *Account, statusCode int, r
 	if isOpenAIContextWindowError("", responseBody) {
 		return false
 	}
+	// ChatGPT OAuth 透传会把模型容量不足返回为 400；统一复用瞬时处理错误
+	// 识别器，避免把可换号的容量/过载响应直接暴露给客户端。
+	if isOpenAITransientProcessingError(statusCode, "", responseBody) {
+		return true
+	}
 	switch statusCode {
 	case http.StatusTooManyRequests, 529:
 		return true
@@ -593,7 +598,7 @@ func (s *OpenAIGatewayService) handleFailoverErrorResponsePassthrough(
 		StatusCode:             resp.StatusCode,
 		ResponseBody:           body,
 		ResponseHeaders:        resp.Header.Clone(),
-		RetryableOnSameAccount: account.IsPoolMode() && account.IsPoolModeRetryableStatus(resp.StatusCode),
+		RetryableOnSameAccount: account.IsPoolMode() && (account.IsPoolModeRetryableStatus(resp.StatusCode) || isOpenAITransientProcessingError(resp.StatusCode, upstreamMsg, body)),
 	}
 }
 

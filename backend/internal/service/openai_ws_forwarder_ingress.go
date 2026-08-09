@@ -820,6 +820,15 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			if eventType == "error" {
 				errCodeRaw, errTypeRaw, errMsgRaw := parseOpenAIWSErrorEventFields(upstreamMessage)
 				s.persistOpenAIWSRateLimitSignal(ctx, account, lease.HandshakeHeaders(), upstreamMessage, errCodeRaw, errTypeRaw, errMsgRaw)
+				if !wroteDownstream && isOpenAIWSModelCapacityError(upstreamMessage) {
+					lease.MarkBroken()
+					return nil, &UpstreamFailoverError{
+						StatusCode:             http.StatusBadRequest,
+						ResponseBody:           append([]byte(nil), upstreamMessage...),
+						ResponseHeaders:        cloneHeader(lease.HandshakeHeaders()),
+						RetryableOnSameAccount: account.IsPoolMode(),
+					}
+				}
 				fallbackReason, _ := classifyOpenAIWSErrorEventFromRaw(errCodeRaw, errTypeRaw, errMsgRaw)
 				errCode, errType, errMessage := summarizeOpenAIWSErrorEventFieldsFromRaw(errCodeRaw, errTypeRaw, errMsgRaw)
 				recoverablePrevNotFound := fallbackReason == openAIWSIngressStagePreviousResponseNotFound &&
@@ -904,6 +913,15 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			imageCounter.AddSSEData(upstreamMessage)
 
 			if eventType == "response.failed" {
+				if !wroteDownstream && isOpenAIWSModelCapacityError(upstreamMessage) {
+					lease.MarkBroken()
+					return nil, &UpstreamFailoverError{
+						StatusCode:             http.StatusBadRequest,
+						ResponseBody:           append([]byte(nil), upstreamMessage...),
+						ResponseHeaders:        cloneHeader(lease.HandshakeHeaders()),
+						RetryableOnSameAccount: account.IsPoolMode(),
+					}
+				}
 				if hit, code, msg := detectOpenAICyberPolicy(upstreamMessage); hit {
 					MarkOpsCyberPolicy(c, CyberPolicyMark{
 						Code:           code,

@@ -504,6 +504,15 @@ func isOpenAIWSRateLimitError(codeRaw, errTypeRaw, msgRaw string) bool {
 	return false
 }
 
+func isOpenAIWSModelCapacityError(payload []byte) bool {
+	if len(payload) == 0 {
+		return false
+	}
+	codeRaw, errTypeRaw, msgRaw := parseOpenAIWSErrorEventFields(payload)
+	return isOpenAITransientProcessingError(http.StatusBadRequest, msgRaw, payload) &&
+		!isOpenAIWSRateLimitError(codeRaw, errTypeRaw, msgRaw)
+}
+
 func (s *OpenAIGatewayService) persistOpenAIWSRateLimitSignal(ctx context.Context, account *Account, headers http.Header, responseBody []byte, codeRaw, errTypeRaw, msgRaw string) {
 	if s == nil || s.rateLimitService == nil || account == nil || account.Platform != PlatformOpenAI {
 		return

@@ -600,10 +600,27 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 				if msgType != coderws.MessageText || wroteDownstream {
 					return nil
 				}
-				if eventType, _, _ := parseOpenAIWSEventEnvelope(payload); eventType != "error" {
+				eventType, _, _ := parseOpenAIWSEventEnvelope(payload)
+				if eventType != "error" && eventType != "response.failed" {
 					return nil
 				}
 				errCodeRaw, errTypeRaw, errMsgRaw := parseOpenAIWSErrorEventFields(payload)
+				if isOpenAIWSModelCapacityError(payload) {
+					logOpenAIWSV2Passthrough(
+						"relay_capacity_failover account_id=%d event_type=%s err_code=%s err_type=%s err_message=%s",
+						account.ID,
+						truncateOpenAIWSLogValue(eventType, openAIWSLogValueMaxLen),
+						truncateOpenAIWSLogValue(errCodeRaw, openAIWSLogValueMaxLen),
+						truncateOpenAIWSLogValue(errTypeRaw, openAIWSLogValueMaxLen),
+						truncateOpenAIWSLogValue(errMsgRaw, openAIWSLogValueMaxLen),
+					)
+					return &UpstreamFailoverError{
+						StatusCode:             http.StatusBadRequest,
+						ResponseBody:           append([]byte(nil), payload...),
+						ResponseHeaders:        cloneHeader(handshakeHeaders),
+						RetryableOnSameAccount: account.IsPoolMode(),
+					}
+				}
 				if !isOpenAIWSRateLimitError(errCodeRaw, errTypeRaw, errMsgRaw) {
 					return nil
 				}
