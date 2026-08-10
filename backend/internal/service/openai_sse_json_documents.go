@@ -4,8 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"strings"
+	"sync/atomic"
 )
 
 const (
@@ -55,6 +58,138 @@ type openAISSEJSONDocumentScanner struct {
 	scanner *bufio.Scanner
 	pending []string
 	current string
+}
+
+// errOpenAIInvalidSSEData marks a frame whose data payload was truncated or
+// otherwise malformed. The frame must be discarded before it reaches the
+// downstream decoder; appending a later response.failed event cannot repair a
+// malformed JSON data line that has already been sent.
+var errOpenAIInvalidSSEData = errors.New("invalid OpenAI SSE data payload")
+
+type openAISSELineScanner interface {
+	Scan() bool
+	Text() string
+	Err() error
+}
+
+// validatedOpenAISSELineScanner keeps one complete SSE frame in memory before
+// exposing its lines. This preserves the existing line-oriented callers while
+// preventing a final partial data line from being written to the client.
+type validatedOpenAISSELineScanner struct {
+	source      openAISSELineScanner
+	pending     []string
+	current     string
+	frame       []string
+	deferredErr error
+	frameOpen   atomic.Bool
+}
+
+func newValidatedOpenAISSELineScanner(source openAISSELineScanner) *validatedOpenAISSELineScanner {
+	return &validatedOpenAISSELineScanner{source: source}
+}
+
+func (s *validatedOpenAISSELineScanner) Scan() bool {
+	if s == nil {
+		return false
+	}
+	for {
+		if len(s.pending) > 0 {
+			s.current = s.pending[0]
+			s.pending = s.pending[1:]
+			return true
+		}
+		if s.deferredErr != nil {
+			return false
+		}
+		if s.source == nil {
+			s.deferredErr = errors.New("nil OpenAI SSE scanner")
+			return false
+		}
+
+		if s.source.Scan() {
+			line := s.source.Text()
+			s.frame = append(s.frame, line)
+			if line != "" {
+				s.frameOpen.Store(true)
+				continue
+			}
+			s.frameOpen.Store(false)
+			if err := validateOpenAISSEFrame(s.frame); err != nil {
+				s.frame = nil
+				s.deferredErr = err
+				return false
+			}
+			s.pending = append(s.pending, s.frame...)
+			s.frame = nil
+			continue
+		}
+
+		// Scanner can return a final token without a trailing newline. Preserve a
+		// complete JSON frame and synthesize its missing blank-line boundary so a
+		// later failure event cannot merge into the same SSE event. Malformed data
+		// is discarded before it reaches the downstream decoder.
+		sourceErr := s.source.Err()
+		if len(s.frame) > 0 {
+			if err := validateOpenAISSEFrame(s.frame); err != nil {
+				s.frame = nil
+				s.frameOpen.Store(false)
+				if sourceErr != nil {
+					s.deferredErr = fmt.Errorf("%w: %w", err, sourceErr)
+				} else {
+					s.deferredErr = err
+				}
+				return false
+			}
+			s.pending = append(s.pending, s.frame...)
+			s.pending = append(s.pending, "")
+			s.frame = nil
+			s.frameOpen.Store(false)
+			if sourceErr != nil {
+				s.deferredErr = sourceErr
+			}
+			continue
+		}
+		s.deferredErr = sourceErr
+		return false
+	}
+}
+
+func (s *validatedOpenAISSELineScanner) Text() string {
+	if s == nil {
+		return ""
+	}
+	return s.current
+}
+
+func (s *validatedOpenAISSELineScanner) Err() error {
+	if s == nil {
+		return errors.New("nil OpenAI SSE scanner")
+	}
+	return s.deferredErr
+}
+
+func (s *validatedOpenAISSELineScanner) HasOpenFrame() bool {
+	return s != nil && s.frameOpen.Load()
+}
+
+func validateOpenAISSEFrame(lines []string) error {
+	if len(lines) == 0 {
+		return nil
+	}
+	dataLines := make([]string, 0, 1)
+	for _, line := range lines {
+		if data, ok := extractOpenAISSEDataLine(line); ok {
+			dataLines = append(dataLines, data)
+		}
+	}
+	if len(dataLines) == 0 {
+		return nil
+	}
+	data := strings.Join(dataLines, "\n")
+	if strings.TrimSpace(data) == "[DONE]" || json.Valid([]byte(data)) {
+		return nil
+	}
+	return errOpenAIInvalidSSEData
 }
 
 func newOpenAISSEJSONDocumentScanner(scanner *bufio.Scanner) *openAISSEJSONDocumentScanner {

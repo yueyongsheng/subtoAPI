@@ -239,11 +239,11 @@ func TestOpenAIResponseFlush_CommentAndEOFOnlyFlushCompleteResidual(t *testing.T
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	gotBody, flushes := recorder.snapshot()
-	require.Equal(t, body, gotBody)
+	require.Equal(t, body+"\n", gotBody)
 	require.Len(t, flushes, 3)
 	require.True(t, strings.HasSuffix(flushes[0], "\n\n"))
 	require.True(t, strings.HasSuffix(flushes[1], "\n\n"))
-	require.True(t, strings.HasSuffix(flushes[2], "data: [DONE]\n"), "EOF must flush only the remaining bytes")
+	require.True(t, strings.HasSuffix(flushes[2], "data: [DONE]\n\n"), "EOF must close the remaining SSE frame")
 }
 
 func TestOpenAIResponseFlush_TerminalReadErrorFlushesResidual(t *testing.T) {
@@ -255,8 +255,8 @@ func TestOpenAIResponseFlush_TerminalReadErrorFlushesResidual(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	gotBody, flushes := recorder.snapshot()
-	require.Equal(t, body, gotBody)
-	require.Equal(t, []string{body}, flushes)
+	require.Equal(t, body+"\n", gotBody)
+	require.Equal(t, []string{body + "\n"}, flushes)
 }
 
 func TestOpenAIResponseFlush_OutputWithoutTerminalFlushesResidualWithoutFailover(t *testing.T) {
@@ -270,8 +270,8 @@ func TestOpenAIResponseFlush_OutputWithoutTerminalFlushesResidualWithoutFailover
 	require.False(t, errors.As(err, &failoverErr))
 	require.NotNil(t, result)
 	gotBody, flushes := recorder.snapshot()
-	require.Equal(t, body, gotBody)
-	require.Equal(t, []string{body}, flushes)
+	require.Equal(t, body+"\n", gotBody)
+	require.Equal(t, []string{body + "\n"}, flushes)
 }
 
 func TestOpenAIResponseFlush_PreambleWithoutTerminalRemainsBufferedForFailover(t *testing.T) {
@@ -297,8 +297,8 @@ func TestOpenAIResponseFlush_CanceledAfterOutputFlushesResidualWithoutErrorEvent
 	require.ErrorIs(t, err, context.Canceled)
 	require.NotNil(t, result)
 	gotBody, flushes := recorder.snapshot()
-	require.Equal(t, body, gotBody)
-	require.Equal(t, []string{body}, flushes)
+	require.Equal(t, body+"\n", gotBody)
+	require.Equal(t, []string{body + "\n"}, flushes)
 	require.NotContains(t, gotBody, "stream_read_error")
 }
 
@@ -323,12 +323,7 @@ func TestOpenAIResponseFlush_KeepaliveFlushesImmediately(t *testing.T) {
 
 func TestOpenAIResponseFlush_KeepaliveDoesNotSplitOpenEvent(t *testing.T) {
 	const dataLine = `data: {"type":"response.output_text.delta","delta":"a"}`
-	// Filling the 16-slot scan queue proves the main loop processed data before the reader reaches the gated blank.
-	dataLines := make([]string, 17)
-	for i := range dataLines {
-		dataLines[i] = dataLine
-	}
-	partialEvent := strings.Join(dataLines, "\n") + "\n"
+	partialEvent := dataLine + "\n"
 	completeEvent := partialEvent + "\n"
 	terminal := "data: [DONE]\n\n"
 	allowBlank := make(chan struct{})
@@ -381,7 +376,7 @@ func TestOpenAIResponseFlush_FailedAndErrorEventsFlushAtBoundaries(t *testing.T)
 		require.Equal(t, 3, result.usage.InputTokens)
 		gotBody, flushes := recorder.snapshot()
 		expectedBody := "data: {\"type\":\"response.output_text.delta\",\"delta\":\"a\"}\n\n" +
-			"data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"safety_error\",\"message\":\"blocked\"}}}\n"
+			"data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"safety_error\",\"message\":\"blocked\"}}}\n\n"
 		require.Equal(t, expectedBody, gotBody)
 		require.Len(t, flushes, 2)
 		require.Contains(t, flushes[1], "response.failed")

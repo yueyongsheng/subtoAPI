@@ -109,6 +109,33 @@ func TestSplitOpenAIConcatenatedJSONDocumentsRejectsPayloadOverRepairLimit(t *te
 	require.NoError(t, documentScanner.Err())
 }
 
+func TestValidatedOpenAISSELineScannerAcceptsMultilineJSONData(t *testing.T) {
+	source := bufio.NewScanner(strings.NewReader("data: {\"type\":\n" +
+		"data: \"response.completed\"}\n\n"))
+	scanner := newValidatedOpenAISSELineScanner(source)
+
+	var lines []string
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	require.NoError(t, scanner.Err())
+	require.Equal(t, []string{
+		`data: {"type":`,
+		`data: "response.completed"}`,
+		"",
+	}, lines)
+}
+
+func TestValidatedOpenAISSELineScannerRejectsMultipleJSONDocumentsInOneFrame(t *testing.T) {
+	source := bufio.NewScanner(strings.NewReader("data: {\"type\":\"response.created\"}\n" +
+		"data: {\"type\":\"response.completed\"}\n\n"))
+	scanner := newValidatedOpenAISSELineScanner(source)
+
+	require.False(t, scanner.Scan())
+	require.ErrorIs(t, scanner.Err(), errOpenAIInvalidSSEData)
+}
+
 func TestOpenAIWSv2StreamingBreaksConnectionWhenTerminalHasTrailingDocument(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	completed := `{"type":"response.completed","response":{"id":"resp_terminal_tail","usage":{"input_tokens":2,"output_tokens":1}}}`

@@ -529,8 +529,7 @@ func TestOpenAINativeFirstOutputEOFDispatchesTerminalEventWithoutBlankLine(t *te
 	require.Equal(t, 2, result.usage.OutputTokens)
 	require.Contains(t, rec.Body.String(), `"type":"response.completed"`)
 	require.Contains(t, rec.Body.String(), `"id":"resp_eof"`)
-	require.True(t, strings.HasSuffix(rec.Body.String(), "\n"))
-	require.False(t, strings.HasSuffix(rec.Body.String(), "\n\n"), "EOF dispatch must not synthesize a blank line")
+	require.True(t, strings.HasSuffix(rec.Body.String(), "\n\n"), "EOF dispatch must close the SSE frame")
 	require.Equal(t, "request-eof", rec.Result().Header.Get("X-Request-Id"))
 	require.Equal(t, "17", rec.Result().Header.Get("X-Ratelimit-Remaining-Requests"))
 }
@@ -542,10 +541,9 @@ func TestOpenAINativeFirstOutputStageOverflowFailsOverWithoutAttemptBytes(t *tes
 	}}
 	svc := &OpenAIGatewayService{cfg: cfg, responseHeaderFilter: compileResponseHeaderFilter(cfg)}
 	const lineSize = 1024*1024 - 256
-	prefix := `data: {"type":"response.output_text.delta","delta":"`
-	suffix := `"}`
-	line := prefix + strings.Repeat("x", lineSize-len(prefix)-len(suffix)) + suffix
-	body := strings.Repeat(line+"\n", 9)
+	commentLine := ":" + strings.Repeat("x", lineSize-1)
+	body := strings.Repeat(commentLine+"\n", 9) +
+		`data: {"type":"response.output_text.delta","delta":"ready"}` + "\n\n"
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)

@@ -148,7 +148,7 @@ func TestOpenAIStreamingPassthroughKeepsPreamblePendingUntilFirstOutputBoundary(
 func TestOpenAIStreamingPassthroughFlushesTerminalEventAtEOFWithoutBlankLine(t *testing.T) {
 	upstream := "event: response.completed\n" +
 		`data: {"type":"response.completed","response":{"id":"resp_eof","usage":{"input_tokens":5,"output_tokens":2,"total_tokens":7}}}`
-	wantBody := upstream + "\n"
+	wantBody := upstream + "\n\n"
 
 	result, recorder, writer, err := runPassthroughFlushTest(t, io.NopCloser(strings.NewReader(upstream)), -1)
 
@@ -244,7 +244,7 @@ func TestOpenAIStreamingPassthroughClientDisconnectStillDrainsTerminalUsage(t *t
 	require.Equal(t, 4, result.usage.OutputTokens)
 }
 
-func TestOpenAIStreamingPassthroughScannerErrorFlushesWrittenResidual(t *testing.T) {
+func TestOpenAIStreamingPassthroughScannerErrorClosesCompleteResidual(t *testing.T) {
 	upstream := []byte(`data: {"type":"response.output_text.delta","delta":"partial"}`)
 	readErr := errors.New("upstream read failed")
 
@@ -254,13 +254,43 @@ func TestOpenAIStreamingPassthroughScannerErrorFlushesWrittenResidual(t *testing
 	}, -1)
 
 	require.ErrorIs(t, err, readErr)
-	wantBody := string(upstream) + "\n"
-	require.Equal(t, wantBody, recorder.Body.String())
-	require.Equal(t, []int{len(wantBody)}, writer.flushBodyLengths)
+	require.Equal(t, string(upstream)+"\n\n", recorder.Body.String())
+	require.Equal(t, []int{len(upstream) + 2}, writer.flushBodyLengths)
+}
+
+// 上游在 Responses SSE 的 data JSON 中间断开时，残缺 JSON 不能继续写给下游。
+// 否则 Handler 随后追加的 response.failed 也救不了客户端：严格 SDK 会先在
+// 残缺 data 帧上报 error decoding response body。
+func TestOpenAIStreamingPassthroughDropsTruncatedJSONFrame(t *testing.T) {
+	truncated := "event: response.output_text.delta\n" +
+		`data: {"type":"response.output_text.delta","delta":"partial`
+
+	_, recorder, _, err := runPassthroughFlushTest(
+		t,
+		io.NopCloser(strings.NewReader(truncated)),
+		-1,
+	)
+
+	require.Error(t, err)
+	require.NotContains(t, recorder.Body.String(), "delta\":\"partial")
+}
+
+func TestOpenAIStreamingPassthroughDropsTruncatedJSONFrameAfterOutputAndPreservesReadError(t *testing.T) {
+	complete := `data: {"type":"response.output_text.delta","delta":"ok"}` + "\n\n"
+	truncated := "event: response.output_text.delta\n" +
+		`data: {"type":"response.output_text.delta","delta":"partial`
+
+	_, recorder, _, err := runPassthroughFlushTest(t, &passthroughFlushTestErrorBody{
+		payload: []byte(complete + truncated),
+		err:     io.ErrUnexpectedEOF,
+	}, -1)
+
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+	require.Equal(t, complete, recorder.Body.String())
 }
 
 func TestOpenAIStreamingPassthroughNamespaceRestoreErrorFlushesWrittenResidualOnce(t *testing.T) {
-	writtenPrefix := `data: {"type":"response.output_text.delta","delta":"prefix"}` + "\n"
+	writtenPrefix := `data: {"type":"response.output_text.delta","delta":"prefix"}` + "\n\n"
 	overflowData := `data: {"type":"response.output_text.delta","delta":"not-written","overflow":1e1000}`
 
 	_, recorder, writer, err := runPassthroughFlushTest(

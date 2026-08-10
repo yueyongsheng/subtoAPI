@@ -144,7 +144,7 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 	if guardFirstOutput {
 		scanner.Split(openAIFirstOutputDynamicScanLines(&firstOutputScanGuard))
 	}
-	documentScanner := newOpenAISSEJSONDocumentScanner(scanner)
+	documentScanner := newValidatedOpenAISSELineScanner(newOpenAISSEJSONDocumentScanner(scanner))
 
 	streamInterval := time.Duration(0)
 	if s.cfg != nil && s.cfg.Gateway.StreamDataIntervalTimeout > 0 {
@@ -693,7 +693,7 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 			if clientDisconnected {
 				continue
 			}
-			if eventInProgress {
+			if eventInProgress || documentScanner.HasOpenFrame() {
 				continue
 			}
 			if time.Since(lastDownstreamWriteAt) < keepaliveInterval {

@@ -1147,7 +1147,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthroughWithReasoning(
 		scanner.Split(openAIFirstOutputDynamicScanLines(&firstOutputScanGuard))
 	}
 	defer putSSEScannerBuf64K(scanBuf)
-	documentScanner := newOpenAISSEJSONDocumentScanner(scanner)
+	documentScanner := newValidatedOpenAISSELineScanner(newOpenAISSEJSONDocumentScanner(scanner))
 
 	var firstOutputTimer *time.Timer
 	var firstOutputTimerFired chan struct{}

@@ -516,7 +516,7 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 	var streamFailoverErr *UpstreamFailoverError
 	var streamNonFailoverErr error
 
-	scanner := s.newUpstreamSSEScanner(resp.Body)
+	scanner := newValidatedOpenAISSELineScanner(s.newUpstreamSSEScanner(resp.Body))
 
 	streamInterval := time.Duration(0)
 	if s.cfg != nil && s.cfg.Gateway.StreamDataIntervalTimeout > 0 {

@@ -1,11 +1,19 @@
 api-yue88.xyz {
-  encode zstd gzip
+  # Long-lived SSE must remain uncompressed. If an upstream connection ends
+  # early, a truncated gzip/zstd body surfaces in strict clients as
+  # "error decoding response body" before they can parse response.failed.
+  @compressible {
+    not path /v1/responses* /responses* /backend-api/codex/responses* /v1/chat/completions /chat/completions /v1/messages /antigravity/v1/messages
+  }
+  @streaming path /v1/responses* /responses* /backend-api/codex/responses* /v1/chat/completions /chat/completions /v1/messages /antigravity/v1/messages
+  encode @compressible zstd gzip
 
   @static path /assets/*
   header @static Cache-Control "public, max-age=31536000, immutable"
 
   @dynamic not path /assets/*
   header @dynamic Cache-Control "no-store"
+  header @streaming Cache-Control "no-store, no-transform"
 
   reverse_proxy 127.0.0.1:8080 {
     health_uri /health
