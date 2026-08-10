@@ -387,18 +387,20 @@ func TestOpenAIResponseFlush_FailedAndErrorEventsFlushAtBoundaries(t *testing.T)
 		require.Contains(t, flushes[1], "response.failed")
 	})
 
-	t.Run("error event", func(t *testing.T) {
+	t.Run("error before output fails over without flush", func(t *testing.T) {
 		body := "data: {\"type\":\"error\",\"error\":{\"message\":\"failed\"}}\n\n" +
 			"data: [DONE]\n\n"
 		recorder := newOpenAIResponseFlushRecorder()
 
 		result, err := runOpenAIResponseFlushTest(recorder, io.NopCloser(strings.NewReader(body)), config.GatewayConfig{})
 
-		require.NoError(t, err)
+		require.Error(t, err)
+		var failoverErr *UpstreamFailoverError
+		require.ErrorAs(t, err, &failoverErr)
 		require.NotNil(t, result)
 		gotBody, flushes := recorder.snapshot()
-		require.Equal(t, body, gotBody)
-		require.Len(t, flushes, 2)
+		require.Empty(t, gotBody)
+		require.Empty(t, flushes)
 	})
 }
 

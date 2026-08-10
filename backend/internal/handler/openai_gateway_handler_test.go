@@ -1433,9 +1433,15 @@ func (u *openAIOAuthCapacityFailoverUpstream) Do(_ *http.Request, _ string, acco
 	u.mu.Unlock()
 	if accountID == 9920 {
 		return &http.Response{
-			StatusCode: http.StatusBadRequest,
-			Header:     http.Header{"Content-Type": []string{"application/json"}},
-			Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"Selected model is at capacity. Please try a different model.","type":"invalid_request_error"}}`)),
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+			Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+				`data: {"type":"response.created","response":{"id":"resp_oauth_capacity","status":"in_progress","output":[]}}`,
+				"",
+				`event: error`,
+				`data: {"type":"error","error":{"message":"Selected model is at capacity. Please try a different model.","type":"invalid_request_error"}}`,
+				"",
+			}, "\n"))),
 		}, nil
 	}
 	return &http.Response{
@@ -1618,7 +1624,7 @@ func TestOpenAIResponses_APIKeyPassthroughPool5xxRetriesThenExhaustsMaxSwitches(
 	require.Equal(t, "Upstream service temporarily unavailable", gjson.GetBytes(rec.Body.Bytes(), "error.message").String())
 }
 
-func TestOpenAIResponses_OAuthPassthroughCapacitySwitchesAccount(t *testing.T) {
+func TestOpenAIResponses_OAuthPassthroughCapacitySSESwitchesAccount(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	groupID := int64(4204)
 	accounts := []service.Account{
@@ -1702,6 +1708,8 @@ func TestOpenAIResponses_OAuthPassthroughCapacitySwitchesAccount(t *testing.T) {
 	require.Equal(t, []int64{9920, 9921}, upstream.calls())
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), "resp_oauth_capacity_failover_ok")
+	require.NotContains(t, rec.Body.String(), "Selected model is at capacity")
+	require.NotContains(t, rec.Body.String(), "resp_oauth_capacity\"")
 }
 
 func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T) {

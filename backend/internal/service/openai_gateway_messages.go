@@ -16,6 +16,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai_compat"
 	"github.com/Wei-Shaw/sub2api/internal/util/responseheaders"
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
 )
 
@@ -561,6 +562,26 @@ func isOpenAICompatDoneSentinelLine(line string) bool {
 	return ok && strings.TrimSpace(payload) == "[DONE]"
 }
 
+func openAICompatBareErrorResponse(payload []byte) *apicompat.ResponsesResponse {
+	if strings.TrimSpace(gjson.GetBytes(payload, "type").String()) != "error" {
+		return nil
+	}
+	code := strings.TrimSpace(gjson.GetBytes(payload, "error.code").String())
+	if code == "" {
+		code = strings.TrimSpace(gjson.GetBytes(payload, "error.type").String())
+	}
+	if code == "" {
+		code = strings.TrimSpace(gjson.GetBytes(payload, "code").String())
+	}
+	return &apicompat.ResponsesResponse{
+		Status: "failed",
+		Error: &apicompat.ResponsesError{
+			Code:    code,
+			Message: extractOpenAISSEErrorMessage(payload),
+		},
+	}
+}
+
 func (s *OpenAIGatewayService) readOpenAICompatBufferedTerminal(
 	resp *http.Response,
 	logPrefix string,
@@ -642,6 +663,9 @@ func (s *OpenAIGatewayService) readOpenAICompatBufferedTerminal(
 			if !ok {
 				if frame, ok := parser.Finish(); ok {
 					payload := openAICompatPayloadWithEventType(frame.Data, frame.EventType)
+					if failed := openAICompatBareErrorResponse([]byte(payload)); failed != nil {
+						return failed, usage, acc, nil
+					}
 					var event apicompat.ResponsesStreamEvent
 					if err := json.Unmarshal([]byte(payload), &event); err == nil {
 						acc.ProcessEvent(&event)
@@ -680,6 +704,9 @@ func (s *OpenAIGatewayService) readOpenAICompatBufferedTerminal(
 				continue
 			}
 			payload := openAICompatPayloadWithEventType(frame.Data, frame.EventType)
+			if failed := openAICompatBareErrorResponse([]byte(payload)); failed != nil {
+				return failed, usage, acc, nil
+			}
 
 			var event apicompat.ResponsesStreamEvent
 			if err := json.Unmarshal([]byte(payload), &event); err != nil {

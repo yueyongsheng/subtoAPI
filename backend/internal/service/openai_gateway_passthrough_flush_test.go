@@ -175,6 +175,22 @@ func TestOpenAIStreamingPassthroughFailedBeforeOutputCanStillFailOverWithoutFlus
 	require.Empty(t, writer.flushBodyLengths)
 }
 
+func TestOpenAIStreamingPassthroughBareErrorBeforeOutputCapacityCanFailOverWithoutFlush(t *testing.T) {
+	upstream := "event: response.created\n" +
+		`data: {"type":"response.created","response":{"id":"resp_capacity"}}` + "\n\n" +
+		"event: error\n" +
+		`data: {"type":"error","error":{"type":"invalid_request_error","message":"Selected model is at capacity. Please try a different model."}}` + "\n\n"
+
+	_, recorder, writer, err := runPassthroughFlushTest(t, io.NopCloser(strings.NewReader(upstream)), -1)
+
+	require.Error(t, err)
+	var failoverErr *UpstreamFailoverError
+	require.ErrorAs(t, err, &failoverErr)
+	require.Contains(t, string(failoverErr.ResponseBody), "Selected model is at capacity")
+	require.Empty(t, recorder.Body.String())
+	require.Empty(t, writer.flushBodyLengths)
+}
+
 func TestOpenAIStreamingPassthroughNonRetryableFailedBeforeOutputFlushesAtBoundary(t *testing.T) {
 	upstream := "event: response.failed\n" +
 		`data: {"type":"response.failed","error":{"code":"content_policy","message":"request blocked by policy"},"usage":{"input_tokens":6,"output_tokens":0,"total_tokens":6}}` + "\n\n"

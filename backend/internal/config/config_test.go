@@ -106,13 +106,13 @@ func TestLoadDefaultSignupBalanceIsPointOneUSD(t *testing.T) {
 	require.InDelta(t, 5.0, cfg.Default.UserBalance, 1e-12)
 }
 
-func TestLoadDefaultOpenAIFirstOutputTimeoutsDisabled(t *testing.T) {
+func TestLoadDefaultOpenAIFirstOutputTimeouts(t *testing.T) {
 	resetViperWithJWTSecret(t)
 
 	cfg, err := Load()
 	require.NoError(t, err)
-	require.Zero(t, cfg.Gateway.OpenAIFirstOutputTimeoutSeconds)
-	require.Zero(t, cfg.Gateway.OpenAIHighEffortFirstOutputTimeoutSeconds)
+	require.Equal(t, 120, cfg.Gateway.OpenAIFirstOutputTimeoutSeconds)
+	require.Equal(t, 300, cfg.Gateway.OpenAIHighEffortFirstOutputTimeoutSeconds)
 }
 
 func TestLoadOpenAIFirstOutputTimeoutsFromEnv(t *testing.T) {

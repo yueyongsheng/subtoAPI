@@ -89,6 +89,46 @@ func TestOpenAIForwardFirstOutputTimeoutIncludesResponseHeaderWait(t *testing.T)
 	}
 }
 
+func TestOpenAIPassthroughFirstOutputTimeoutIncludesResponseHeaderWait(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	upstream := &blockingOpenAIResponseHeaderUpstream{canceled: make(chan struct{})}
+	svc := &OpenAIGatewayService{
+		cfg: &config.Config{Gateway: config.GatewayConfig{
+			OpenAIFirstOutputTimeoutSeconds:           30,
+			OpenAIHighEffortFirstOutputTimeoutSeconds: 1,
+			MaxLineSize: defaultMaxLineSize,
+		}},
+		httpUpstream: upstream,
+	}
+	body := []byte(`{"model":"gpt-5.5","stream":true,"reasoning":{"effort":"high"},"instructions":"test","input":"hello"}`)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
+	account := &Account{
+		ID: 2, Name: "oauth-passthrough-test", Platform: PlatformOpenAI, Type: AccountTypeOAuth,
+		Status: StatusActive, Schedulable: true, Concurrency: 1,
+		Credentials: map[string]any{"access_token": "test-token", "chatgpt_account_id": "test-account"},
+		Extra:       map[string]any{"openai_passthrough": true},
+	}
+
+	started := time.Now()
+	_, err := svc.Forward(context.Background(), c, account, body)
+
+	require.Error(t, err)
+	var failoverErr *UpstreamFailoverError
+	require.ErrorAs(t, err, &failoverErr)
+	require.Equal(t, http.StatusGatewayTimeout, failoverErr.StatusCode)
+	require.Contains(t, string(failoverErr.ResponseBody), "first_output_timeout")
+	require.True(t, failoverErr.SafeToFailoverAfterWrite)
+	require.Less(t, time.Since(started), 1300*time.Millisecond)
+	require.Empty(t, rec.Body.String())
+	select {
+	case <-upstream.canceled:
+	default:
+		t.Fatal("passthrough response-header timeout did not cancel the upstream request context")
+	}
+}
+
 func TestOpenAINativeFirstOutputTimeoutDisabledPreservesSynchronousStream(t *testing.T) {
 	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: config.GatewayConfig{
 		OpenAIFirstOutputTimeoutSeconds: 0,
@@ -149,6 +189,64 @@ func TestOpenAINativeFirstOutputTimeoutIgnoresPreambleAndCleansReader(t *testing
 	case <-writerDone:
 	case <-time.After(time.Second):
 		t.Fatal("stream reader/writer goroutine did not exit after first-output timeout")
+	}
+}
+
+func TestOpenAIPassthroughFirstOutputTimeoutIgnoresPreambleAndCleansReader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: config.GatewayConfig{
+		OpenAIFirstOutputTimeoutSeconds: 1,
+		MaxLineSize:                     defaultMaxLineSize,
+	}}}
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	pr, pw := io.Pipe()
+	body := &firstOutputCloseTrackingBody{ReadCloser: pr, closed: make(chan struct{})}
+	writerDone := make(chan struct{})
+	go func() {
+		defer close(writerDone)
+		defer func() { _ = pw.Close() }()
+		_, _ = pw.Write([]byte("data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_passthrough_timeout\"}}\n\n"))
+		select {
+		case <-body.closed:
+		case <-time.After(1500 * time.Millisecond):
+		}
+	}()
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header: http.Header{
+			"Content-Type": []string{"text/event-stream"},
+			"X-Request-Id": []string{"request-passthrough-timeout"},
+		},
+		Body: body,
+	}
+
+	started := time.Now()
+	_, err := svc.handleStreamingResponsePassthrough(
+		c.Request.Context(), resp, c,
+		&Account{ID: 2, Platform: PlatformOpenAI, Name: "passthrough-timeout"},
+		started, "gpt-5.5", "gpt-5.5",
+	)
+
+	var failoverErr *UpstreamFailoverError
+	require.ErrorAs(t, err, &failoverErr)
+	require.Equal(t, http.StatusGatewayTimeout, failoverErr.StatusCode)
+	require.True(t, failoverErr.SafeToFailoverAfterWrite)
+	require.Less(t, time.Since(started), 1300*time.Millisecond)
+	require.Empty(t, rec.Body.String())
+	require.False(t, c.Writer.Written())
+	require.Empty(t, rec.Header().Values("X-Request-Id"))
+	select {
+	case <-body.closed:
+	default:
+		t.Fatal("passthrough semantic-output timeout did not close the upstream body")
+	}
+	select {
+	case <-writerDone:
+	case <-time.After(time.Second):
+		t.Fatal("passthrough upstream writer did not exit after timeout")
 	}
 }
 
