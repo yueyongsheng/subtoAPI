@@ -29,10 +29,11 @@
         <router-link
           v-if="user"
           to="/model-plaza"
-          class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+          :aria-label="t('nav.modelPlaza')"
+          :title="t('nav.modelPlaza')"
+          class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
         >
-          <Icon name="grid" size="sm" />
-          <span class="hidden sm:inline">{{ t('nav.modelPlaza') }}</span>
+          <Icon name="grid" size="sm" aria-hidden="true" />
         </router-link>
 
         <!-- Docs Link -->

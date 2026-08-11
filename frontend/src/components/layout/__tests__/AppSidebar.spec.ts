@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest'
 
 const componentPath = resolve(dirname(fileURLToPath(import.meta.url)), '../AppSidebar.vue')
 const componentSource = readFileSync(componentPath, 'utf8')
+const headerPath = resolve(dirname(fileURLToPath(import.meta.url)), '../AppHeader.vue')
+const headerSource = readFileSync(headerPath, 'utf8')
 const stylePath = resolve(dirname(fileURLToPath(import.meta.url)), '../../../style.css')
 const styleSource = readFileSync(stylePath, 'utf8')
 
@@ -50,8 +52,12 @@ describe('AppSidebar commerce navigation', () => {
 })
 
 describe('AppSidebar model plaza navigation', () => {
-  it('keeps the user price catalog visible in every interface mode', () => {
-    expect(componentSource).toContain("{ path: '/model-plaza', label: t('nav.modelPlaza'), icon: PriceTagIcon }")
+  it('moves the user price catalog from the sidebar to an icon-only header link', () => {
+    expect(componentSource).not.toContain("path: '/model-plaza'")
+    expect(headerSource).toContain('to="/model-plaza"')
+    expect(headerSource).toContain(":aria-label=\"t('nav.modelPlaza')\"")
+    expect(headerSource).toContain(":title=\"t('nav.modelPlaza')\"")
+    expect(headerSource).not.toContain("{{ t('nav.modelPlaza') }}")
   })
 })
 
