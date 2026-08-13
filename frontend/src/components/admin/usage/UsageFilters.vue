@@ -12,10 +12,8 @@
             type="text"
             class="input pr-8"
             :placeholder="t('admin.usage.searchUserPlaceholder')"
-            @input="onUserInput"
+            @input="debounceUserSearch"
             @focus="showUserDropdown = true"
-            @keydown.enter.prevent="resolveUserKeyword()"
-            @change="resolveUserKeyword()"
           />
           <button
             v-if="filters.user_id"
@@ -28,14 +26,14 @@
           </button>
           <div
             v-if="showUserDropdown && (userResults.length > 0 || userKeyword)"
-            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:bg-gray-800"
+            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:bg-dark-800"
           >
             <button
               v-for="u in userResults"
               :key="u.id"
               type="button"
               @click="selectUser(u)"
-              class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+              class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-dark-700"
             >
               <span>{{ u.email }}<span v-if="u.deleted" class="ml-1 text-xs text-gray-400">（{{ t('admin.usage.userDeletedBadge') }}）</span></span>
               <span class="ml-2 text-xs text-gray-400">#{{ u.id }}</span>
@@ -65,14 +63,14 @@
           </button>
           <div
             v-if="showApiKeyDropdown && apiKeyResults.length > 0"
-            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:bg-gray-800"
+            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:bg-dark-800"
           >
             <button
               v-for="k in apiKeyResults"
               :key="k.id"
               type="button"
               @click="selectApiKey(k)"
-              class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+              class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-dark-700"
             >
               <span class="truncate">{{ k.name || `#${k.id}` }}</span>
               <span class="ml-2 text-xs text-gray-400">#{{ k.id }}</span>
@@ -108,14 +106,14 @@
           </button>
           <div
             v-if="showAccountDropdown && (accountResults.length > 0 || accountKeyword)"
-            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:bg-gray-800"
+            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:bg-dark-800"
           >
             <button
               v-for="a in accountResults"
               :key="a.id"
               type="button"
               @click="selectAccount(a)"
-              class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+              class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-dark-700"
             >
               <span class="truncate">{{ a.name }}</span>
               <span class="ml-2 text-xs text-gray-400">#{{ a.id }}</span>
@@ -139,6 +137,11 @@
         <div v-if="mode === 'usage'" class="w-full sm:w-auto sm:min-w-[200px]">
           <label class="input-label">{{ t('admin.usage.billingMode') }}</label>
           <Select v-model="filters.billing_mode" :options="billingModeOptions" @change="emitChange" />
+        </div>
+
+        <div v-if="mode === 'usage'" class="w-full sm:w-auto sm:min-w-[220px]">
+          <label class="input-label">{{ t('admin.usage.upstreamModelAudit') }}</label>
+          <Select v-model="filters.upstream_model_mismatch" :options="upstreamModelMismatchOptions" @change="emitChange" />
         </div>
 
         <!-- Error Phase Filter (errors only) -->
@@ -169,7 +172,7 @@
 
       <!-- Right: actions -->
       <div v-if="showActions" class="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
-        <button type="button" @click="handleRefresh" class="btn btn-secondary">
+        <button type="button" @click="$emit('refresh')" class="btn btn-secondary">
           {{ t('common.refresh') }}
         </button>
         <button type="button" @click="$emit('reset')" class="btn btn-secondary">
@@ -237,10 +240,10 @@ const apiKeySearchRef = ref<HTMLElement | null>(null)
 const accountSearchRef = ref<HTMLElement | null>(null)
 
 const userKeyword = ref('')
-const selectedUserEmail = ref('')
 const userResults = ref<SimpleUser[]>([])
 const showUserDropdown = ref(false)
 let userSearchTimeout: ReturnType<typeof setTimeout> | null = null
+let userSearchSequence = 0
 
 const apiKeyKeyword = ref('')
 const apiKeyResults = ref<SimpleApiKey[]>([])
@@ -265,6 +268,7 @@ const groupOptions = ref<SelectOption[]>([{ value: null, label: t('admin.usage.a
 const requestTypeOptions = ref<SelectOption[]>([
   { value: null, label: t('admin.usage.allTypes') },
   { value: 'ws_v2', label: t('usage.ws') },
+  { value: 'live', label: t('usage.live') },
   { value: 'stream', label: t('usage.stream') },
   { value: 'sync', label: t('usage.sync') },
   { value: 'cyber', label: t('usage.cyber') }
@@ -308,76 +312,44 @@ const billingModeOptions = ref<SelectOption[]>([
   { value: 'video', label: t('admin.usage.billingModeVideo') }
 ])
 
+const upstreamModelMismatchOptions = ref<SelectOption[]>([
+  { value: null, label: t('admin.usage.allUpstreamModelAudit') },
+  { value: true, label: t('admin.usage.upstreamModelMismatchOnly') },
+  { value: false, label: t('admin.usage.upstreamModelMatchedOnly') }
+])
+
 const emitChange = () => emit('change')
 
-const findExactUser = (users: SimpleUser[], keyword: string) => {
-  const normalizedKeyword = keyword.trim().toLowerCase()
-  const normalizedId = normalizedKeyword.replace(/^#/, '')
-
-  return users.find((user) =>
-    user.email.toLowerCase() === normalizedKeyword || String(user.id) === normalizedId
-  )
-}
-
-const resolveUserKeyword = async (notifyChange = true) => {
+const clearPendingUserSearch = () => {
   if (userSearchTimeout) {
     clearTimeout(userSearchTimeout)
     userSearchTimeout = null
   }
-
-  const keyword = userKeyword.value.trim()
-  if (!keyword) return true
-
-  if (
-    filters.value.user_id &&
-    selectedUserEmail.value.trim().toLowerCase() === keyword.toLowerCase()
-  ) {
-    return true
-  }
-
-  try {
-    const results = await adminAPI.usage.searchUsers(keyword)
-    if (userKeyword.value.trim() !== keyword) return false
-
-    userResults.value = results.sort((a, b) => Number(a.deleted) - Number(b.deleted))
-    const exactUser = findExactUser(userResults.value, keyword)
-    if (!exactUser) {
-      showUserDropdown.value = true
-      return false
-    }
-
-    await selectUser(exactUser, notifyChange)
-    return true
-  } catch {
-    userResults.value = []
-    showUserDropdown.value = true
-    return false
-  }
+  userSearchSequence += 1
 }
 
 const debounceUserSearch = () => {
-  if (userSearchTimeout) clearTimeout(userSearchTimeout)
-  userSearchTimeout = setTimeout(async () => {
-    userSearchTimeout = null
-    if (!userKeyword.value.trim()) {
-      userResults.value = []
-      return
-    }
-    await resolveUserKeyword()
-  }, 300)
-}
-
-const onUserInput = () => {
-  const selectedEmail = selectedUserEmail.value.trim().toLowerCase()
-  const typedKeyword = userKeyword.value.trim().toLowerCase()
-
-  if (filters.value.user_id && typedKeyword !== selectedEmail) {
-    filters.value.user_id = undefined
-    clearApiKey()
-    emitChange()
+  clearPendingUserSearch()
+  const query = userKeyword.value.trim()
+  if (!query) {
+    userResults.value = []
+    return
   }
 
-  debounceUserSearch()
+  const sequence = userSearchSequence
+  userSearchTimeout = setTimeout(async () => {
+    userSearchTimeout = null
+    try {
+      const results = await adminAPI.usage.searchUsers(query)
+      if (sequence === userSearchSequence) {
+        userResults.value = results.sort((a, b) => Number(a.deleted) - Number(b.deleted))
+      }
+    } catch {
+      if (sequence === userSearchSequence) {
+        userResults.value = []
+      }
+    }
+  }, 300)
 }
 
 const debounceApiKeySearch = () => {
@@ -394,16 +366,11 @@ const debounceApiKeySearch = () => {
   }, 300)
 }
 
-async function selectUser(u: SimpleUser, notifyChange = true) {
-  const selectionChanged = filters.value.user_id !== u.id ||
-    selectedUserEmail.value.toLowerCase() !== u.email.toLowerCase()
-
+const selectUser = async (u: SimpleUser) => {
+  clearPendingUserSearch()
   userKeyword.value = u.email
-  selectedUserEmail.value = u.email
   showUserDropdown.value = false
   filters.value.user_id = u.id
-  if (!selectionChanged) return
-
   clearApiKey()
 
   // Auto-load API keys for this user
@@ -413,19 +380,12 @@ async function selectUser(u: SimpleUser, notifyChange = true) {
     apiKeyResults.value = []
   }
 
-  if (notifyChange) emitChange()
-}
-
-const handleRefresh = async () => {
-  const userResolved = await resolveUserKeyword(false)
-  if (userKeyword.value.trim() && !userResolved) return
-
-  emit('refresh')
+  emitChange()
 }
 
 const clearUser = () => {
+  clearPendingUserSearch()
   userKeyword.value = ''
-  selectedUserEmail.value = ''
   userResults.value = []
   showUserDropdown.value = false
   filters.value.user_id = undefined
@@ -524,11 +484,8 @@ watch(
   () => filters.value.user_id,
   (userId) => {
     if (!userId) {
-      const preserveTypedKeyword = Boolean(selectedUserEmail.value) &&
-        userKeyword.value.trim().toLowerCase() !== selectedUserEmail.value.trim().toLowerCase()
-
-      if (!preserveTypedKeyword) userKeyword.value = ''
-      selectedUserEmail.value = ''
+      clearPendingUserSearch()
+      userKeyword.value = ''
       userResults.value = []
     }
   }
@@ -565,16 +522,19 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  clearPendingUserSearch()
   document.removeEventListener('click', onDocumentClick)
 })
 
 // 供外部(如用户排行下钻)在程序化设置 user_id 后回显选中的用户邮箱
 const setUserKeyword = (email: string) => {
+  clearPendingUserSearch()
   userKeyword.value = email
-  selectedUserEmail.value = email
   userResults.value = []
   showUserDropdown.value = false
 }
 
-defineExpose({ setUserKeyword })
+const getUserSearchRevision = () => userSearchSequence
+
+defineExpose({ getUserSearchRevision, setUserKeyword })
 </script>

@@ -3,6 +3,7 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import PaymentView from '../PaymentView.vue'
 import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 import { formatPaymentAmount } from '@/components/payment/currency'
+import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import type { CheckoutInfoResponse, MethodLimit, SubscriptionPlan } from '@/types/payment'
 
 const routeState = vi.hoisted(() => ({
@@ -21,7 +22,6 @@ const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
-const publicSettingsState = vi.hoisted(() => ({ paymentEnabled: true }))
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -74,7 +74,6 @@ vi.mock('@/stores', () => ({
     showError,
     showInfo,
     showWarning,
-    cachedPublicSettings: { payment_enabled: publicSettingsState.paymentEnabled },
   }),
 }))
 
@@ -105,14 +104,8 @@ function checkoutInfoFixture(overrides: Partial<CheckoutInfoResponse> = {}) {
     global_min: 0,
     global_max: 0,
     plans: [],
-    recharge_packages: [
-      { pay_amount: 38, credited_amount: 1000 },
-      { pay_amount: 72, credited_amount: 2000, badge: 'recommended' },
-      { pay_amount: 105, credited_amount: 3000 },
-      { pay_amount: 170, credited_amount: 5000, badge: 'best_value' },
-    ],
     balance_disabled: false,
-    balance_recharge_multiplier: 25,
+    balance_recharge_multiplier: 1,
     subscription_usd_to_cny_rate: 0,
     recharge_fee_rate: 0,
     help_text: '',
@@ -223,7 +216,6 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   showError.mockReset()
   showInfo.mockReset()
   showWarning.mockReset()
-  publicSettingsState.paymentEnabled = true
   getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoWithPlansFixture(options))
   bridgeInvoke.mockReset()
   window.localStorage.clear()
@@ -245,81 +237,58 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   return wrapper
 }
 
-describe('PaymentView preview mode', () => {
-  it('keeps the recharge form visible but prevents order creation while payment is disabled', async () => {
-    routeState.path = '/purchase'
-    routeState.query = {}
-    publicSettingsState.paymentEnabled = false
-    createOrder.mockReset()
-    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture({ methods: {} }))
+async function mountSubscriptionPlanList(planCount: number) {
+  vi.useRealTimers()
+  routeState.path = '/purchase'
+  routeState.query = { tab: 'subscription' }
+  routerReplace.mockReset().mockResolvedValue(undefined)
+  routerPush.mockReset().mockResolvedValue(undefined)
+  routerResolve.mockClear()
+  createOrder.mockReset()
+  refreshUser.mockReset()
+  fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
+  showError.mockReset()
+  showInfo.mockReset()
+  showWarning.mockReset()
+  const basePlan = checkoutInfoWithPlansFixture().data.plans[0]
+  const plans = Array.from({ length: planCount }, (_, index) => ({
+    ...basePlan,
+    id: index + 1,
+    name: `Plan ${index + 1}`,
+  }))
+  getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture({ plans }))
+  bridgeInvoke.mockReset()
+  window.localStorage.clear()
+  ;(window as Window & { WeixinJSBridge?: { invoke: typeof bridgeInvoke } }).WeixinJSBridge = undefined
 
-    const wrapper = shallowMount(PaymentView, {
-      global: {
-        stubs: {
-          AppLayout: { template: '<div><slot /></div>' },
-          Teleport: true,
-          Transition: false,
+  const wrapper = shallowMount(PaymentView, {
+    global: {
+      stubs: {
+        AppLayout: {
+          template: '<div><slot /></div>',
         },
+        Teleport: true,
+        Transition: false,
       },
-    })
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('payment.preview.title')
-    expect(wrapper.text()).toContain('payment.preview.button')
-    expect(wrapper.find('amount-input-stub').exists()).toBe(true)
-    expect(wrapper.find('payment-method-selector-stub').exists()).toBe(true)
-    const previewButton = wrapper.findAll('button').find(button => button.text().includes('payment.preview.button'))
-    expect(previewButton?.attributes('disabled')).toBeDefined()
-    expect(createOrder).not.toHaveBeenCalled()
+    },
   })
-})
+  await flushPromises()
+  await flushPromises()
+  return wrapper
+}
 
-describe('PaymentView promotional recharge packages', () => {
-  it('submits the selected package price while previewing the package credit', async () => {
-    routeState.path = '/purchase'
-    routeState.query = {}
-    publicSettingsState.paymentEnabled = true
-    createOrder.mockReset().mockResolvedValue({
-      order_id: 321,
-      amount: 2000,
-      pay_amount: 72,
-      fee_rate: 0,
-      expires_at: '2099-01-01T00:10:00.000Z',
-      payment_type: 'wxpay',
-      qr_code: 'weixin://wxpay/bizpayurl?pr=package-72',
-      out_trade_no: 'sub2_package_72',
-    })
-    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture())
+describe('PaymentView subscription plan grid', () => {
+  it.each([3, 4, 6])('keeps %i plans on the existing mobile/tablet/desktop grid', async (planCount) => {
+    const wrapper = await mountSubscriptionPlanList(planCount)
+    const cards = wrapper.findAllComponents(SubscriptionPlanCard)
 
-    const wrapper = shallowMount(PaymentView, {
-      global: {
-        stubs: {
-          AppLayout: { template: '<div><slot /></div>' },
-          RechargePackageSelector: {
-            props: ['packages', 'modelValue'],
-            emits: ['update:modelValue'],
-            template: '<button data-test="select-package-72" @click="$emit(\'update:modelValue\', 72)">select package</button>',
-          },
-          Teleport: true,
-          Transition: false,
-        },
-      },
-    })
-    await flushPromises()
-
-    await wrapper.find('[data-test="select-package-72"]').trigger('click')
-    await flushPromises()
-    expect(wrapper.text()).toContain('$2000.00')
-
-    const submit = wrapper.findAll('button').find(button => button.text().includes('payment.createOrder'))
-    await submit?.trigger('click')
-    await flushPromises()
-
-    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({
-      amount: 72,
-      order_type: 'balance',
-      payment_type: 'wxpay',
-    }))
+    expect(cards).toHaveLength(planCount)
+    expect([...(cards[0].element.parentElement?.classList ?? [])]).toEqual(expect.arrayContaining([
+      'grid',
+      'grid-cols-1',
+      'sm:grid-cols-2',
+      'lg:grid-cols-3',
+    ]))
   })
 })
 

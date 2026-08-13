@@ -28,6 +28,10 @@ const messages: Record<string, string> = {
   'admin.usage.billingModeToken': 'Token',
   'admin.usage.billingModePerRequest': 'Per Request',
   'admin.usage.billingModeImage': 'Image',
+	'admin.usage.upstreamModelAudit': 'Upstream model audit',
+	'admin.usage.allUpstreamModelAudit': 'All response model states',
+	'admin.usage.upstreamModelMismatchOnly': 'Mismatched only',
+	'admin.usage.upstreamModelMatchedOnly': 'Matched only',
   'admin.usage.group': 'Group',
   'admin.usage.allGroups': 'All Groups',
   'common.refresh': 'Refresh',
@@ -75,6 +79,7 @@ const defaultFilters = () => ({
   request_type: null,
   billing_type: null,
   billing_mode: null,
+	upstream_model_mismatch: null,
   group_id: null,
   start_date: '',
   end_date: '',
@@ -97,6 +102,17 @@ function mountFilters(filters = defaultFilters()) {
       },
     },
   })
+}
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, resolve, reject }
 }
 
 describe('UsageFilters — user search dropdown', () => {
@@ -164,114 +180,54 @@ describe('UsageFilters — user search dropdown', () => {
     expect(wrapper.props('modelValue').user_id).toBe(1)
   })
 
-  it('automatically applies an exact email match without requiring a dropdown click', async () => {
-    mockSearchUsers.mockResolvedValue([
-      { id: 4, email: 'aprendendo@163.com', deleted: false },
-    ])
+  it('keeps results from the latest user search when responses arrive out of order', async () => {
+    const firstSearch = deferred<Array<{ id: number; email: string; deleted: boolean }>>()
+    const secondSearch = deferred<Array<{ id: number; email: string; deleted: boolean }>>()
+    mockSearchUsers
+      .mockImplementationOnce(() => firstSearch.promise)
+      .mockImplementationOnce(() => secondSearch.promise)
 
     const wrapper = mountFilters()
     const input = wrapper.find('input[type="text"]')
+    await input.trigger('focus')
 
-    await input.setValue('aprendendo@163.com')
+    await input.setValue('a')
     vi.advanceTimersByTime(300)
     await flushPromises()
 
-    expect(wrapper.props('modelValue').user_id).toBe(4)
-    expect(wrapper.emitted('change')).toHaveLength(1)
-  })
-
-  it('clears a stale selected user and API key as soon as the user text is edited', async () => {
-    mockSearchUsers.mockResolvedValue([
-      { id: 4, email: 'aprendendo@163.com', deleted: false },
-    ])
-
-    const wrapper = mountFilters()
-    const input = wrapper.find('input[type="text"]')
-
-    await input.setValue('aprendendo@163.com')
+    await input.setValue('ab')
     vi.advanceTimersByTime(300)
     await flushPromises()
-    wrapper.props('modelValue').api_key_id = 99
 
-    await input.setValue('another@example.com')
+    secondSearch.resolve([{ id: 2, email: 'ab@test.com', deleted: false }])
     await flushPromises()
+    expect(wrapper.text()).toContain('ab@test.com')
 
-    expect(wrapper.props('modelValue').user_id).toBeUndefined()
-    expect(wrapper.props('modelValue').api_key_id).toBeUndefined()
-    expect((input.element as HTMLInputElement).value).toBe('another@example.com')
-    expect(wrapper.emitted('change')).toHaveLength(2)
+    firstSearch.resolve([{ id: 1, email: 'a@test.com', deleted: false }])
+    await flushPromises()
+    expect(wrapper.text()).toContain('ab@test.com')
+    expect(wrapper.text()).not.toContain('a@test.com')
   })
 
-  it('resolves an exact user before emitting refresh', async () => {
-    mockSearchUsers.mockResolvedValue([
-      { id: 4, email: 'aprendendo@163.com', deleted: false },
-    ])
-
-    const wrapper = mount(UsageFilters, {
-      props: {
-        modelValue: defaultFilters(),
-        exporting: false,
-        startDate: '2026-05-01',
-        endDate: '2026-05-28',
-        showActions: true,
-        modelOptions: [],
-      },
-      global: { stubs: { Select: true, Teleport: true } },
-    })
-    const input = wrapper.find('input[type="text"]')
-
-    await input.setValue('aprendendo@163.com')
-    const refreshButton = wrapper.findAll('button').find((button) => button.text() === 'Refresh')
-    expect(refreshButton).toBeTruthy()
-    await refreshButton!.trigger('click')
-    await flushPromises()
-
-    expect(mockSearchUsers).toHaveBeenCalledWith('aprendendo@163.com')
-    expect(wrapper.props('modelValue').user_id).toBe(4)
-    expect(wrapper.emitted('refresh')).toHaveLength(1)
-  })
-
-  it.each([
-    { value: '#4', event: 'keydown', eventOptions: { key: 'Enter' } },
-    { value: 'aprendendo@163.com', event: 'change', eventOptions: {} },
-  ])('resolves an exact user on $event', async ({ value, event, eventOptions }) => {
-    mockSearchUsers.mockResolvedValue([
-      { id: 4, email: 'aprendendo@163.com', deleted: false },
-    ])
+  it('does not restore stale user results after the search is cleared', async () => {
+    const pendingSearch = deferred<Array<{ id: number; email: string; deleted: boolean }>>()
+    mockSearchUsers.mockImplementationOnce(() => pendingSearch.promise)
 
     const wrapper = mountFilters()
     const input = wrapper.find('input[type="text"]')
+    await input.trigger('focus')
 
-    await input.setValue(value)
-    await input.trigger(event, eventOptions)
+    await input.setValue('stale')
+    vi.advanceTimersByTime(300)
     await flushPromises()
 
-    expect(wrapper.props('modelValue').user_id).toBe(4)
-    expect(wrapper.emitted('change')).toHaveLength(1)
-  })
-
-  it('does not emit refresh when typed user text has no exact match', async () => {
-    mockSearchUsers.mockResolvedValue([])
-
-    const wrapper = mount(UsageFilters, {
-      props: {
-        modelValue: defaultFilters(),
-        exporting: false,
-        startDate: '2026-05-01',
-        endDate: '2026-05-28',
-        showActions: true,
-        modelOptions: [],
-      },
-      global: { stubs: { Select: true, Teleport: true } },
-    })
-
-    await wrapper.find('input[type="text"]').setValue('missing@example.com')
-    const refreshButton = wrapper.findAll('button').find((button) => button.text() === 'Refresh')
-    await refreshButton!.trigger('click')
+    await input.setValue('')
+    vi.advanceTimersByTime(300)
     await flushPromises()
 
-    expect(wrapper.props('modelValue').user_id).toBeUndefined()
-    expect(wrapper.emitted('refresh')).toBeUndefined()
+    pendingSearch.resolve([{ id: 3, email: 'stale@test.com', deleted: false }])
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('stale@test.com')
   })
 })
 

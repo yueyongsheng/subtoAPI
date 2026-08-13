@@ -49,3 +49,6 @@ export const DEFAULT_STATUS_REFRESH_SECONDS = 30
 
 /** Default active-probe interval for newly created legacy monitors. */
 export const DEFAULT_MONITOR_INTERVAL_SECONDS = 30
+
+/** Backward-compatible alias used by legacy status-page feature gates. */
+export const DEFAULT_INTERVAL_SECONDS = DEFAULT_MONITOR_INTERVAL_SECONDS

@@ -31,7 +31,7 @@ interface IconData {
   paths: string[]
 }
 
-// SVG paths extracted from @lobehub/icons Mono.js files
+// Bundled static SVG paths keep model icons independent from a React UI runtime.
 const iconData: Record<string, IconData> = {
   claude: {
     color: '#D97706',

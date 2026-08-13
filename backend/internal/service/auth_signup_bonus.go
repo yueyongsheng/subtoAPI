@@ -45,6 +45,10 @@ func (s *AuthService) createUserAndSignupBonusRecord(ctx context.Context, user *
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return err
 	}
+	return s.createSignupBonusRecord(ctx, user)
+}
+
+func (s *AuthService) createSignupBonusRecord(ctx context.Context, user *User) error {
 	if user.Balance <= 0 || s.redeemRepo == nil {
 		return nil
 	}

@@ -194,3 +194,19 @@ func TestResolveSignupGrantPlan_DisabledAuthSourceStillCarriesGlobalQuota(t *tes
 		t.Error("P1 violated: disabled auth source path dropped global platform quota")
 	}
 }
+
+func TestResolveSignupGrantPlan_DisabledSourceOverridesUseFiveUSDGlobalBalance(t *testing.T) {
+	svc := newAuthService(nil, map[string]string{
+		SettingKeyRegistrationEnabled: "true",
+		SettingKeyDefaultBalance:      "5",
+	}, nil, nil)
+
+	for _, source := range []string{"email", "wechat", "linuxdo", "oidc", "github", "google", "dingtalk"} {
+		t.Run(source, func(t *testing.T) {
+			plan := svc.resolveSignupGrantPlan(context.Background(), source)
+			if plan.Balance != 5 {
+				t.Fatalf("expected %s signup to inherit the 5 USD global balance, got %v", source, plan.Balance)
+			}
+		})
+	}
+}

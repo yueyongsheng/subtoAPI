@@ -63,11 +63,13 @@ func TestCalculateOpenAIRecordUsageCostWebSearchPerCall(t *testing.T) {
 	require.InDelta(t, 0.005, cost.TotalCost, 1e-12)
 	require.InDelta(t, 0.005, cost.ActualCost, 1e-12)
 
-	// WebSearchCalls = 0 时不得走按次分支（无定价数据会返回 pricing 错误，
-	// 证明回落到了 token 路径而不是被按次分支吞掉）。
+	// WebSearchCalls = 0 时不得走按次分支；六模型权威价应按 token 计费，
+	// 证明请求没有被按次分支吞掉。
 	result.WebSearchCalls = 0
-	_, err = svc.calculateOpenAIRecordUsageCost(context.Background(), result, apiKey, []string{"gpt-5.6-sol"}, 1.0, 1.0, 1.0, 1.0, UsageTokens{InputTokens: 10}, "", false)
-	require.Error(t, err)
+	cost, err = svc.calculateOpenAIRecordUsageCost(context.Background(), result, apiKey, []string{"gpt-5.6-sol"}, 1.0, 1.0, 1.0, 1.0, UsageTokens{InputTokens: 10}, "", false)
+	require.NoError(t, err)
+	require.NotEqual(t, string(BillingModePerRequest), cost.BillingMode)
+	require.InDelta(t, 10*17.5e-6, cost.TotalCost, 1e-12)
 }
 
 func TestAPIKeyService_SnapshotRoundTrip_PreservesWebSearchPricePerCall(t *testing.T) {
