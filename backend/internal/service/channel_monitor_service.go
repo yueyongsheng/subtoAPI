@@ -829,10 +829,6 @@ func normalizeMonitorMode(mode string) string {
 	return mode
 }
 
-func defaultMonitorMode(mode string) string {
-	return normalizeMonitorMode(mode)
-}
-
 func isValidMonitorMode(mode string) bool {
 	mode = normalizeMonitorMode(mode)
 	return mode == MonitorModeActive || mode == MonitorModeHybrid
