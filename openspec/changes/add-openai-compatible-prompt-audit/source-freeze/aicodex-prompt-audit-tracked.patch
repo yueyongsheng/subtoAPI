@@ -502,7 +502,7 @@ index f2afd6df93ddac878b88af129ac6ba2965fe1418..ec93e96b6052b4e078754c59fb1ac230
 +		c.Status(http.StatusNoContent)
 +	}})
 +	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-5","messages":[{"role":"user","content":"observe-only"}]}`))
-+	req.Header.Set("Authorization", "Bearer sk-rawtransportobserve-1")
++	req.Header.Set("Authorization", "Bearer sk-fixture-rawtransportobserve-1")
 +	req.Header.Set("Content-Type", gin.MIMEJSON)
 +	req = req.WithContext(common.WithRequestEntrypoint(req.Context(), common.RequestEntrypointAI9068))
 +	rec := httptest.NewRecorder()
