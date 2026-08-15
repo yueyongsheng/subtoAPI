@@ -945,7 +945,7 @@ func (s *BillingService) GetModelPricing(model string) (*ModelPricing, error) {
 			price5m := litellmPricing.CacheCreationInputTokenCost
 			price1h := litellmPricing.CacheCreationInputTokenCostAbove1hr
 			enableBreakdown := price1h > 0 && price1h > price5m
-			return s.applyModelSpecificPricingPolicy(model, &ModelPricing{
+			pricing := s.applyModelSpecificPricingPolicy(model, &ModelPricing{
 				InputPricePerToken:                 litellmPricing.InputCostPerToken,
 				InputPricePerTokenPriority:         litellmPricing.InputCostPerTokenPriority,
 				OutputPricePerToken:                litellmPricing.OutputCostPerToken,
@@ -962,7 +962,8 @@ func (s *BillingService) GetModelPricing(model string) (*ModelPricing, error) {
 				LongContextOutputMultiplier:        litellmPricing.LongContextOutputCostMultiplier,
 				ImageInputPricePerToken:            litellmPricing.InputCostPerImageToken,
 				ImageOutputPricePerToken:           litellmPricing.OutputCostPerImageToken,
-			}), nil
+			})
+			return applyYuexiangCCGrokBasePricePolicy(model, pricing), nil
 		}
 	}
 
@@ -974,7 +975,8 @@ func (s *BillingService) GetModelPricing(model string) (*ModelPricing, error) {
 		if _, seen := s.fallbackWarnSeen.LoadOrStore(model, struct{}{}); !seen {
 			log.Printf("[Billing] Using fallback pricing for model: %s", model)
 		}
-		return s.applyModelSpecificPricingPolicy(model, fallback), nil
+		pricing := s.applyModelSpecificPricingPolicy(model, fallback)
+		return applyYuexiangCCGrokBasePricePolicy(model, pricing), nil
 	}
 
 	return nil, fmt.Errorf("%w for model: %s", ErrModelPricingUnavailable, model)

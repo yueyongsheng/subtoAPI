@@ -36,7 +36,7 @@ func TestResolve_NoGroupID(t *testing.T) {
 	require.NotNil(t, resolved)
 	require.Equal(t, BillingModeToken, resolved.Mode)
 	require.NotNil(t, resolved.BasePricing)
-	require.InDelta(t, 3e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 10.5e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
 	// BillingService.GetModelPricing uses fallback internally, but resolveBasePricing
 	// reports "litellm" when GetModelPricing succeeds (regardless of internal source)
 	require.Equal(t, "litellm", resolved.Source)
@@ -286,8 +286,8 @@ func TestResolve_WithChannelOverride_TokenPartialOverride(t *testing.T) {
 	require.NotNil(t, resolved.BasePricing)
 	// InputPrice overridden by channel
 	require.InDelta(t, 20e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
-	// OutputPrice kept from base (fallback: 15e-6)
-	require.InDelta(t, 15e-6, resolved.BasePricing.OutputPricePerToken, 1e-12)
+	// OutputPrice remains the scaled Claude base price.
+	require.InDelta(t, 52.5e-6, resolved.BasePricing.OutputPricePerToken, 1e-12)
 }
 
 func TestResolve_WithChannelOverride_TokenWithIntervals(t *testing.T) {
@@ -548,7 +548,7 @@ func TestGetIntervalPricing_ChannelIntervalsNoMatch(t *testing.T) {
 	// Should fall back to BasePricing (from the billing service fallback)
 	require.NotNil(t, pricing)
 	require.Equal(t, resolved.BasePricing, pricing)
-	require.InDelta(t, 3e-6, pricing.InputPricePerToken, 1e-12) // original base price
+	require.InDelta(t, 10.5e-6, pricing.InputPricePerToken, 1e-12) // scaled base price
 }
 
 // ===========================================================================
@@ -578,7 +578,7 @@ func TestResolve_WithChannelOverride_CacheError(t *testing.T) {
 	require.NotEqual(t, "channel", resolved.Source)
 	// Base pricing should still be present (from BillingService fallback)
 	require.NotNil(t, resolved.BasePricing)
-	require.InDelta(t, 3e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 10.5e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
 }
 
 // ===========================================================================

@@ -36,7 +36,7 @@ func newTestBillingService() *BillingService {
 func TestCalculateCost_BasicComputation(t *testing.T) {
 	svc := newTestBillingService()
 
-	// 使用 claude-sonnet-4 的回退价格：Input $3/MTok, Output $15/MTok
+	// Claude 基础价按 3.5x：Input $10.5/MTok, Output $52.5/MTok
 	tokens := UsageTokens{
 		InputTokens:  1000,
 		OutputTokens: 500,
@@ -44,9 +44,8 @@ func TestCalculateCost_BasicComputation(t *testing.T) {
 	cost, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
 	require.NoError(t, err)
 
-	// 1000 * 3e-6 = 0.003, 500 * 15e-6 = 0.0075
-	expectedInput := 1000 * 3e-6
-	expectedOutput := 500 * 15e-6
+	expectedInput := 1000 * 10.5e-6
+	expectedOutput := 500 * 52.5e-6
 	require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
 	require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
 	require.InDelta(t, expectedInput+expectedOutput, cost.TotalCost, 1e-10)
@@ -65,8 +64,8 @@ func TestCalculateCost_WithCacheTokens(t *testing.T) {
 	cost, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
 	require.NoError(t, err)
 
-	expectedCacheCreation := 2000 * 3.75e-6
-	expectedCacheRead := 3000 * 0.3e-6
+	expectedCacheCreation := 2000 * 13.125e-6
+	expectedCacheRead := 3000 * 1.05e-6
 	require.InDelta(t, expectedCacheCreation, cost.CacheCreationCost, 1e-10)
 	require.InDelta(t, expectedCacheRead, cost.CacheReadCost, 1e-10)
 
@@ -97,12 +96,12 @@ func TestGetModelPricing_FallbackMatchesByFamily(t *testing.T) {
 		model         string
 		expectedInput float64
 	}{
-		{"claude-opus-4.5-20250101", 5e-6},
-		{"claude-3-opus-20240229", 15e-6},
-		{"claude-sonnet-4-20250514", 3e-6},
-		{"claude-3-5-sonnet-20241022", 3e-6},
-		{"claude-3-5-haiku-20241022", 1e-6},
-		{"claude-3-haiku-20240307", 0.25e-6},
+		{"claude-opus-4.5-20250101", 17.5e-6},
+		{"claude-3-opus-20240229", 52.5e-6},
+		{"claude-sonnet-4-20250514", 10.5e-6},
+		{"claude-3-5-sonnet-20241022", 10.5e-6},
+		{"claude-3-5-haiku-20241022", 3.5e-6},
+		{"claude-3-haiku-20240307", 0.875e-6},
 	}
 
 	for _, tt := range tests {
@@ -179,7 +178,7 @@ func TestGetModelPricing_UnknownClaudeModelFallsBackToSonnet(t *testing.T) {
 	// 不包含 opus/sonnet/haiku 关键词的 Claude 模型会走默认 Sonnet 价格
 	pricing, err := svc.GetModelPricing("claude-unknown-model")
 	require.NoError(t, err)
-	require.InDelta(t, 3e-6, pricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 10.5e-6, pricing.InputPricePerToken, 1e-12)
 }
 
 func TestGetModelPricing_UnknownOpenAIModelReturnsError(t *testing.T) {
@@ -425,8 +424,8 @@ func TestCalculateCost_LongContextAppliesMultiplierToCacheCreation5mAnd1h(t *tes
 	cost, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
 	require.NoError(t, err)
 
-	expected5m := float64(tokens.CacheCreation5mTokens) * 4e-6 * 2.0
-	expected1h := float64(tokens.CacheCreation1hTokens) * 5e-6 * 2.0
+	expected5m := float64(tokens.CacheCreation5mTokens) * 4e-6 * 3.5 * 2.0
+	expected1h := float64(tokens.CacheCreation1hTokens) * 5e-6 * 3.5 * 2.0
 	require.InDelta(t, expected5m+expected1h, cost.CacheCreationCost, 1e-10,
 		"both 5m and 1h cache_creation prices should be scaled by LongContextInputMultiplier")
 }
@@ -1148,7 +1147,7 @@ func TestCalculateCostWithLongContext_PropagatesError(t *testing.T) {
 	require.Contains(t, err.Error(), "pricing not found")
 }
 
-func TestGetModelPricing_Grok45OfficialFallback(t *testing.T) {
+func TestGetModelPricing_Grok45YuexiangBasePricing(t *testing.T) {
 	svc := newTestBillingService()
 
 	for _, model := range []string{"grok", "grok-latest", "grok-4.5", "grok-4.5-latest"} {
@@ -1156,15 +1155,15 @@ func TestGetModelPricing_Grok45OfficialFallback(t *testing.T) {
 		t.Run(model, func(t *testing.T) {
 			pricing, err := svc.GetModelPricing(model)
 			require.NoError(t, err)
-			require.InDelta(t, 2e-6, pricing.InputPricePerToken, 1e-12)
-			require.InDelta(t, 6e-6, pricing.OutputPricePerToken, 1e-12)
-			require.InDelta(t, 0.3e-6, pricing.CacheReadPricePerToken, 1e-12)
+			require.InDelta(t, 7e-6, pricing.InputPricePerToken, 1e-12)
+			require.InDelta(t, 21e-6, pricing.OutputPricePerToken, 1e-12)
+			require.InDelta(t, 1.05e-6, pricing.CacheReadPricePerToken, 1e-12)
 			require.False(t, pricing.SupportsCacheBreakdown)
 		})
 	}
 }
 
-func TestGetModelPricing_Grok46OfficialFallback(t *testing.T) {
+func TestGetModelPricing_Grok46YuexiangBasePricing(t *testing.T) {
 	svc := newTestBillingService()
 
 	for _, model := range []string{"grok-4.6", "grok-4.6-latest"} {
@@ -1172,9 +1171,9 @@ func TestGetModelPricing_Grok46OfficialFallback(t *testing.T) {
 		t.Run(model, func(t *testing.T) {
 			pricing, err := svc.GetModelPricing(model)
 			require.NoError(t, err)
-			require.InDelta(t, 2e-6, pricing.InputPricePerToken, 1e-12)
-			require.InDelta(t, 6e-6, pricing.OutputPricePerToken, 1e-12)
-			require.InDelta(t, 0.5e-6, pricing.CacheReadPricePerToken, 1e-12)
+			require.InDelta(t, 7e-6, pricing.InputPricePerToken, 1e-12)
+			require.InDelta(t, 21e-6, pricing.OutputPricePerToken, 1e-12)
+			require.InDelta(t, 1.75e-6, pricing.CacheReadPricePerToken, 1e-12)
 			require.Equal(t, 200000, pricing.LongContextInputThreshold)
 			require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
 			require.InDelta(t, 2.0, pricing.LongContextOutputMultiplier, 1e-12)
@@ -1232,10 +1231,10 @@ func TestGetModelPricing_UnknownGrokTextFallsBackToGrok45(t *testing.T) {
 		require.ErrorIs(t, err, ErrModelPricingUnavailable)
 	}
 
-	// Known cards stay on their own rate, not the 4.5 family floor.
+	// Known cards stay on their own 3.5x rate, not the 4.5 family floor.
 	build, err := svc.GetModelPricing("grok-build-0.1")
 	require.NoError(t, err)
-	require.InDelta(t, 1e-6, build.InputPricePerToken, 1e-12)
+	require.InDelta(t, 3.5e-6, build.InputPricePerToken, 1e-12)
 }
 
 func TestGetModelPricing_GrokCatalogFallbacks(t *testing.T) {
@@ -1258,9 +1257,9 @@ func TestGetModelPricing_GrokCatalogFallbacks(t *testing.T) {
 				"grok-4.20-reasoning",
 				"grok-4.20-non-reasoning",
 			},
-			input:     1.25e-6,
-			cacheRead: 0.2e-6,
-			output:    2.5e-6,
+			input:     4.375e-6,
+			cacheRead: 0.7e-6,
+			output:    8.75e-6,
 		},
 		{
 			name: "Grok coding and Composer family",
@@ -1271,9 +1270,9 @@ func TestGetModelPricing_GrokCatalogFallbacks(t *testing.T) {
 				"grok-composer-2.5-fast",
 				"composer-2.5",
 			},
-			input:     1e-6,
-			cacheRead: 0.2e-6,
-			output:    2e-6,
+			input:     3.5e-6,
+			cacheRead: 0.7e-6,
+			output:    7e-6,
 		},
 	}
 
@@ -1313,8 +1312,8 @@ func TestCalculateCost_SupportsCacheBreakdown(t *testing.T) {
 	cost, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
 	require.NoError(t, err)
 
-	expected5m := float64(tokens.CacheCreation5mTokens) * 4e-6
-	expected1h := float64(tokens.CacheCreation1hTokens) * 5e-6
+	expected5m := float64(tokens.CacheCreation5mTokens) * 4e-6 * 3.5
+	expected1h := float64(tokens.CacheCreation1hTokens) * 5e-6 * 3.5
 	require.InDelta(t, expected5m+expected1h, cost.CacheCreationCost, 1e-10)
 }
 
@@ -1328,9 +1327,9 @@ func TestCalculateCost_LargeTokenCount(t *testing.T) {
 	cost, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
 	require.NoError(t, err)
 
-	// Input: 1M * 3e-6 = $3, Output: 1M * 15e-6 = $15
-	require.InDelta(t, 3.0, cost.InputCost, 1e-6)
-	require.InDelta(t, 15.0, cost.OutputCost, 1e-6)
+	// Claude base prices use the public 3.5x multiplier.
+	require.InDelta(t, 10.5, cost.InputCost, 1e-6)
+	require.InDelta(t, 52.5, cost.OutputCost, 1e-6)
 	require.False(t, math.IsNaN(cost.TotalCost))
 	require.False(t, math.IsInf(cost.TotalCost, 0))
 }
@@ -1588,8 +1587,8 @@ func TestGetModelPricingWithChannel_OverrideInputPriceOnly(t *testing.T) {
 	require.InDelta(t, 99e-6, pricing.InputPricePerToken, 1e-12)
 	require.InDelta(t, 99e-6, pricing.InputPricePerTokenPriority, 1e-12)
 
-	// OutputPrice unchanged (claude-sonnet-4 fallback = 15e-6)
-	require.InDelta(t, 15e-6, pricing.OutputPricePerToken, 1e-12)
+	// OutputPrice remains the scaled Claude base price.
+	require.InDelta(t, 52.5e-6, pricing.OutputPricePerToken, 1e-12)
 }
 
 func TestGetModelPricingWithChannel_OverrideOutputPriceOnly(t *testing.T) {
@@ -1605,8 +1604,8 @@ func TestGetModelPricingWithChannel_OverrideOutputPriceOnly(t *testing.T) {
 	require.InDelta(t, 88e-6, pricing.OutputPricePerToken, 1e-12)
 	require.InDelta(t, 88e-6, pricing.OutputPricePerTokenPriority, 1e-12)
 
-	// InputPrice unchanged (claude-sonnet-4 fallback = 3e-6)
-	require.InDelta(t, 3e-6, pricing.InputPricePerToken, 1e-12)
+	// InputPrice remains the scaled Claude base price.
+	require.InDelta(t, 10.5e-6, pricing.InputPricePerToken, 1e-12)
 }
 
 func TestGetModelPricingWithChannel_OverrideAllFields(t *testing.T) {

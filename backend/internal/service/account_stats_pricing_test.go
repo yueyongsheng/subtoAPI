@@ -456,8 +456,8 @@ func TestTryModelFilePricing_Success(t *testing.T) {
 	tokens := UsageTokens{InputTokens: 100, OutputTokens: 50}
 	result := tryModelFilePricing(bs, "claude-sonnet-4", tokens, "")
 	require.NotNil(t, result)
-	// 100*0.001 + 50*0.002 = 0.1 + 0.1 = 0.2
-	require.InDelta(t, 0.2, *result, 1e-12)
+	// Claude token prices use the resolved base card multiplied by 3.5.
+	require.InDelta(t, 0.7, *result, 1e-12)
 }
 
 func TestTryModelFilePricing_AppliesLongContextPricing(t *testing.T) {
@@ -594,8 +594,8 @@ func TestTryModelFilePricing_WithImageOutput(t *testing.T) {
 	}
 	result := tryModelFilePricing(bs, "claude-sonnet-4", tokens, "")
 	require.NotNil(t, result)
-	// 100*0.001 + 50*0.002 + 10*0.01 = 0.1 + 0.1 + 0.1 = 0.3
-	require.InDelta(t, 0.3, *result, 1e-12)
+	// Text tokens use 3.5x; the explicit image-token price remains unchanged.
+	require.InDelta(t, 0.8, *result, 1e-12)
 }
 
 func TestTryModelFilePricing_WithCacheTokens(t *testing.T) {
@@ -615,9 +615,8 @@ func TestTryModelFilePricing_WithCacheTokens(t *testing.T) {
 	}
 	result := tryModelFilePricing(bs, "claude-sonnet-4", tokens, "")
 	require.NotNil(t, result)
-	// 100*0.001 + 50*0.002 + 200*0.003 + 300*0.0005
-	// = 0.1 + 0.1 + 0.6 + 0.15 = 0.95
-	require.InDelta(t, 0.95, *result, 1e-12)
+	// All Claude text and cache token prices use 3.5x.
+	require.InDelta(t, 3.325, *result, 1e-12)
 }
 
 // ---------------------------------------------------------------------------
@@ -764,8 +763,8 @@ func TestResolveAccountStatsCost_FallsBackToLiteLLM(t *testing.T) {
 		tokens, 1, 999.0, "", // totalCost ignored
 	)
 	require.NotNil(t, result)
-	// 100*0.001 + 50*0.002 = 0.1 + 0.1 = 0.2
-	require.InDelta(t, 0.2, *result, 1e-12)
+	// Claude token prices use the resolved base card multiplied by 3.5.
+	require.InDelta(t, 0.7, *result, 1e-12)
 }
 
 func TestResolveAccountStatsCost_Gemini36FlashTierUsesFallbackPricing(t *testing.T) {

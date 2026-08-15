@@ -22,9 +22,8 @@ func TestCalculateOpenAIRecordUsageCost_SearchIsAdditiveToTokens(t *testing.T) {
 		},
 	}
 
-	// claude-sonnet-4 fallback: Input $3/MTok, Output $15/MTok
-	// 1000 in + 500 out → 0.003 + 0.0075 = 0.0105
-	// + 100 searches → +1.0 → total 1.0105
+	// Claude token prices use 3.5x while the per-search charge stays unchanged.
+	// 1000 in + 500 out = 0.03675; 100 searches add 1.0.
 	cost, err := svc.calculateOpenAIRecordUsageCost(
 		context.Background(),
 		&OpenAIForwardResult{SearchCount: 100},
@@ -40,8 +39,8 @@ func TestCalculateOpenAIRecordUsageCost_SearchIsAdditiveToTokens(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, cost)
-	require.InDelta(t, 1.0105, cost.ActualCost, 1e-9)
-	require.InDelta(t, 1.0105, cost.TotalCost, 1e-9)
+	require.InDelta(t, 1.03675, cost.ActualCost, 1e-9)
+	require.InDelta(t, 1.03675, cost.TotalCost, 1e-9)
 }
 
 func TestCalculateOpenAIRecordUsageCost_SearchOnlyWhenNoTokenPricing(t *testing.T) {

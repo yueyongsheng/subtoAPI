@@ -53,8 +53,8 @@ func TestCalculateCostUnified_TokenMode(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cost)
 
-	// Verify token billing: Input: 1000*3e-6=0.003, Output: 500*15e-6=0.0075
-	expectedTotal := 1000*3e-6 + 500*15e-6
+	// Claude token prices use the resolved base card multiplied by 3.5.
+	expectedTotal := 1000*10.5e-6 + 500*52.5e-6
 	require.InDelta(t, expectedTotal, cost.TotalCost, 1e-10)
 	require.InDelta(t, expectedTotal*1.5, cost.ActualCost, 1e-10)
 	require.Equal(t, string(BillingModeToken), cost.BillingMode)
@@ -74,9 +74,9 @@ func TestCalculateCostUnified_TokenModeAppliesRateMultiplierToImageTokens(t *tes
 	})
 	require.NoError(t, err)
 
-	textInput := 1000 * 3e-6
-	textOutput := 500 * 15e-6
-	imageOutput := 100 * 15e-6
+	textInput := 1000 * 10.5e-6
+	textOutput := 500 * 52.5e-6
+	imageOutput := 100 * 52.5e-6
 	require.InDelta(t, textInput+textOutput+imageOutput, cost.TotalCost, 1e-10)
 	require.InDelta(t, (textInput+textOutput+imageOutput)*3.0, cost.ActualCost, 1e-10)
 	require.InDelta(t, imageOutput, cost.ImageOutputCost, 1e-10)

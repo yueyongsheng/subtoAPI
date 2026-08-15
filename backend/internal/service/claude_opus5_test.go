@@ -44,8 +44,8 @@ func TestClaudeOpus5_FamilyFallbackDoesNotUseOpus4Rates(t *testing.T) {
 			pricing, err := svc.GetModelPricing(model)
 			require.NoError(t, err)
 			require.NotNil(t, pricing)
-			assert.InDelta(t, opus5InputPricePerToken, pricing.InputPricePerToken, 1e-12)
-			assert.InDelta(t, opus5OutputPricePerToken, pricing.OutputPricePerToken, 1e-12)
+			assert.InDelta(t, opus5InputPricePerToken*yuexiangTextBasePriceMultiplier, pricing.InputPricePerToken, 1e-12)
+			assert.InDelta(t, opus5OutputPricePerToken*yuexiangTextBasePriceMultiplier, pricing.OutputPricePerToken, 1e-12)
 		})
 	}
 }
@@ -75,15 +75,15 @@ func TestClaudeOpus5_HardcodedFallbackPricing(t *testing.T) {
 			pricing, err := svc.GetModelPricing(tt.model)
 			require.NoError(t, err)
 			require.NotNil(t, pricing)
-			assert.InDelta(t, tt.input, pricing.InputPricePerToken, 1e-12)
-			assert.InDelta(t, tt.output, pricing.OutputPricePerToken, 1e-12)
+			assert.InDelta(t, tt.input*yuexiangTextBasePriceMultiplier, pricing.InputPricePerToken, 1e-12)
+			assert.InDelta(t, tt.output*yuexiangTextBasePriceMultiplier, pricing.OutputPricePerToken, 1e-12)
 		})
 	}
 
 	opus5, err := svc.GetModelPricing("claude-opus-5")
 	require.NoError(t, err)
-	assert.InDelta(t, opus5CacheCreationPricePerToken, opus5.CacheCreationPricePerToken, 1e-12)
-	assert.InDelta(t, opus5CacheReadPricePerToken, opus5.CacheReadPricePerToken, 1e-12)
+	assert.InDelta(t, opus5CacheCreationPricePerToken*yuexiangTextBasePriceMultiplier, opus5.CacheCreationPricePerToken, 1e-12)
+	assert.InDelta(t, opus5CacheReadPricePerToken*yuexiangTextBasePriceMultiplier, opus5.CacheReadPricePerToken, 1e-12)
 }
 
 // TestClaudeOpus5_BedrockCapabilityGates 锁定只有主版本号的模型 ID
