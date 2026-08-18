@@ -3,7 +3,8 @@ export const SUPPORT_CONTACT = Object.freeze({
   wechat: 'yys504002280',
   serviceHours: '09:00-23:00',
   qqGroup: '964308879',
-  qqGroupQrImage: '/support-qq-group.png'
+  qqGroupQrImage: '/support-qq-group.png',
+  wechatGroupQrImage: '/support-wechat-group.png'
 })
 
 export const SUPPORT_CONTACT_LINE =

@@ -29,7 +29,7 @@ describe('SupportView', () => {
     copyToClipboard.mockResolvedValue(true)
   })
 
-  it('renders the confirmed support channels and QQ group QR code', () => {
+  it('renders the confirmed support channels and both group QR codes', () => {
     const wrapper = mount(SupportView, {
       global: {
         stubs: {
@@ -43,7 +43,11 @@ describe('SupportView', () => {
     expect(wrapper.text()).toContain('yys504002280')
     expect(wrapper.text()).toContain('09:00-23:00')
     expect(wrapper.text()).toContain('964308879')
-    expect(wrapper.get('img').attributes('src')).toBe('/support-qq-group.png')
+    expect(wrapper.findAll('img').map((img) => img.attributes('src'))).toEqual([
+      '/support-qq-group.png',
+      '/support-wechat-group.png'
+    ])
+    expect(wrapper.get('[data-testid="support-wechat-group"]').text()).toContain('support.wechatGroupTitle')
   })
 
   it('copies a support value from its icon button', async () => {

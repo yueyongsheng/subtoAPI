@@ -72,42 +72,71 @@
           </div>
         </section>
 
-        <aside class="card overflow-hidden" data-testid="support-qq-group">
-          <div class="border-b border-gray-100 px-5 py-4 dark:border-dark-700">
-            <div class="flex items-center gap-3">
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/25 dark:text-blue-300"
-              >
-                <Icon name="users" size="md" />
-              </div>
-              <div class="min-w-0">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                  {{ t('support.qqGroupTitle') }}
-                </h3>
-                <button
-                  type="button"
-                  class="mt-0.5 inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-primary-600 dark:text-dark-400 dark:hover:text-primary-300"
-                  :title="t('support.copyValue', { label: t('support.qqGroup') })"
-                  @click="copyContact(contact.qqGroup, t('support.qqGroup'))"
+        <aside class="space-y-4" data-testid="support-group-cards">
+          <article class="card overflow-hidden" data-testid="support-qq-group">
+            <div class="border-b border-gray-100 px-5 py-4 dark:border-dark-700">
+              <div class="flex items-center gap-3">
+                <div
+                  class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/25 dark:text-blue-300"
                 >
-                  <span>{{ t('support.groupNumber') }} {{ contact.qqGroup }}</span>
-                  <Icon name="copy" size="xs" />
-                </button>
+                  <Icon name="users" size="md" />
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                    {{ t('support.qqGroupTitle') }}
+                  </h3>
+                  <button
+                    type="button"
+                    class="mt-0.5 inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-primary-600 dark:text-dark-400 dark:hover:text-primary-300"
+                    :title="t('support.copyValue', { label: t('support.qqGroup') })"
+                    @click="copyContact(contact.qqGroup, t('support.qqGroup'))"
+                  >
+                    <span>{{ t('support.groupNumber') }} {{ contact.qqGroup }}</span>
+                    <Icon name="copy" size="xs" />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="bg-gray-50 p-5 dark:bg-dark-800/60">
-            <img
-              :src="contact.qqGroupQrImage"
-              :alt="t('support.qqGroupQrAlt')"
-              class="mx-auto aspect-[294/365] w-full max-w-[294px] object-contain"
-              width="294"
-              height="365"
-            >
-          </div>
-          <p class="px-5 py-4 text-center text-xs leading-5 text-gray-500 dark:text-dark-400">
-            {{ t('support.qqGroupHint') }}
-          </p>
+            <div class="bg-gray-50 p-5 dark:bg-dark-800/60">
+              <img
+                :src="contact.qqGroupQrImage"
+                :alt="t('support.qqGroupQrAlt')"
+                class="mx-auto aspect-[294/365] w-full max-w-[294px] object-contain"
+                width="294"
+                height="365"
+              >
+            </div>
+            <p class="px-5 py-4 text-center text-xs leading-5 text-gray-500 dark:text-dark-400">
+              {{ t('support.qqGroupHint') }}
+            </p>
+          </article>
+
+          <article class="card overflow-hidden" data-testid="support-wechat-group">
+            <div class="border-b border-gray-100 px-5 py-4 dark:border-dark-700">
+              <div class="flex items-center gap-3">
+                <div
+                  class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/25 dark:text-emerald-300"
+                >
+                  <Icon name="users" size="md" />
+                </div>
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                  {{ t('support.wechatGroupTitle') }}
+                </h3>
+              </div>
+            </div>
+            <div class="bg-gray-50 p-5 dark:bg-dark-800/60">
+              <img
+                :src="contact.wechatGroupQrImage"
+                :alt="t('support.wechatGroupQrAlt')"
+                class="mx-auto aspect-[930/1497] w-full max-w-[294px] object-contain"
+                width="294"
+                height="473"
+              >
+            </div>
+            <p class="px-5 py-4 text-center text-xs leading-5 text-gray-500 dark:text-dark-400">
+              {{ t('support.wechatGroupHint') }}
+            </p>
+          </article>
         </aside>
       </div>
     </div>
