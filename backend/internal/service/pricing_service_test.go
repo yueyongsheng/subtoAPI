@@ -210,6 +210,22 @@ func TestPricingService_BareGPT56AliasDeterministicallyUsesSol(t *testing.T) {
 	}
 }
 
+func TestBillingService_AstraPricingAndUnknownGPT6FailClosed(t *testing.T) {
+	svc := NewBillingService(&config.Config{}, nil)
+	pricing, err := svc.GetModelPricing("gpt-6-astra")
+	require.NoError(t, err)
+	require.InDelta(t, 35e-6, pricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 175e-6, pricing.OutputPricePerToken, 1e-12)
+	require.InDelta(t, 43.75e-6, pricing.CacheCreationPricePerToken, 1e-12)
+	require.InDelta(t, 3.5e-6, pricing.CacheReadPricePerToken, 1e-12)
+	require.Equal(t, 272000, pricing.LongContextInputThreshold)
+
+	for _, model := range []string{"gpt-6", "gpt-6-pro", "openai/gpt-6-preview"} {
+		_, err := svc.GetModelPricing(model)
+		require.ErrorIs(t, err, ErrModelPricingUnavailable, model)
+	}
+}
+
 func TestDefaultPricingIncludesOfficialGPT56Rates(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "..", "resources", "model-pricing", "model_prices_and_context_window.json"))
 	require.NoError(t, err)

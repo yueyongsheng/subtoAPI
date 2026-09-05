@@ -942,6 +942,13 @@ func (s *BillingService) GetModelPricing(model string) (*ModelPricing, error) {
 	if pricing, ok := yuexiangOpenAIModelPricing(model); ok {
 		return pricing, nil
 	}
+	if normalizeKnownOpenAICodexModel(model) == "gpt-6-astra" {
+		pricing, _ := yuexiangOpenAIModelPricing("gpt-6-astra")
+		return pricing, nil
+	}
+	if isUnknownOpenAIGPT6Model(model) {
+		return nil, fmt.Errorf("%w for model: %s", ErrModelPricingUnavailable, model)
+	}
 
 	// 1. 优先从动态价格服务获取
 	if s.pricingService != nil {

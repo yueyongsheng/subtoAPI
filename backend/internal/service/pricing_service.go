@@ -92,6 +92,23 @@ var (
 		Mode:                                "chat",
 		SupportsPromptCaching:               true,
 	}
+	openAIGPT6AstraFallbackPricing = &LiteLLMModelPricing{
+		InputCostPerToken:                   35e-06,
+		InputCostPerTokenPriority:           70e-06,
+		OutputCostPerToken:                  175e-06,
+		OutputCostPerTokenPriority:          350e-06,
+		CacheCreationInputTokenCost:         43.75e-06,
+		CacheCreationInputTokenCostPriority: 87.5e-06,
+		CacheReadInputTokenCost:             3.5e-06,
+		CacheReadInputTokenCostPriority:     7e-06,
+		LongContextInputTokenThreshold:      openAIGPT54LongContextInputThreshold,
+		LongContextInputCostMultiplier:      openAIGPT54LongContextInputMultiplier,
+		LongContextOutputCostMultiplier:     openAIGPT54LongContextOutputMultiplier,
+		SupportsServiceTier:                 true,
+		LiteLLMProvider:                     "openai",
+		Mode:                                "chat",
+		SupportsPromptCaching:               true,
+	}
 	openAIGPT54MiniFallbackPricing = &LiteLLMModelPricing{
 		InputCostPerToken:       7.5e-07,
 		OutputCostPerToken:      4.5e-06,
@@ -659,6 +676,11 @@ func (s *PricingService) GetModelPricing(modelName string) *LiteLLMModelPricing 
 	if pricing := yuexiangOpenAIStaticPricing(modelLower); pricing != nil {
 		return pricing
 	}
+	// Unknown GPT-6 names are deliberately fail-closed. Only the exact Astra
+	// model above is eligible for the static charged-model card.
+	if isUnknownOpenAIGPT6Model(modelLower) {
+		return nil
+	}
 	lookupCandidates := s.buildModelLookupCandidates(modelLower)
 
 	// 1~3. 确定性识别（精确名 / 已知拼写变体 / 去掉日期版本后缀）
@@ -680,7 +702,13 @@ func (s *PricingService) GetModelPricing(modelName string) *LiteLLMModelPricing 
 }
 
 func yuexiangOpenAIStaticPricing(model string) *LiteLLMModelPricing {
+	model = strings.ToLower(strings.TrimSpace(model))
+	if canonical := normalizeKnownOpenAICodexModel(model); canonical == "gpt-6-astra" {
+		return openAIGPT6AstraFallbackPricing
+	}
 	switch model {
+	case "gpt-6-astra":
+		return openAIGPT6AstraFallbackPricing
 	case "gpt-5.6-sol", "gpt-5.5", "codex-auto-review":
 		return openAIGPT56SolFallbackPricing
 	case "gpt-5.6-terra":
@@ -692,6 +720,11 @@ func yuexiangOpenAIStaticPricing(model string) *LiteLLMModelPricing {
 	default:
 		return nil
 	}
+}
+
+func isUnknownOpenAIGPT6Model(model string) bool {
+	model = strings.ToLower(strings.TrimSpace(lastOpenAIModelSegment(model)))
+	return model == "gpt-6" || strings.HasPrefix(model, "gpt-6-")
 }
 
 // lookupIdentifiedModelPricingLocked 只做"确定性识别"的三步查找：精确键、已知拼写

@@ -21,6 +21,7 @@ func TestGetPublishedModelPricing_OpenAITiersMatchLiveBilling(t *testing.T) {
 		fastOutput    float64
 		fastCacheRead float64
 	}{
+		{"gpt-6-astra", 35e-6, 175e-6, 43.75e-6, 3.5e-6, 70e-6, 350e-6, 7e-6},
 		{"gpt-5.6-sol", 17.5e-6, 105e-6, 21.875e-6, 1.75e-6, 35e-6, 210e-6, 3.5e-6},
 		{"gpt-5.6-terra", 7e-6, 42e-6, 8.75e-6, 0.7e-6, 14e-6, 84e-6, 1.4e-6},
 		{"gpt-5.6-luna", 0.7e-6, 4.2e-6, 0.875e-6, 0.07e-6, 1.4e-6, 8.4e-6, 0.14e-6},

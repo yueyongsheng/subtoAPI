@@ -24,6 +24,20 @@ func TestNormalizeKnownOpenAICodexModel_BareGPT56RoutesToSol(t *testing.T) {
 	}
 }
 
+func TestNormalizeKnownOpenAICodexModel_AstraIsExactAndUnknownGPT6FailsClosed(t *testing.T) {
+	require.Equal(t, "gpt-6-astra", normalizeKnownOpenAICodexModel("gpt-6-astra"))
+	require.Equal(t, "gpt-6-astra", normalizeKnownOpenAICodexModel("openai/gpt-6-astra"))
+	for _, model := range []string{"gpt-6", "gpt-6-pro", "openai/gpt-6-preview", "gpt-6-astra-2026-08-01"} {
+		require.Empty(t, normalizeKnownOpenAICodexModel(model), model)
+	}
+}
+
+func TestSupportsOpenAIReasoningEffortMaxIncludesAstra(t *testing.T) {
+	require.True(t, supportsOpenAIReasoningEffortMax("gpt-6-astra"))
+	require.True(t, supportsOpenAIReasoningEffortMax("openai/gpt-6-astra"))
+	require.False(t, supportsOpenAIReasoningEffortMax("gpt-6-preview"))
+}
+
 func TestUsageBillingModelCandidates_BareGPT56IncludesSol(t *testing.T) {
 	require.Equal(t,
 		[]string{"gpt-5.6", "gpt-5.6-sol"},
