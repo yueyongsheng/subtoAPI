@@ -114,6 +114,38 @@ func TestIsModelSupported_OpenAIAPIKeyEmptyMappingAllowsAll(t *testing.T) {
 	require.True(t, account.IsModelSupported("gpt-5.4"))
 }
 
+func TestIsModelSupported_OpenAIAstraRequiresExactAccountMapping(t *testing.T) {
+	for _, account := range []*Account{
+		{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth},
+		{ID: 2, Platform: PlatformOpenAI, Type: AccountTypeAPIKey},
+		{
+			ID:       3,
+			Platform: PlatformOpenAI,
+			Type:     AccountTypeAPIKey,
+			Extra:    map[string]any{"openai_passthrough": true},
+		},
+	} {
+		require.False(t, account.IsModelSupported("gpt-6-astra"))
+		account.Credentials = map[string]any{
+			"model_mapping": map[string]any{"gpt-6-*": "gpt-6-astra"},
+		}
+		require.False(t, account.IsModelSupported("gpt-6-astra"), "wildcard mappings must not admit Astra")
+		account.Credentials = map[string]any{
+			"model_mapping": map[string]any{"gpt-6-astra": "gpt-6-astra-preview"},
+		}
+		require.False(t, account.IsModelSupported("gpt-6-astra"), "Astra mapping target must also be exact")
+		account.Credentials = map[string]any{
+			"model_mapping": map[string]any{"gpt-6-astra": "gpt-6-astra"},
+		}
+		require.True(t, account.IsModelSupported("gpt-6-astra"))
+		require.False(t, account.IsModelSupported("GPT-6-ASTRA"), "Astra account admission is exact")
+		require.False(t, account.IsModelSupported("openai/gpt-6-astra"), "provider aliases are not public account admissions")
+	}
+
+	nonOpenAI := &Account{ID: 4, Platform: PlatformAnthropic, Type: AccountTypeAPIKey}
+	require.True(t, nonOpenAI.IsModelSupported("gpt-6-astra"), "other platforms keep their existing model policy")
+}
+
 func TestIsModelSupported_NonOpenAIPlatformsUnchanged(t *testing.T) {
 	anthropic := &Account{ID: 3, Platform: PlatformAnthropic, Type: AccountTypeOAuth}
 	require.True(t, anthropic.IsModelSupported("claude-sonnet-4-6"))
