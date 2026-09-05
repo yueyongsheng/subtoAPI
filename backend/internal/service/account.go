@@ -792,14 +792,6 @@ func resolveRequestedModelInMapping(mapping map[string]string, requestedModel st
 	return matchWildcardMappingResult(mapping, requestedModel)
 }
 
-func isOpenAIAstraAdmissionOnlyMapping(mapping map[string]string) bool {
-	if len(mapping) != 1 {
-		return false
-	}
-	mappedModel, exists := mapping["gpt-6-astra"]
-	return exists && strings.TrimSpace(mappedModel) == "gpt-6-astra"
-}
-
 // IsModelSupported 检查模型是否在 model_mapping 中（支持通配符）
 // 如果未配置 mapping，返回 true（允许所有模型）。
 //
@@ -827,10 +819,7 @@ func (a *Account) IsModelSupported(requestedModel string) bool {
 	if a.IsOpenAIPassthroughEnabled() {
 		return true
 	}
-	// An Astra-only self-mapping is an additive admission marker for accounts
-	// that previously had an empty mapping. Preserve their existing policy for
-	// every other model instead of turning the marker into a one-model whitelist.
-	if len(mapping) == 0 || (a.Platform == PlatformOpenAI && isOpenAIAstraAdmissionOnlyMapping(mapping)) {
+	if len(mapping) == 0 {
 		if a.IsOpenAIOAuth() {
 			return isOpenAIOAuthServableModel(requestedModel)
 		}

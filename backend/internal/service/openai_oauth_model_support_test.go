@@ -146,18 +146,18 @@ func TestIsModelSupported_OpenAIAstraRequiresExactAccountMapping(t *testing.T) {
 	require.True(t, nonOpenAI.IsModelSupported("gpt-6-astra"), "other platforms keep their existing model policy")
 }
 
-func TestIsModelSupported_OpenAIAstraOnlyAdmissionPreservesEmptyMappingPolicy(t *testing.T) {
+func TestIsModelSupported_OpenAIAstraOnlyAdmissionCreatesDedicatedWhitelist(t *testing.T) {
 	astraAdmission := map[string]any{
 		"model_mapping": map[string]any{"gpt-6-astra": "gpt-6-astra"},
 	}
 
 	oauth := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Credentials: astraAdmission}
-	require.True(t, oauth.IsModelSupported("gpt-5.6-sol"))
-	require.False(t, oauth.IsModelSupported("deepseek-v4"), "OAuth foreign-model filtering remains in effect")
+	require.True(t, oauth.IsModelSupported("gpt-6-astra"))
+	require.False(t, oauth.IsModelSupported("gpt-5.6-sol"))
 
 	apiKey := &Account{ID: 2, Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Credentials: astraAdmission}
-	require.True(t, apiKey.IsModelSupported("gpt-5.6-sol"))
-	require.True(t, apiKey.IsModelSupported("deepseek-v4"), "API Key empty-mapping semantics remain in effect")
+	require.True(t, apiKey.IsModelSupported("gpt-6-astra"))
+	require.False(t, apiKey.IsModelSupported("gpt-5.6-sol"))
 
 	passthrough := &Account{
 		ID:          3,
@@ -166,8 +166,8 @@ func TestIsModelSupported_OpenAIAstraOnlyAdmissionPreservesEmptyMappingPolicy(t 
 		Credentials: astraAdmission,
 		Extra:       map[string]any{"openai_passthrough": true},
 	}
-	require.True(t, passthrough.IsModelSupported("gpt-5.6-sol"))
-	require.True(t, passthrough.IsModelSupported("deepseek-v4"), "passthrough semantics remain in effect")
+	require.True(t, passthrough.IsModelSupported("gpt-6-astra"))
+	require.True(t, passthrough.IsModelSupported("gpt-5.6-sol"), "existing passthrough semantics remain in effect")
 }
 
 func TestIsModelSupported_OpenAIAstraAdmissionExtendsExistingWhitelist(t *testing.T) {
