@@ -146,6 +146,48 @@ func TestIsModelSupported_OpenAIAstraRequiresExactAccountMapping(t *testing.T) {
 	require.True(t, nonOpenAI.IsModelSupported("gpt-6-astra"), "other platforms keep their existing model policy")
 }
 
+func TestIsModelSupported_OpenAIAstraOnlyAdmissionPreservesEmptyMappingPolicy(t *testing.T) {
+	astraAdmission := map[string]any{
+		"model_mapping": map[string]any{"gpt-6-astra": "gpt-6-astra"},
+	}
+
+	oauth := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Credentials: astraAdmission}
+	require.True(t, oauth.IsModelSupported("gpt-5.6-sol"))
+	require.False(t, oauth.IsModelSupported("deepseek-v4"), "OAuth foreign-model filtering remains in effect")
+
+	apiKey := &Account{ID: 2, Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Credentials: astraAdmission}
+	require.True(t, apiKey.IsModelSupported("gpt-5.6-sol"))
+	require.True(t, apiKey.IsModelSupported("deepseek-v4"), "API Key empty-mapping semantics remain in effect")
+
+	passthrough := &Account{
+		ID:          3,
+		Platform:    PlatformOpenAI,
+		Type:        AccountTypeAPIKey,
+		Credentials: astraAdmission,
+		Extra:       map[string]any{"openai_passthrough": true},
+	}
+	require.True(t, passthrough.IsModelSupported("gpt-5.6-sol"))
+	require.True(t, passthrough.IsModelSupported("deepseek-v4"), "passthrough semantics remain in effect")
+}
+
+func TestIsModelSupported_OpenAIAstraAdmissionExtendsExistingWhitelist(t *testing.T) {
+	account := &Account{
+		ID:       1,
+		Platform: PlatformOpenAI,
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"model_mapping": map[string]any{
+				"gpt-5.5":     "gpt-5.5",
+				"gpt-6-astra": "gpt-6-astra",
+			},
+		},
+	}
+
+	require.True(t, account.IsModelSupported("gpt-5.5"))
+	require.True(t, account.IsModelSupported("gpt-6-astra"))
+	require.False(t, account.IsModelSupported("gpt-5.4"), "existing explicit whitelist semantics remain in effect")
+}
+
 func TestIsModelSupported_NonOpenAIPlatformsUnchanged(t *testing.T) {
 	anthropic := &Account{ID: 3, Platform: PlatformAnthropic, Type: AccountTypeOAuth}
 	require.True(t, anthropic.IsModelSupported("claude-sonnet-4-6"))
