@@ -190,9 +190,10 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyChannelMonitorMode:                   ChannelMonitorModeV1,
 		SettingKeyChannelMonitorDefaultIntervalSeconds: "60",
 		SettingKeyChannelMonitorHideThroughput:         "true",
+		SettingKeyChannelMonitorShowQuota:              "false",
 
 		// Grok: safe defaults — no cross-vendor model rewrite unless operators enable it.
-		SettingKeyGrokDefaultTextModel:           "grok-4.5",
+		SettingKeyGrokDefaultTextModel:           "grok-4.6",
 		SettingKeyGrokCrossClientModelMapEnabled: "true",
 		SettingKeyGrokDefaultBaseURLMode:         GrokDefaultBaseURLModeCLI,
 
@@ -200,9 +201,10 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyAvailableChannelsEnabled: "false",
 
 		// Model plaza feature (default enabled for Yuexiang, public unless require_auth)
-		SettingKeyModelPlazaEnabled:     "true",
-		SettingKeyModelPlazaRequireAuth: "false",
-		SettingKeyModelPlazaDescription: "",
+		SettingKeyModelPlazaEnabled:       "true",
+		SettingKeyModelPlazaRequireAuth:   "false",
+		SettingKeyModelPlazaDescription:   "",
+		SettingKeyPluginManagementEnabled: "false",
 
 		// Affiliate (邀请返利) feature (default enabled; explicit false disables it)
 		SettingKeyAffiliateEnabled:              strconv.FormatBool(AffiliateEnabledDefault),
@@ -798,11 +800,12 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	// 默认隐藏吞吐（迁移 206 的隐私默认）：未配置时必须与 setting_public.go 的
 	// 公开读取路径给出同一个值，否则管理端看到“未隐藏”而用户端实际已隐藏。
 	result.ChannelMonitorHideThroughput = !isFalseSettingValue(settings[SettingKeyChannelMonitorHideThroughput])
+	result.ChannelMonitorShowQuota = settings[SettingKeyChannelMonitorShowQuota] == "true"
 
 	// Grok default mapping policy
 	result.GrokDefaultTextModel = strings.TrimSpace(settings[SettingKeyGrokDefaultTextModel])
 	if result.GrokDefaultTextModel == "" {
-		result.GrokDefaultTextModel = "grok-4.5"
+		result.GrokDefaultTextModel = "grok-4.6"
 	}
 	// Default true (missing/empty → enabled) so Claude/Codex→Grok mapping keeps working.
 	// Operators can set false to disable silent cross-client rewrite.
@@ -816,6 +819,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	result.ModelPlazaEnabled = !isFalseSettingValue(settings[SettingKeyModelPlazaEnabled])
 	result.ModelPlazaRequireAuth = settings[SettingKeyModelPlazaRequireAuth] == "true"
 	result.ModelPlazaDescription = settings[SettingKeyModelPlazaDescription]
+	result.PluginManagementEnabled = settings[SettingKeyPluginManagementEnabled] == "true"
 
 	// Affiliate (邀请返利) feature (default: enabled; explicit false disables it)
 	result.AffiliateEnabled = !isFalseSettingValue(settings[SettingKeyAffiliateEnabled])
@@ -840,6 +844,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 
 	// Gateway forwarding behavior (defaults: fingerprint=true, metadata_passthrough=false,
 	// cch_signing=false, claude_oauth_system_prompt_injection=true)
+	result.OpenAITTFTMode = normalizeOpenAITTFTMode(settings[SettingKeyOpenAITTFTMode])
 	if v, ok := settings[SettingKeyEnableFingerprintUnification]; ok && v != "" {
 		result.EnableFingerprintUnification = v == "true"
 	} else {

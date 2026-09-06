@@ -1,5 +1,7 @@
 package service
 
+import "strings"
+
 const (
 	openAIGPT54LongContextInputThreshold   = 272000
 	openAIGPT54LongContextInputMultiplier  = 2
@@ -20,6 +22,15 @@ var yuexiangOpenAIChargedModels = [...]string{
 // approved charged OpenAI models. Group model_pricing and channel
 // overrides are applied later by ModelPricingResolver.
 func yuexiangOpenAIModelPricing(model string) (*ModelPricing, bool) {
+	model = canonicalizeOpenAIModelAliasSpelling(model)
+	for _, allowed := range yuexiangOpenAIChargedModels {
+		suffix, hasSuffix := strings.CutPrefix(model, allowed+"-")
+		if model == allowed || (allowed != "gpt-6-astra" && hasSuffix &&
+			(isKnownCodexModelSuffix(suffix) || suffix == "max" || suffix == "openai-compact")) {
+			model = allowed
+			break
+		}
+	}
 	var input, output, cacheWrite, cacheRead float64
 	switch model {
 	case "gpt-6-astra":

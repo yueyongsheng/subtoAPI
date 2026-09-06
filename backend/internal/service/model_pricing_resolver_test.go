@@ -142,7 +142,7 @@ func TestGPT56ExplicitZeroCacheWritePriceIsPreserved(t *testing.T) {
 	})
 
 	t.Run("interval price", func(t *testing.T) {
-		pricing := intervalToModelPricing(&PricingInterval{CacheWritePrice: &zero}, false, nil)
+		pricing := intervalToModelPricing(&PricingInterval{CacheWritePrice: &zero}, nil, nil)
 		require.True(t, pricing.CacheCreationPriceExplicit)
 
 		cost, err := bs.CalculateCostUnified(CostInput{
@@ -261,9 +261,9 @@ func TestResolve_WithChannelOverride_TokenFlat(t *testing.T) {
 	require.Equal(t, "channel", resolved.Source)
 	require.NotNil(t, resolved.BasePricing)
 	require.InDelta(t, 10e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
-	require.InDelta(t, 10e-6, resolved.BasePricing.InputPricePerTokenPriority, 1e-12)
+	require.Zero(t, resolved.BasePricing.InputPricePerTokenPriority)
 	require.InDelta(t, 50e-6, resolved.BasePricing.OutputPricePerToken, 1e-12)
-	require.InDelta(t, 50e-6, resolved.BasePricing.OutputPricePerTokenPriority, 1e-12)
+	require.Zero(t, resolved.BasePricing.OutputPricePerTokenPriority)
 }
 
 func TestResolve_WithChannelOverride_TokenPartialOverride(t *testing.T) {

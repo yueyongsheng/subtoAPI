@@ -40,6 +40,17 @@ func (r *quotaModeRepoStub) MarkChecked(_ context.Context, id int64, _ time.Time
 	return nil
 }
 
+func (r *quotaModeRepoStub) MarkPing(context.Context, int64, *int, time.Time) error {
+	return nil
+}
+
+func (r *quotaModeRepoStub) ListEnabled(context.Context) ([]*ChannelMonitor, error) {
+	if r.monitor != nil && r.monitor.Enabled {
+		return []*ChannelMonitor{r.monitor}, nil
+	}
+	return nil, nil
+}
+
 func (r *quotaModeRepoStub) Update(_ context.Context, m *ChannelMonitor) error {
 	clone := *m
 	r.updated = append(r.updated, &clone)
@@ -113,6 +124,32 @@ func TestRunCheck_QuotaModeProducesSingleQuotaResult(t *testing.T) {
 	require.Equal(t, "quota", repo.history[0].Model)
 	require.NotNil(t, repo.history[0].Quota)
 	require.Equal(t, []int64{1}, repo.markedIDs)
+
+	// Legacy hybrid bindings and single-model checks must never turn quota into a probe.
+	repo.monitor.Mode = MonitorModeHybrid
+	repo.monitor.APIKeyDecryptFailed = true
+	single, err := svc.RunCheckModel(context.Background(), 1, "quota")
+	require.NoError(t, err)
+	require.NotNil(t, single.Quota)
+	require.True(t, single.Quota.Success)
+	require.NoError(t, svc.RunHybridCycle(context.Background(), 1))
+	require.Len(t, repo.history, 3)
+	for _, row := range repo.history {
+		require.NotNil(t, row.Quota)
+	}
+}
+
+func TestApplyMonitorUpdate_QuotaClearsHybridBindings(t *testing.T) {
+	m := &ChannelMonitor{
+		Provider: MonitorProviderKimi, CheckMode: MonitorCheckModeProbe,
+		Mode: MonitorModeHybrid, GroupID: int64Ptr(2), ProbeAPIKeyID: int64Ptr(18),
+		AccountID: int64Ptr(9), PrimaryModel: "kimi-for-coding",
+	}
+	mode := MonitorCheckModeQuota
+	require.NoError(t, applyMonitorUpdate(m, ChannelMonitorUpdateParams{CheckMode: &mode}))
+	require.Equal(t, MonitorModeActive, m.Mode)
+	require.Nil(t, m.GroupID)
+	require.Nil(t, m.ProbeAPIKeyID)
 }
 
 func TestRunCheck_QuotaModeUnlinkedAccountDegrades(t *testing.T) {

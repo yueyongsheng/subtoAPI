@@ -20,32 +20,14 @@ func publishedTokenPricesForTier(pricing *ModelPricing, tier string) PublishedTo
 	if pricing == nil {
 		return PublishedTokenPrices{}
 	}
-	fast := tier == "priority" || tier == "fast"
-	input, output := pricing.InputPricePerToken, pricing.OutputPricePerToken
-	cacheWrite, cacheRead := pricing.CacheCreationPricePerToken, pricing.CacheReadPricePerToken
-	if fast {
-		if pricing.InputPricePerTokenPriority > 0 {
-			input = pricing.InputPricePerTokenPriority
-		} else {
-			input *= 2
-		}
-		if pricing.OutputPricePerTokenPriority > 0 {
-			output = pricing.OutputPricePerTokenPriority
-		} else {
-			output *= 2
-		}
-		if pricing.CacheCreationPricePerTokenPriority > 0 {
-			cacheWrite = pricing.CacheCreationPricePerTokenPriority
-		} else {
-			cacheWrite *= 2
-		}
-		if pricing.CacheReadPricePerTokenPriority > 0 {
-			cacheRead = pricing.CacheReadPricePerTokenPriority
-		} else {
-			cacheRead *= 2
-		}
+	// Price one token of each kind through the same tier selection as billing.
+	cost := (&BillingService{}).computeTokenBreakdown(pricing, UsageTokens{
+		InputTokens: 1, OutputTokens: 1, CacheCreationTokens: 1, CacheReadTokens: 1,
+	}, 1, tier, false)
+	return PublishedTokenPrices{
+		Input: cost.InputCost, Output: cost.OutputCost,
+		CacheWrite: cost.CacheCreationCost, CacheRead: cost.CacheReadCost,
 	}
-	return PublishedTokenPrices{Input: input, Output: output, CacheWrite: cacheWrite, CacheRead: cacheRead}
 }
 
 func (s *BillingService) GetPublishedModelPricing(model string) (*PublishedModelPricing, error) {

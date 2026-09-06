@@ -241,9 +241,9 @@ func TestListPlazaGroups_OfficialPricingFill(t *testing.T) {
 	// 命中:填充完整官方价(含 1h 缓存写入)
 	official := byName["claude-sonnet"].OfficialPricing
 	require.NotNil(t, official)
-	require.InDelta(t, 3e-6, *official.InputPrice, 1e-12)
-	require.InDelta(t, 6e-6, *official.CacheWrite1hPrice, 1e-12)
-	require.InDelta(t, 3e-7, *official.CacheReadPrice, 1e-12)
+	require.InDelta(t, 3e-6*3.5, *official.InputPrice, 1e-12)
+	require.InDelta(t, 6e-6*3.5, *official.CacheWrite1hPrice, 1e-12)
+	require.InDelta(t, 3e-7*3.5, *official.CacheReadPrice, 1e-12)
 	// 未命中:nil(GetModelPricing 的 claude 系列模糊匹配对非 claude 名不生效)
 	require.Nil(t, byName["unknown-model"].OfficialPricing)
 	// TokenPricingAbsent 条目不作为官方 token 价展示
@@ -390,22 +390,22 @@ func TestListGroups_TokenLadderFollowsGroupToggle(t *testing.T) {
 	require.Len(t, onModel.Pricing.Intervals, 2)
 	require.Equal(t, "≤272K", onModel.Pricing.Intervals[0].TierLabel)
 	require.Equal(t, ">272K", onModel.Pricing.Intervals[1].TierLabel)
-	require.InDelta(t, 2.5e-6, *onModel.Pricing.InputPrice, 1e-15)
-	require.InDelta(t, 5e-6, *onModel.Pricing.Intervals[1].InputPrice, 1e-15)
-	require.InDelta(t, 22.5e-6, *onModel.Pricing.Intervals[1].OutputPrice, 1e-15)
-	require.InDelta(t, 5e-6, *onModel.Pricing.Intervals[1].CacheWritePrice, 1e-15)
-	require.InDelta(t, 0.5e-6, *onModel.Pricing.Intervals[1].CacheReadPrice, 1e-15)
+	require.InDelta(t, 2.5e-6*3.5, *onModel.Pricing.InputPrice, 1e-15)
+	require.InDelta(t, 5e-6*3.5, *onModel.Pricing.Intervals[1].InputPrice, 1e-15)
+	require.InDelta(t, 22.5e-6*3.5, *onModel.Pricing.Intervals[1].OutputPrice, 1e-15)
+	require.InDelta(t, 5e-6*3.5, *onModel.Pricing.Intervals[1].CacheWritePrice, 1e-15)
+	require.InDelta(t, 0.5e-6*3.5, *onModel.Pricing.Intervals[1].CacheReadPrice, 1e-15)
 
 	offModel := off.Models[0]
 	require.Empty(t, offModel.LongContextBasis)
 	require.Empty(t, offModel.Pricing.Intervals)
-	require.InDelta(t, 2.5e-6, *offModel.Pricing.InputPrice, 1e-15)
+	require.InDelta(t, 2.5e-6*3.5, *offModel.Pricing.InputPrice, 1e-15)
 
 	for _, m := range []PlazaModel{onModel, offModel} {
 		require.NotNil(t, m.OfficialPricing)
 		require.Len(t, m.OfficialPricing.Intervals, 2, "官方阶梯不受分组开关影响")
-		require.InDelta(t, 5e-6, *m.OfficialPricing.Intervals[1].InputPrice, 1e-15)
-		require.InDelta(t, 2.5e-6, *m.OfficialPricing.InputPrice, 1e-15)
+		require.InDelta(t, 5e-6*3.5, *m.OfficialPricing.Intervals[1].InputPrice, 1e-15)
+		require.InDelta(t, 2.5e-6*3.5, *m.OfficialPricing.InputPrice, 1e-15)
 	}
 }
 
@@ -443,7 +443,7 @@ func TestListGroups_GroupTokenCardOverridesChannelPricing(t *testing.T) {
 	require.NoError(t, err)
 	m := out[0].Models[0]
 	require.InDelta(t, 1e-6, *m.Pricing.InputPrice, 1e-15, "分组价卡优先于渠道平价")
-	require.InDelta(t, 15e-6, *m.Pricing.OutputPrice, 1e-15, "卡未配置的项回落目录价")
+	require.InDelta(t, 15e-6*3.5, *m.Pricing.OutputPrice, 1e-15, "卡未配置的项回落目录价")
 	require.Empty(t, m.Pricing.Intervals)
 }
 

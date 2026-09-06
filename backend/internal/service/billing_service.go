@@ -1154,30 +1154,7 @@ func (s *BillingService) GetModelPricing(model string) (*ModelPricing, error) {
 		return nil, fmt.Errorf("%w for model: %s", ErrModelPricingUnavailable, model)
 	}
 	// 悦享公开 OpenAI 收费模型使用精确允许列表和统一基础价格。
-	// A pricing override that explicitly sets a charged model's long-context
-	// threshold to zero is intentional and must be honored before the static
-	// card is selected. The static card remains authoritative for token prices;
-	// only the requested ladder is disabled.
-	pricingModel := model
-	for _, allowed := range yuexiangOpenAIChargedModels {
-		if model == allowed || strings.HasPrefix(model, allowed+"-") {
-			pricingModel = allowed
-			break
-		}
-	}
-	if pricing, ok := yuexiangOpenAIModelPricing(pricingModel); ok {
-		if s.pricingService != nil {
-			if s.pricingService.cfg != nil && strings.TrimSpace(s.pricingService.cfg.Pricing.OverrideFile) != "" {
-				if overridden := s.pricingService.GetIdentifiedModelPricing(model); overridden != nil &&
-					overridden.LongContextInputTokenThreshold == 0 {
-					cloned := *pricing
-					cloned.LongContextInputThreshold = 0
-					cloned.LongContextInputMultiplier = 0
-					cloned.LongContextOutputMultiplier = 0
-					return s.applyModelSpecificPricingPolicy(model, &cloned), nil
-				}
-			}
-		}
+	if pricing, ok := yuexiangOpenAIModelPricing(canonicalModel); ok {
 		return s.applyModelSpecificPricingPolicy(model, pricing), nil
 	}
 
@@ -1746,14 +1723,12 @@ func (s *BillingService) applyModelSpecificPricingPolicyEx(model string, pricing
 }
 
 // openAIModelFastPricingRatio 返回业务口径下 OpenAI GPT 模型 Fast/priority
-// 的标准价倍率：gpt-5.6 / gpt-6-astra / gpt-5.4 为 2x，gpt-5.5 为 2.5x。未定义 Fast
+// 的标准价倍率：悦享收费模型统一为 2x。未定义 Fast
 // 档的模型（如 gpt-5.5-pro、gpt-5.4-mini/nano）返回 0。
 func openAIModelFastPricingRatio(normalized string) float64 {
 	switch normalized {
-	case "gpt-5.4", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra":
+	case "gpt-5.4", "gpt-5.5", "codex-auto-review", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra":
 		return 2.0
-	case "gpt-5.5":
-		return 2.5
 	default:
 		if isOpenAIGPT6AstraModel(normalized) {
 			return 2.0
@@ -1763,9 +1738,8 @@ func openAIModelFastPricingRatio(normalized string) float64 {
 }
 
 // enforceOpenAIFastPricingRatio 把 priority 档价格改写为「标准价 × ratio」。
-// 本地/远程 LiteLLM 目录可能只带官方旧口径（如 gpt-5.5 priority 仍标 2x），
-// 直接采用会导致 Fast 模式少计费；这里按业务倍率兜底修正，且对已正确的
-// fallback 条目（2x/2.5x）是幂等的。computeTokenBreakdown 在 priority 价格
+// 本地/远程目录和悦享 Fast 口径可能不同，按已确认业务倍率统一。
+// 对已正确的 fallback 条目是幂等的。computeTokenBreakdown 在 priority 价格
 // 存在时走显式档位价、不再叠加通用 tier 倍率，因此不会重复乘价。
 func enforceOpenAIFastPricingRatio(pricing *ModelPricing, ratio float64) {
 	if pricing == nil || ratio <= 0 {

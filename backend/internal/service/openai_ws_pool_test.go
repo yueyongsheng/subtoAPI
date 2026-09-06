@@ -301,16 +301,29 @@ func TestOpenAIWSConnPool_AcquireQueueWaitMetrics(t *testing.T) {
 	}
 	ap.mu.Unlock()
 
+	type acquireResult struct {
+		lease *openAIWSConnLease
+		err   error
+	}
+	acquired := make(chan acquireResult, 1)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 	go func() {
-		time.Sleep(60 * time.Millisecond)
-		conn.release()
+		lease, err := pool.Acquire(ctx, openAIWSAcquireRequest{
+			Account: account,
+			WSURL:   "wss://example.com/v1/responses",
+		})
+		acquired <- acquireResult{lease: lease, err: err}
 	}()
-
-	lease, err := pool.Acquire(context.Background(), openAIWSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
-	})
-	require.NoError(t, err)
+	// Start the hold period after Acquire has started its queue timer.
+	require.Eventually(t, func() bool {
+		return pool.SnapshotMetrics().AcquireQueueWaitTotal > 0
+	}, time.Second, time.Millisecond)
+	time.Sleep(60 * time.Millisecond)
+	conn.release()
+	result := <-acquired
+	require.NoError(t, result.err)
+	lease := result.lease
 	require.NotNil(t, lease)
 	require.True(t, lease.Reused())
 	require.GreaterOrEqual(t, lease.QueueWaitDuration(), 50*time.Millisecond)

@@ -142,7 +142,7 @@ func TestGetModelPricingAppliesYuexiangPolicyToFallbacks(t *testing.T) {
 		{"claude-3-haiku", 0.875e-6, 4.375e-6, 1.05e-6, 0.105e-6},
 		{"grok-4.5", 7e-6, 21e-6, 0, 1.05e-6},
 		{"grok-4.6", 7e-6, 21e-6, 0, 1.75e-6},
-		{"grok-5-preview", 7e-6, 21e-6, 0, 1.05e-6},
+		{"grok-5-preview", 7e-6, 21e-6, 0, 1.75e-6},
 	}
 
 	for _, tt := range tests {

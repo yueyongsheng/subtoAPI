@@ -203,7 +203,7 @@ func TestCalculateTokenCostForRequest_BuiltInPricingUsesUnifiedPath(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, want, got)
 	// 目录阶梯：超 272K 整单输入 ×2
-	require.InDelta(t, 300000*2.5e-6*2, got.InputCost, 1e-9)
+	require.InDelta(t, 300000*8.75e-6*2, got.InputCost, 1e-9)
 	require.True(t, got.LongContextBillingApplied)
 }
 

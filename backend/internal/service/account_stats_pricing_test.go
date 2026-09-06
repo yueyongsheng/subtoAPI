@@ -595,7 +595,7 @@ func TestTryModelFilePricing_WithImageOutput(t *testing.T) {
 	result := tryModelFilePricing(bs, "claude-sonnet-4", tokens, "")
 	require.NotNil(t, result)
 	// Text tokens use 3.5x; the explicit image-token price remains unchanged.
-	require.InDelta(t, 0.8, *result, 1e-12)
+	require.InDelta(t, (100*0.001+40*0.002)*3.5+10*0.01, *result, 1e-12)
 }
 
 func TestTryModelFilePricing_WithCacheTokens(t *testing.T) {

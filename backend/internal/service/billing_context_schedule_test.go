@@ -90,8 +90,8 @@ func scheduleScenarios() []scheduleScenario {
 			group: enabledGroup(PlatformOpenAI), catalog: openAILadderCatalog(), wantBasis: ContextPricingBasisWholeRequest,
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 2)
-				requireTier(t, s.Tiers[0], 0, intPtr(272000), "≤272K", p(2.5e-6), p(15e-6), p(2.5e-6), p(0.25e-6))
-				requireTier(t, s.Tiers[1], 272000, nil, ">272K", p(5e-6), p(22.5e-6), p(5e-6), p(0.5e-6))
+				requireTier(t, s.Tiers[0], 0, intPtr(272000), "≤272K", p(2.5e-6 * 3.5), p(15e-6 * 3.5), p(2.5e-6 * 3.5), p(0.25e-6 * 3.5))
+				requireTier(t, s.Tiers[1], 272000, nil, ">272K", p(5e-6 * 3.5), p(22.5e-6 * 3.5), p(5e-6 * 3.5), p(0.5e-6 * 3.5))
 			},
 		},
 		{
@@ -99,8 +99,8 @@ func scheduleScenarios() []scheduleScenario {
 			group: enabledGroup(PlatformGrok), wantBasis: ContextPricingBasisWholeRequest,
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 2)
-				requireTier(t, s.Tiers[0], 0, intPtr(199999), "<200K", p(2e-6), p(6e-6), nil, p(0.3e-6))
-				requireTier(t, s.Tiers[1], 199999, nil, "≥200K", p(4e-6), p(12e-6), nil, p(0.6e-6))
+				requireTier(t, s.Tiers[0], 0, intPtr(199999), "<200K", p(2e-6 * 3.5), p(6e-6 * 3.5), nil, p(0.3e-6 * 3.5))
+				requireTier(t, s.Tiers[1], 199999, nil, "≥200K", p(4e-6 * 3.5), p(12e-6 * 3.5), nil, p(0.6e-6 * 3.5))
 			},
 		},
 		{
@@ -108,7 +108,7 @@ func scheduleScenarios() []scheduleScenario {
 			group: disabledGroup(PlatformOpenAI), catalog: openAILadderCatalog(), wantBasis: ContextPricingBasisWholeRequest,
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 1)
-				requireTier(t, s.Tiers[0], 0, nil, "", p(2.5e-6), p(15e-6), p(2.5e-6), p(0.25e-6))
+				requireTier(t, s.Tiers[0], 0, nil, "", p(2.5e-6 * 3.5), p(15e-6 * 3.5), p(2.5e-6 * 3.5), p(0.25e-6 * 3.5))
 			},
 		},
 		{
@@ -116,7 +116,7 @@ func scheduleScenarios() []scheduleScenario {
 			group: nil, catalog: openAILadderCatalog(), wantBasis: ContextPricingBasisWholeRequest,
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 2)
-				requireTier(t, s.Tiers[1], 272000, nil, ">272K", p(5e-6), p(22.5e-6), p(5e-6), p(0.5e-6))
+				requireTier(t, s.Tiers[1], 272000, nil, ">272K", p(5e-6 * 3.5), p(22.5e-6 * 3.5), p(5e-6 * 3.5), p(0.5e-6 * 3.5))
 			},
 		},
 		{
@@ -128,8 +128,8 @@ func scheduleScenarios() []scheduleScenario {
 			),
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 2)
-				requireTier(t, s.Tiers[0], 0, intPtr(200000), "≤200K", p(2e-6), p(15e-6), p(3.75e-6), p(0.3e-6))
-				requireTier(t, s.Tiers[1], 200000, nil, ">200K", p(4e-6), p(22.5e-6), p(7.5e-6), p(0.6e-6))
+				requireTier(t, s.Tiers[0], 0, intPtr(200000), "≤200K", p(2e-6), p(15e-6 * 3.5), p(3.75e-6 * 3.5), p(0.3e-6 * 3.5))
+				requireTier(t, s.Tiers[1], 200000, nil, ">200K", p(4e-6), p(22.5e-6 * 3.5), p(7.5e-6 * 3.5), p(0.6e-6 * 3.5))
 			},
 		},
 		{
@@ -153,9 +153,9 @@ func scheduleScenarios() []scheduleScenario {
 			),
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 3)
-				requireTier(t, s.Tiers[0], 0, intPtr(100000), "≤100K", p(1e-6), p(15e-6), p(3.75e-6), p(0.3e-6))
-				requireTier(t, s.Tiers[1], 100000, intPtr(200000), "≤200K", p(2e-6), p(15e-6), p(3.75e-6), p(0.3e-6))
-				requireTier(t, s.Tiers[2], 200000, nil, ">200K", p(4e-6), p(15e-6), p(3.75e-6), p(0.3e-6))
+				requireTier(t, s.Tiers[0], 0, intPtr(100000), "≤100K", p(1e-6), p(15e-6 * 3.5), p(3.75e-6 * 3.5), p(0.3e-6 * 3.5))
+				requireTier(t, s.Tiers[1], 100000, intPtr(200000), "≤200K", p(2e-6), p(15e-6 * 3.5), p(3.75e-6 * 3.5), p(0.3e-6 * 3.5))
+				requireTier(t, s.Tiers[2], 200000, nil, ">200K", p(4e-6), p(15e-6 * 3.5), p(3.75e-6 * 3.5), p(0.3e-6 * 3.5))
 			},
 		},
 		{
@@ -167,8 +167,8 @@ func scheduleScenarios() []scheduleScenario {
 			),
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 2)
-				requireTier(t, s.Tiers[0], 0, intPtr(200000), "≤200K", p(2e-6), p(15e-6), p(3.75e-6), p(0.3e-6))
-				requireTier(t, s.Tiers[1], 200000, nil, ">200K", p(4e-6), p(15e-6), p(3.75e-6), p(0.3e-6))
+				requireTier(t, s.Tiers[0], 0, intPtr(200000), "≤200K", p(2e-6), p(15e-6 * 3.5), p(3.75e-6 * 3.5), p(0.3e-6 * 3.5))
+				requireTier(t, s.Tiers[1], 200000, nil, ">200K", p(4e-6), p(15e-6 * 3.5), p(3.75e-6 * 3.5), p(0.3e-6 * 3.5))
 			},
 		},
 		{
@@ -180,8 +180,8 @@ func scheduleScenarios() []scheduleScenario {
 			),
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 3)
-				requireTier(t, s.Tiers[1], 200000, intPtr(1000000), "≤1M", p(4e-6), p(15e-6), p(3.75e-6), p(0.3e-6))
-				requireTier(t, s.Tiers[2], 1000000, nil, ">1M", p(2e-6), p(15e-6), p(3.75e-6), p(0.3e-6))
+				requireTier(t, s.Tiers[1], 200000, intPtr(1000000), "≤1M", p(4e-6), p(15e-6 * 3.5), p(3.75e-6 * 3.5), p(0.3e-6 * 3.5))
+				requireTier(t, s.Tiers[2], 1000000, nil, ">1M", p(2e-6), p(15e-6 * 3.5), p(3.75e-6 * 3.5), p(0.3e-6 * 3.5))
 			},
 		},
 		{
@@ -193,7 +193,7 @@ func scheduleScenarios() []scheduleScenario {
 			),
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 1)
-				requireTier(t, s.Tiers[0], 0, nil, "", p(1e-6), p(15e-6), p(3.75e-6), p(0.3e-6))
+				requireTier(t, s.Tiers[0], 0, nil, "", p(1e-6), p(15e-6 * 3.5), p(3.75e-6 * 3.5), p(0.3e-6 * 3.5))
 			},
 		},
 		{
@@ -215,7 +215,7 @@ func scheduleScenarios() []scheduleScenario {
 			wantBasis: ContextPricingBasisWholeRequest,
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 1)
-				requireTier(t, s.Tiers[0], 0, nil, "", p(1e-6), p(15e-6), p(3.75e-6), p(0.3e-6))
+				requireTier(t, s.Tiers[0], 0, nil, "", p(1e-6), p(15e-6 * 3.5), p(3.75e-6 * 3.5), p(0.3e-6 * 3.5))
 			},
 		},
 		{
@@ -229,7 +229,7 @@ func scheduleScenarios() []scheduleScenario {
 				require.Len(t, s.Tiers, 2)
 				requirePrice(t, p(1e-6), s.Tiers[0].Input, "input")
 				requirePrice(t, p(2e-6), s.Tiers[1].Input, "input")
-				requirePrice(t, p(22.5e-6), s.Tiers[1].Output, "output")
+				requirePrice(t, p(22.5e-6 * 3.5), s.Tiers[1].Output, "output")
 			},
 		},
 		{
@@ -315,8 +315,8 @@ func scheduleScenarios() []scheduleScenario {
 			wantBasis: ContextPricingBasisWholeRequest,
 			check: func(t *testing.T, s *ContextPricingSchedule) {
 				require.Len(t, s.Tiers, 2)
-				requireTier(t, s.Tiers[0], 0, intPtr(272000), "≤272K", p(5e-6), p(30e-6), p(6.25e-6), p(0.5e-6))
-				requireTier(t, s.Tiers[1], 272000, nil, ">272K", p(10e-6), p(45e-6), p(12.5e-6), p(1e-6))
+				requireTier(t, s.Tiers[0], 0, intPtr(272000), "≤272K", p(5e-6 * 3.5), p(30e-6 * 3.5), p(6.25e-6 * 3.5), p(0.5e-6 * 3.5))
+				requireTier(t, s.Tiers[1], 272000, nil, ">272K", p(10e-6 * 3.5), p(45e-6 * 3.5), p(12.5e-6 * 3.5), p(1e-6 * 3.5))
 			},
 		},
 		{

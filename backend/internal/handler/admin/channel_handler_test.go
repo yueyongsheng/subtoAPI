@@ -591,9 +591,9 @@ func TestGetModelDefaultPricing_ReturnsFable51CacheTTLs(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	require.True(t, body.Data.Found)
-	require.InDelta(t, 12.5e-6, body.Data.CacheWritePrice, 1e-12)
+	require.InDelta(t, 12.5e-6*3.5, body.Data.CacheWritePrice, 1e-12)
 	require.NotNil(t, body.Data.CacheWrite1hPrice)
-	require.InDelta(t, 20e-6, *body.Data.CacheWrite1hPrice, 1e-12)
+	require.InDelta(t, 20e-6*3.5, *body.Data.CacheWrite1hPrice, 1e-12)
 	require.NotNil(t, body.Data.MaxReasoningEffortMultiplier)
 	require.Equal(t, 3.0, *body.Data.MaxReasoningEffortMultiplier)
 }

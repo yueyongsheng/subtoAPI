@@ -11,14 +11,14 @@ import (
 
 // gpt55OverrideCatalogJSON 镜像真实目录形态：长上下文以 above_272k 绝对价字段表达。
 const gpt55OverrideCatalogJSON = `{
-	"gpt-5.5": {"litellm_provider": "openai", "mode": "chat",
+	"custom-ladder-a": {"litellm_provider": "openai", "mode": "chat",
 		"input_cost_per_token": 17.5e-06, "input_cost_per_token_priority": 3.5e-05,
 		"output_cost_per_token": 105e-06, "output_cost_per_token_priority": 2.1e-04,
 		"cache_read_input_token_cost": 1.75e-06,
 		"input_cost_per_token_above_272k_tokens": 35e-06,
 		"output_cost_per_token_above_272k_tokens": 157.5e-06,
 		"cache_read_input_token_cost_above_272k_tokens": 3.5e-06},
-	"gpt-5.4": {"litellm_provider": "openai", "mode": "chat",
+	"custom-ladder-b": {"litellm_provider": "openai", "mode": "chat",
 		"input_cost_per_token": 8.75e-06, "output_cost_per_token": 52.5e-06,
 		"cache_read_input_token_cost": 0.875e-06,
 		"input_cost_per_token_above_272k_tokens": 17.5e-06,
@@ -36,22 +36,22 @@ func newPricingServiceWithOverride(t *testing.T, overrideJSON string) *PricingSe
 
 // override 的旗舰用例：显式 threshold=0 压住 above 折算，把目录条目的阶梯关成标准价。
 func TestPricingOverride_ExplicitZeroThresholdDisablesCatalogLadder(t *testing.T) {
-	svc := newPricingServiceWithOverride(t, `{"gpt-5.5": {"long_context_input_token_threshold": 0}}`)
+	svc := newPricingServiceWithOverride(t, `{"custom-ladder-a": {"long_context_input_token_threshold": 0}}`)
 	data, err := svc.parsePricingData([]byte(gpt55OverrideCatalogJSON))
 	require.NoError(t, err)
 
-	patched := data["gpt-5.5"]
+	patched := data["custom-ladder-a"]
 	require.NotNil(t, patched)
 	require.Zero(t, patched.LongContextInputTokenThreshold)
 	require.Zero(t, patched.LongContextInputCostMultiplier)
 	require.InDelta(t, 17.5e-6, patched.InputCostPerToken, 1e-12, "补丁不得影响悦享基础价")
 	require.InDelta(t, 105e-6, patched.OutputCostPerToken, 1e-12)
-	require.Equal(t, 272000, data["gpt-5.4"].LongContextInputTokenThreshold, "未覆盖的模型保持目录阶梯")
+	require.Equal(t, 272000, data["custom-ladder-b"].LongContextInputTokenThreshold, "未覆盖的模型保持目录阶梯")
 
 	svc.pricingData = data
 	billing := NewBillingService(&config.Config{}, svc)
 	tokens := UsageTokens{InputTokens: 300000, OutputTokens: 1000, CacheReadTokens: 10000}
-	cost, err := billing.CalculateCost("gpt-5.5", tokens, 1)
+	cost, err := billing.CalculateCost("custom-ladder-a", tokens, 1)
 	require.NoError(t, err)
 	require.False(t, cost.LongContextBillingApplied)
 	require.InDelta(t, 300000*17.5e-6, cost.InputCost, 1e-10)
@@ -60,11 +60,11 @@ func TestPricingOverride_ExplicitZeroThresholdDisablesCatalogLadder(t *testing.T
 }
 
 func TestPricingOverride_FieldLevelMergeKeepsOtherFields(t *testing.T) {
-	svc := newPricingServiceWithOverride(t, `{"gpt-5.4": {"input_cost_per_token": 3e-06}}`)
+	svc := newPricingServiceWithOverride(t, `{"custom-ladder-b": {"input_cost_per_token": 3e-06}}`)
 	data, err := svc.parsePricingData([]byte(gpt55OverrideCatalogJSON))
 	require.NoError(t, err)
 
-	patched := data["gpt-5.4"]
+	patched := data["custom-ladder-b"]
 	require.InDelta(t, 3e-6, patched.InputCostPerToken, 1e-12)
 	require.InDelta(t, 52.5e-6, patched.OutputCostPerToken, 1e-12, "悦享固定价优先于通用覆盖")
 	require.Equal(t, "openai", patched.LiteLLMProvider)
@@ -74,14 +74,14 @@ func TestPricingOverride_FieldLevelMergeKeepsOtherFields(t *testing.T) {
 }
 
 func TestPricingOverride_NullFieldValueRemovesField(t *testing.T) {
-	svc := newPricingServiceWithOverride(t, `{"gpt-5.5": {
+	svc := newPricingServiceWithOverride(t, `{"custom-ladder-a": {
 		"input_cost_per_token_above_272k_tokens": null,
 		"output_cost_per_token_above_272k_tokens": null,
 		"cache_read_input_token_cost_above_272k_tokens": null}}`)
 	data, err := svc.parsePricingData([]byte(gpt55OverrideCatalogJSON))
 	require.NoError(t, err)
-	require.Zero(t, data["gpt-5.5"].LongContextInputTokenThreshold, "above 字段删除后不再折算阶梯")
-	require.InDelta(t, 17.5e-6, data["gpt-5.5"].InputCostPerToken, 1e-12)
+	require.Zero(t, data["custom-ladder-a"].LongContextInputTokenThreshold, "above 字段删除后不再折算阶梯")
+	require.InDelta(t, 17.5e-6, data["custom-ladder-a"].InputCostPerToken, 1e-12)
 }
 
 // 完整加载管线：纯补丁不得抢在回退合并前建条目（否则回退完整条目被跳过、
@@ -149,11 +149,11 @@ func TestPricingOverride_IneffectiveEntryWarns(t *testing.T) {
 }
 
 func TestPricingOverride_NonObjectEntryKeepsCatalogEntry(t *testing.T) {
-	svc := newPricingServiceWithOverride(t, `{"gpt-5.5": "oops"}`)
+	svc := newPricingServiceWithOverride(t, `{"custom-ladder-a": "oops"}`)
 	data, err := svc.parsePricingData([]byte(gpt55OverrideCatalogJSON))
 	require.NoError(t, err)
-	require.Equal(t, 272000, data["gpt-5.5"].LongContextInputTokenThreshold, "非法补丁忽略，目录条目原样保留")
-	require.InDelta(t, 17.5e-6, data["gpt-5.5"].InputCostPerToken, 1e-12)
+	require.Equal(t, 272000, data["custom-ladder-a"].LongContextInputTokenThreshold, "非法补丁忽略，目录条目原样保留")
+	require.InDelta(t, 17.5e-6, data["custom-ladder-a"].InputCostPerToken, 1e-12)
 }
 
 func TestPricingOverride_MissingOrInvalidFileIsIgnored(t *testing.T) {
@@ -162,20 +162,19 @@ func TestPricingOverride_MissingOrInvalidFileIsIgnored(t *testing.T) {
 		svc.cfg.Pricing.OverrideFile = filepath.Join(t.TempDir(), "absent.json")
 		data, err := svc.parsePricingData([]byte(gpt55OverrideCatalogJSON))
 		require.NoError(t, err)
-		require.Equal(t, 272000, data["gpt-5.5"].LongContextInputTokenThreshold)
+		require.Equal(t, 272000, data["custom-ladder-a"].LongContextInputTokenThreshold)
 	})
 
 	t.Run("invalid json", func(t *testing.T) {
 		svc := newPricingServiceWithOverride(t, `{invalid`)
 		data, err := svc.parsePricingData([]byte(gpt55OverrideCatalogJSON))
 		require.NoError(t, err)
-		require.Equal(t, 272000, data["gpt-5.5"].LongContextInputTokenThreshold)
+		require.Equal(t, 272000, data["custom-ladder-a"].LongContextInputTokenThreshold)
 	})
 }
 
-// 对真实出厂目录快照关闭 gpt-5.5 阶梯：计费视角阈值归零、基础价不变，
-// 其他模型（gpt-5.4）的目录阶梯不受影响。
-func TestPricingOverride_DisablesGPT55LadderOnDefaultCatalog(t *testing.T) {
+// Generic overrides cannot disable the fixed Yuexiang long-context ladder.
+func TestPricingOverride_PreservesYuexiangLadderOnDefaultCatalog(t *testing.T) {
 	body, err := os.ReadFile(filepath.Join("..", "..", "resources", "model-pricing", "model_prices_and_context_window.json"))
 	require.NoError(t, err)
 
@@ -191,7 +190,7 @@ func TestPricingOverride_DisablesGPT55LadderOnDefaultCatalog(t *testing.T) {
 	for _, model := range []string{"gpt-5.5", "gpt-5.5-2026-04-23"} {
 		pricing, err := billing.GetModelPricing(model)
 		require.NoError(t, err)
-		require.Zero(t, pricing.LongContextInputThreshold, model)
+		require.Equal(t, 272000, pricing.LongContextInputThreshold, model)
 		require.InDelta(t, 17.5e-6, pricing.InputPricePerToken, 1e-12, model)
 	}
 

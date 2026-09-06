@@ -130,7 +130,7 @@
         <input v-model="form.group_name" type="text" class="input" :placeholder="t('admin.channelMonitor.form.groupNamePlaceholder')" />
       </div>
 
-      <div>
+      <div v-if="usesProbePart">
         <label class="input-label">{{ t('admin.channelMonitor.form.mode') }}</label>
         <div class="grid grid-cols-2 gap-2">
           <button
@@ -598,10 +598,20 @@ function selectProvider(provider: Provider) {
 watch(() => form.provider, () => {
   if (suppressFormWatchers) return
   form.api_key = ''
+  form.mode = 'active'
+  form.group_id = null
+  form.probe_api_key_id = null
   if (form.provider !== PROVIDER_OPENAI) {
     form.api_mode = API_MODE_CHAT_COMPLETIONS
   }
   clearRequestSnapshot()
+}, { flush: 'sync' })
+
+watch(() => form.check_mode, (mode) => {
+  if (mode !== CHECK_MODE_QUOTA) return
+  form.mode = 'active'
+  form.group_id = null
+  form.probe_api_key_id = null
 }, { flush: 'sync' })
 
 watch(() => form.api_mode, () => {
@@ -655,9 +665,9 @@ function loadFromMonitor(m: ChannelMonitor) {
   form.primary_model = m.primary_model
   form.extra_models = [...(m.extra_models || [])]
   form.group_name = m.group_name || ''
-  form.mode = m.mode || 'active'
-  form.group_id = m.group_id ?? null
-  form.probe_api_key_id = m.probe_api_key_id ?? null
+  form.mode = usesProbePart.value ? m.mode || 'active' : 'active'
+  form.group_id = usesProbePart.value ? m.group_id ?? null : null
+  form.probe_api_key_id = usesProbePart.value ? m.probe_api_key_id ?? null : null
   form.interval_seconds = m.interval_seconds || systemDefaultInterval.value
   form.jitter_seconds = m.jitter_seconds || 0
   form.enabled = m.enabled
@@ -728,9 +738,9 @@ function buildPayload(): CreateParams {
     primary_model: usesProbePart.value ? form.primary_model.trim() : 'quota',
     extra_models: usesProbePart.value ? form.extra_models : [],
     group_name: form.group_name.trim(),
-    mode: form.mode,
-    group_id: form.group_id,
-    probe_api_key_id: form.probe_api_key_id,
+    mode: usesProbePart.value ? form.mode : 'active',
+    group_id: usesProbePart.value ? form.group_id : null,
+    probe_api_key_id: usesProbePart.value ? form.probe_api_key_id : null,
     enabled: form.enabled,
     interval_seconds: form.interval_seconds,
     jitter_seconds: form.jitter_seconds || 0,
@@ -755,7 +765,7 @@ async function handleSubmit() {
     appStore.showError(t('admin.channelMonitor.primaryModelRequired'))
     return
   }
-  if (form.mode === 'hybrid' && (!form.group_id || !form.probe_api_key_id)) {
+  if (usesProbePart.value && form.mode === 'hybrid' && (!form.group_id || !form.probe_api_key_id)) {
     appStore.showError(t('admin.channelMonitor.form.hybridKeyRequired'))
     return
   }

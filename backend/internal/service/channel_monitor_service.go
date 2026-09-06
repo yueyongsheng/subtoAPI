@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -164,6 +165,9 @@ func (s *ChannelMonitorService) Get(ctx context.Context, id int64) (*ChannelMoni
 // Create 创建监控（内部加密 api_key）。
 func (s *ChannelMonitorService) Create(ctx context.Context, p ChannelMonitorCreateParams) (*ChannelMonitor, error) {
 	p.Mode = normalizeMonitorMode(p.Mode)
+	if defaultCheckMode(p.CheckMode) == MonitorCheckModeQuota {
+		p.Mode, p.GroupID, p.ProbeAPIKeyID = MonitorModeActive, nil, nil
+	}
 	if err := validateCreateParams(p); err != nil {
 		return nil, err
 	}
@@ -177,6 +181,9 @@ func (s *ChannelMonitorService) Create(ctx context.Context, p ChannelMonitorCrea
 		return nil, err
 	}
 	if err := validateExtraHeaders(p.ExtraHeaders); err != nil {
+		return nil, err
+	}
+	if err := s.validateLinkedAccount(ctx, p.Provider, p.AccountID); err != nil {
 		return nil, err
 	}
 	encrypted, err := s.encryptor.Encrypt(p.APIKey)
@@ -274,6 +281,8 @@ func (s *ChannelMonitorService) Duplicate(
 		ExtraHeaders:         cloneChannelMonitorHeaders(source.ExtraHeaders),
 		BodyOverrideMode:     source.BodyOverrideMode,
 		BodyOverride:         bodyOverride,
+		CheckMode:            defaultCheckMode(source.CheckMode),
+		AccountID:            cloneInt64Pointer(source.AccountID),
 		DuplicateOperationID: operationID,
 	}
 	if err := s.repo.Create(ctx, duplicate); err != nil {
@@ -328,7 +337,7 @@ func (s *ChannelMonitorService) decryptAPIKeyForDuplicate(source *ChannelMonitor
 		return "", ErrChannelMonitorAPIKeyDecryptFailed
 	}
 	plain, err := s.encryptor.Decrypt(source.APIKey)
-	if err != nil || strings.TrimSpace(plain) == "" {
+	if err != nil || (strings.TrimSpace(plain) == "" && defaultCheckMode(source.CheckMode) != MonitorCheckModeQuota) {
 		slog.Warn("channel_monitor: decrypt api key for duplicate failed",
 			"monitor_id", source.ID, "error", err)
 		return "", ErrChannelMonitorAPIKeyDecryptFailed
@@ -432,6 +441,14 @@ func (s *ChannelMonitorService) Update(ctx context.Context, id int64, p ChannelM
 	if err != nil {
 		return nil, err
 	}
+	if err := s.validateProbeAPIKey(existing, newPlainAPIKey); err != nil {
+		return nil, err
+	}
+	if p.Provider != nil || p.CheckMode != nil || p.AccountID != nil {
+		if err := s.revalidateLinkedAccount(ctx, existing); err != nil {
+			return nil, err
+		}
+	}
 	plainForValidation := newPlainAPIKey
 	if !apiKeyUpdated && existing.Mode == MonitorModeHybrid {
 		plainForValidation, err = s.encryptor.Decrypt(existing.APIKey)
@@ -531,10 +548,20 @@ func (s *ChannelMonitorService) RunCheck(ctx context.Context, id int64) ([]*Chec
 	if err != nil {
 		return nil, err
 	}
-	if m.APIKeyDecryptFailed {
+	checkMode := defaultCheckMode(m.CheckMode)
+	if checkMode != MonitorCheckModeQuota && m.APIKeyDecryptFailed {
 		return nil, ErrChannelMonitorAPIKeyDecryptFailed
 	}
-	results := s.runChecksConcurrent(ctx, m)
+	var results []*CheckResult
+	switch checkMode {
+	case MonitorCheckModeQuota:
+		results = s.runQuotaOnlyCheck(ctx, m)
+	case MonitorCheckModeQuotaProbe:
+		results = s.runChecksConcurrent(ctx, m)
+		attachQuotaSnapshot(results, s.fetchQuotaSnapshot(ctx, m))
+	default:
+		results = s.runChecksConcurrent(ctx, m)
+	}
 	s.persistCheckResults(ctx, m, results)
 	return results, nil
 }
@@ -797,8 +824,10 @@ func applyMonitorUpdate(existing *ChannelMonitor, p ChannelMonitorUpdateParams) 
 		}
 	}
 	if p.Endpoint != nil {
-		if err := validateEndpoint(*p.Endpoint); err != nil {
-			return err
+		if defaultCheckMode(existing.CheckMode) != MonitorCheckModeQuota || strings.TrimSpace(*p.Endpoint) != "" {
+			if err := validateEndpoint(*p.Endpoint); err != nil {
+				return err
+			}
 		}
 		existing.Endpoint = normalizeEndpoint(*p.Endpoint)
 	}
@@ -854,7 +883,127 @@ func applyMonitorUpdate(existing *ChannelMonitor, p ChannelMonitorUpdateParams) 
 			return err
 		}
 	}
+	if err := validateMonitorModeFields(existing); err != nil {
+		return err
+	}
 	return applyMonitorAdvancedUpdate(existing, p, providerChanged)
+}
+
+func (s *ChannelMonitorService) validateLinkedAccount(ctx context.Context, provider string, accountID *int64) error {
+	if accountID == nil || *accountID <= 0 {
+		return nil
+	}
+	if s.quotaFetcher == nil {
+		return ErrChannelMonitorAccountRequired
+	}
+	account, err := s.quotaFetcher.LoadAccount(ctx, *accountID)
+	if err != nil || account == nil {
+		return ErrChannelMonitorAccountRequired
+	}
+	if account.Platform != provider {
+		return ErrChannelMonitorProviderIncompatible
+	}
+	return monitorAccountQuotaCapability(account)
+}
+
+func validateMonitorModeFields(m *ChannelMonitor) error {
+	checkMode := defaultCheckMode(m.CheckMode)
+	if checkMode == MonitorCheckModeQuota {
+		m.Mode, m.GroupID, m.ProbeAPIKeyID = MonitorModeActive, nil, nil
+	}
+	if monitorCheckModeUsesQuota(checkMode) && m.AccountID == nil {
+		return ErrChannelMonitorAccountRequired
+	}
+	if checkMode != MonitorCheckModeQuota && strings.TrimSpace(m.Endpoint) == "" {
+		return ErrChannelMonitorInvalidEndpoint
+	}
+	return nil
+}
+
+func (s *ChannelMonitorService) validateProbeAPIKey(m *ChannelMonitor, newPlainKey string) error {
+	if defaultCheckMode(m.CheckMode) == MonitorCheckModeQuota {
+		return nil
+	}
+	if strings.TrimSpace(newPlainKey) != "" {
+		return nil
+	}
+	if strings.TrimSpace(m.APIKey) == "" {
+		return ErrChannelMonitorMissingAPIKey
+	}
+	plain, err := s.encryptor.Decrypt(m.APIKey)
+	if err != nil {
+		return nil
+	}
+	if strings.TrimSpace(plain) == "" {
+		return ErrChannelMonitorMissingAPIKey
+	}
+	return nil
+}
+
+func (s *ChannelMonitorService) revalidateLinkedAccount(ctx context.Context, m *ChannelMonitor) error {
+	usesQuota := monitorCheckModeUsesQuota(defaultCheckMode(m.CheckMode))
+	if m.AccountID == nil {
+		if usesQuota {
+			return ErrChannelMonitorAccountRequired
+		}
+		return nil
+	}
+	if s.quotaFetcher == nil {
+		return ErrChannelMonitorAccountRequired
+	}
+	account, err := s.quotaFetcher.LoadAccount(ctx, *m.AccountID)
+	if err != nil || account == nil {
+		if usesQuota {
+			return ErrChannelMonitorAccountRequired
+		}
+		m.AccountID = nil
+		return nil
+	}
+	if account.Platform != m.Provider {
+		if usesQuota {
+			return ErrChannelMonitorProviderIncompatible
+		}
+		m.AccountID = nil
+		return nil
+	}
+	// 能力失配（如 deepseek coding / zhipu payg / API-Key 型海外账号）：
+	// quota 模式显式报错（有该类存量监控时编辑会被拦，出路是换账号或切 probe），
+	// probe 模式账号无用途，静默解绑。
+	if err := monitorAccountQuotaCapability(account); err != nil {
+		if usesQuota {
+			return err
+		}
+		m.AccountID = nil
+	}
+	return nil
+}
+
+func (s *ChannelMonitorService) runQuotaOnlyCheck(ctx context.Context, m *ChannelMonitor) []*CheckResult {
+	snapshot := s.fetchQuotaSnapshot(ctx, m)
+	res := deriveQuotaCheckResult(snapshot, m.PrimaryModel, time.Now())
+	res.Quota = snapshot
+	return []*CheckResult{res}
+}
+
+func (s *ChannelMonitorService) fetchQuotaSnapshot(ctx context.Context, m *ChannelMonitor) *domain.MonitorQuotaSnapshot {
+	if m.AccountID == nil {
+		return quotaErrorSnapshot("usage", "linked account not found", time.Now())
+	}
+	if s.quotaFetcher == nil {
+		return quotaErrorSnapshot("usage", "quota fetcher is not configured", time.Now())
+	}
+	return s.quotaFetcher.Fetch(ctx, *m.AccountID)
+}
+
+func attachQuotaSnapshot(results []*CheckResult, snapshot *domain.MonitorQuotaSnapshot) {
+	if len(results) == 0 || snapshot == nil {
+		return
+	}
+	primary := results[0]
+	primary.Quota = snapshot
+	if !snapshot.Success && strings.TrimSpace(primary.Message) == "" {
+		primary.Message = truncateMessage("quota fetch failed: " + snapshot.Error)
+	}
 }
 
 func normalizeMonitorMode(mode string) string {

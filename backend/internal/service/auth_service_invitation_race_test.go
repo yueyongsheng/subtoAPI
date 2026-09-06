@@ -88,6 +88,16 @@ type raceSafeRedeemRepo struct {
 	codes map[string]*RedeemCode
 }
 
+func (s *raceSafeRedeemRepo) Create(_ context.Context, code *RedeemCode) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	clone := *code
+	clone.ID = int64(len(s.codes) + 1)
+	code.ID = clone.ID
+	s.codes[clone.Code] = &clone
+	return nil
+}
+
 func (s *raceSafeRedeemRepo) GetByCode(_ context.Context, code string) (*RedeemCode, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -128,7 +128,7 @@ func TestValidateOpenAIServiceTierField(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 计费：gpt-5.6 系列 / gpt-5.4 按标准价 2x，gpt-5.5 按标准价 2.5x
+// 计费：gpt-5.6 系列 / gpt-5.4 按标准价 2x，gpt-5.5 按标准价 2x
 // ---------------------------------------------------------------------------
 
 func TestApplyModelSpecificPricingPolicy_EnforcesOpenAIFastRatios(t *testing.T) {
@@ -136,7 +136,7 @@ func TestApplyModelSpecificPricingPolicy_EnforcesOpenAIFastRatios(t *testing.T) 
 
 	svc := &BillingService{}
 
-	t.Run("gpt-5.5 catalog 2x priority is corrected to 2.5x", func(t *testing.T) {
+	t.Run("gpt-5.5 catalog 2x priority is corrected to 2x", func(t *testing.T) {
 		// 模拟本地 LiteLLM 目录仍携带官方旧口径（gpt-5.5 priority = 2x）。
 		catalog := &ModelPricing{
 			InputPricePerToken:             5e-6,
@@ -147,9 +147,9 @@ func TestApplyModelSpecificPricingPolicy_EnforcesOpenAIFastRatios(t *testing.T) 
 			CacheReadPricePerTokenPriority: 1e-6,
 		}
 		got := svc.applyModelSpecificPricingPolicy("gpt-5.5", catalog)
-		require.InDelta(t, 12.5e-6, got.InputPricePerTokenPriority, 1e-12)
-		require.InDelta(t, 75e-6, got.OutputPricePerTokenPriority, 1e-12)
-		require.InDelta(t, 1.25e-6, got.CacheReadPricePerTokenPriority, 1e-12)
+		require.InDelta(t, 10e-6, got.InputPricePerTokenPriority, 1e-12)
+		require.InDelta(t, 60e-6, got.OutputPricePerTokenPriority, 1e-12)
+		require.InDelta(t, 1e-6, got.CacheReadPricePerTokenPriority, 1e-12)
 		// 标准价不被改动。
 		require.InDelta(t, 5e-6, got.InputPricePerToken, 1e-12)
 		// 原始指针不被污染。
@@ -189,10 +189,10 @@ func TestApplyModelSpecificPricingPolicy_EnforcesOpenAIFastRatios(t *testing.T) 
 			CacheReadPricePerToken:     0.5e-6,
 			CacheCreationPricePerToken: 5e-6,
 		})
-		require.InDelta(t, 12.5e-6, got.InputPricePerTokenPriority, 1e-12)
-		require.InDelta(t, 75e-6, got.OutputPricePerTokenPriority, 1e-12)
-		require.InDelta(t, 1.25e-6, got.CacheReadPricePerTokenPriority, 1e-12)
-		require.InDelta(t, 12.5e-6, got.CacheCreationPricePerTokenPriority, 1e-12)
+		require.InDelta(t, 10e-6, got.InputPricePerTokenPriority, 1e-12)
+		require.InDelta(t, 60e-6, got.OutputPricePerTokenPriority, 1e-12)
+		require.InDelta(t, 1e-6, got.CacheReadPricePerTokenPriority, 1e-12)
+		require.InDelta(t, 10e-6, got.CacheCreationPricePerTokenPriority, 1e-12)
 	})
 
 	t.Run("gpt-5.5-pro has no mandated fast tier", func(t *testing.T) {
@@ -211,10 +211,10 @@ func TestApplyModelSpecificPricingPolicy_EnforcesOpenAIFastRatios(t *testing.T) 
 	})
 }
 
-func TestOpenAIFastBillingMultiplier_2xAnd25x(t *testing.T) {
+func TestOpenAIFastBillingMultiplier_Yuexiang2x(t *testing.T) {
 	t.Parallel()
 
-	// 目录数据携带官方旧口径（gpt-5.5 priority=2x）；修正后 fast 必须按 2.5x 计费。
+	// 目录数据携带官方旧口径（gpt-5.5 priority=2x）；修正后 fast 必须按 2x 计费。
 	catalog := map[string]*LiteLLMModelPricing{
 		"gpt-5.4": {
 			InputCostPerToken:               2.5e-6,
@@ -260,7 +260,7 @@ func TestOpenAIFastBillingMultiplier_2xAnd25x(t *testing.T) {
 		ratio float64
 	}{
 		{model: "gpt-5.4", ratio: 2.0},
-		{model: "gpt-5.5", ratio: 2.5},
+		{model: "gpt-5.5", ratio: 2.0},
 		{model: "gpt-5.6-sol", ratio: 2.0},
 		{model: "gpt-5.6-terra", ratio: 2.0},
 		{model: "gpt-5.6-luna", ratio: 2.0},
@@ -310,8 +310,8 @@ func TestOpenAIFastBilling_FastMultiplierOverridesEnforcedRatio(t *testing.T) {
 		CacheReadPricePerTokenPriority: 1e-6,
 	}
 	pricing := svc.applyModelSpecificPricingPolicy("gpt-5.5", catalog)
-	require.InDelta(t, 12.5e-6, pricing.InputPricePerTokenPriority, 1e-12, "enforce must still write 2.5x priority prices")
-	require.InDelta(t, 75e-6, pricing.OutputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 10e-6, pricing.InputPricePerTokenPriority, 1e-12, "enforce must still write 2x priority prices")
+	require.InDelta(t, 60e-6, pricing.OutputPricePerTokenPriority, 1e-12)
 
 	multiplier := 1.7
 	pricing.FastMultiplier = &multiplier
@@ -327,8 +327,8 @@ func TestOpenAIFastBilling_FastMultiplierOverridesEnforcedRatio(t *testing.T) {
 	withoutOverride := *pricing
 	withoutOverride.FastMultiplier = nil
 	enforced := svc.computeTokenBreakdown(&withoutOverride, tokens, 1, "fast", false)
-	require.InDelta(t, standard.TotalCost*2.5, enforced.TotalCost, 1e-9,
-		"without FastMultiplier the same enforced prices still bill 2.5x")
+	require.InDelta(t, standard.TotalCost*2.0, enforced.TotalCost, 1e-9,
+		"without FastMultiplier the same enforced prices still bill 2x")
 }
 
 // ---------------------------------------------------------------------------

@@ -19,12 +19,17 @@ func (s *ChannelMonitorService) RunCheckModel(ctx context.Context, id int64, mod
 	if err != nil {
 		return nil, err
 	}
-	if m.APIKeyDecryptFailed {
-		return nil, ErrChannelMonitorAPIKeyDecryptFailed
-	}
 	model = strings.TrimSpace(model)
 	if !monitorContainsModel(m, model) {
 		return nil, ErrChannelMonitorModelNotConfigured
+	}
+	if defaultCheckMode(m.CheckMode) == MonitorCheckModeQuota {
+		results := s.runQuotaOnlyCheck(ctx, m)
+		s.persistCheckResults(ctx, m, results)
+		return results[0], nil
+	}
+	if m.APIKeyDecryptFailed {
+		return nil, ErrChannelMonitorAPIKeyDecryptFailed
 	}
 	pingMs := pingEndpointOrigin(ctx, m.Endpoint)
 	result := runCheckForModel(ctx, m.Provider, m.Endpoint, m.APIKey, model, &CheckOptions{
@@ -34,6 +39,9 @@ func (s *ChannelMonitorService) RunCheckModel(ctx context.Context, id int64, mod
 		BodyOverride:     m.BodyOverride,
 	})
 	result.PingLatencyMs = pingMs
+	if defaultCheckMode(m.CheckMode) == MonitorCheckModeQuotaProbe {
+		attachQuotaSnapshot([]*CheckResult{result}, s.fetchQuotaSnapshot(ctx, m))
+	}
 	s.persistCheckResults(ctx, m, []*CheckResult{result})
 	return result, nil
 }
@@ -45,6 +53,10 @@ func (s *ChannelMonitorService) RunHybridCycle(ctx context.Context, id int64) er
 	}
 	if !m.Enabled || m.Mode != MonitorModeHybrid {
 		return nil
+	}
+	if defaultCheckMode(m.CheckMode) == MonitorCheckModeQuota {
+		_, err := s.RunCheck(ctx, id)
+		return err
 	}
 	now := time.Now()
 	if m.LastPingAt == nil || now.Sub(*m.LastPingAt) >= monitorHybridPingInterval {

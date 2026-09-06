@@ -170,6 +170,22 @@ describe('MonitorFormDialog linked account selector', () => {
     monitorUpdate.mockReset().mockResolvedValue({})
   })
 
+  it('clears hybrid probe bindings when changing to quota only', async () => {
+    accountsGetById.mockResolvedValue({ id: 999, name: 'bound', platform: 'anthropic' })
+    const wrapper = mountDialog(makeMonitor({
+      provider: 'anthropic', check_mode: 'quota_probe', account_id: 999,
+      mode: 'hybrid', group_id: 2, probe_api_key_id: 18, interval_seconds: 3600,
+    }))
+    await flushPromises()
+    await wrapper.get('[data-testid="monitor-check-mode-quota"]').trigger('click')
+    await wrapper.get('#channel-monitor-form').trigger('submit')
+    await flushPromises()
+    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({
+      check_mode: 'quota', mode: 'active', group_id: null, probe_api_key_id: null,
+      account_id: 999, endpoint: '', primary_model: 'quota',
+    }))
+  })
+
   it('loads the first page of provider accounts when quota mode is enabled', async () => {
     accountsList.mockResolvedValue({ items: [{ id: 1, name: 'a', platform: 'anthropic' }] })
     const wrapper = mountDialog()

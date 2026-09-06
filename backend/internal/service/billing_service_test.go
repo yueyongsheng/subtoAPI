@@ -29,6 +29,313 @@ func captureStdLog(t *testing.T) *bytes.Buffer {
 	return &buf
 }
 
+func newTestBillingServiceWithOpenAILadderCatalog(t *testing.T) *BillingService {
+	t.Helper()
+	return NewBillingService(&config.Config{}, newStubPricingServiceFromJSON(t, openAILadderCatalogJSON))
+}
+
+func TestGetModelPricing_CatalogAboveTierFieldsDriveLongContext(t *testing.T) {
+	svc := newTestBillingServiceWithOpenAILadderCatalog(t)
+
+	pricing, err := svc.GetModelPricing("gpt-5.4")
+	require.NoError(t, err)
+	require.Equal(t, 272000, pricing.LongContextInputThreshold)
+	require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
+	require.InDelta(t, 1.5, pricing.LongContextOutputMultiplier, 1e-12)
+	require.False(t, pricing.LongContextThresholdInclusive, "openai 阈值语义为严格大于")
+}
+
+func TestFallbackPricing_OpenAIGPT55UsesYuexiangPrices(t *testing.T) {
+	svc := newTestBillingService()
+
+	pricing, err := svc.GetModelPricing("gpt-5.5")
+	require.NoError(t, err)
+	require.InDelta(t, 17.5e-6, pricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 105e-6, pricing.OutputPricePerToken, 1e-12)
+	require.InDelta(t, 1.75e-6, pricing.CacheReadPricePerToken, 1e-12)
+	require.InDelta(t, 21.875e-6, pricing.CacheCreationPricePerToken, 1e-12)
+	require.InDelta(t, 35e-6, pricing.InputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 210e-6, pricing.OutputPricePerTokenPriority, 1e-12)
+}
+
+func TestFallbackPricing_OpenAIGPT55ProUsesOfficialPrices(t *testing.T) {
+	svc := newTestBillingService()
+
+	pricing, err := svc.GetModelPricing("gpt-5.5-pro")
+	require.NoError(t, err)
+	require.InDelta(t, 30e-6, pricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 180e-6, pricing.OutputPricePerToken, 1e-12)
+	require.InDelta(t, 30e-6, pricing.CacheReadPricePerToken, 1e-12)
+	require.InDelta(t, 30e-6, pricing.CacheCreationPricePerToken, 1e-12)
+	require.Zero(t, pricing.InputPricePerTokenPriority)
+	require.Zero(t, pricing.OutputPricePerTokenPriority)
+}
+
+func TestGetModelPricing_Grok45OfficialFallback(t *testing.T) {
+	svc := newTestBillingService()
+
+	for _, model := range []string{"grok-4.5", "grok-4.5-latest"} {
+		model := model
+		t.Run(model, func(t *testing.T) {
+			pricing, err := svc.GetModelPricing(model)
+			require.NoError(t, err)
+			require.InDelta(t, 2e-6*3.5, pricing.InputPricePerToken, 1e-12)
+			require.InDelta(t, 6e-6*3.5, pricing.OutputPricePerToken, 1e-12)
+			require.InDelta(t, 0.3e-6*3.5, pricing.CacheReadPricePerToken, 1e-12)
+			require.False(t, pricing.SupportsCacheBreakdown)
+		})
+	}
+}
+
+func TestGetModelPricing_GrokBareAliasesUseGrok46(t *testing.T) {
+	svc := newTestBillingService()
+	for _, model := range []string{"grok", "grok-latest"} {
+		pricing, err := svc.GetModelPricing(model)
+		require.NoError(t, err)
+		require.InDelta(t, 2e-6*3.5, pricing.InputPricePerToken, 1e-12)
+		require.InDelta(t, 0.5e-6*3.5, pricing.CacheReadPricePerToken, 1e-12)
+		require.InDelta(t, 6e-6*3.5, pricing.OutputPricePerToken, 1e-12)
+	}
+}
+
+func TestGetModelPricing_Grok46OfficialFallback(t *testing.T) {
+	svc := newTestBillingService()
+
+	for _, model := range []string{"grok-4.6", "grok-4.6-latest"} {
+		model := model
+		t.Run(model, func(t *testing.T) {
+			pricing, err := svc.GetModelPricing(model)
+			require.NoError(t, err)
+			require.InDelta(t, 2e-6*3.5, pricing.InputPricePerToken, 1e-12)
+			require.InDelta(t, 6e-6*3.5, pricing.OutputPricePerToken, 1e-12)
+			require.InDelta(t, 0.5e-6*3.5, pricing.CacheReadPricePerToken, 1e-12)
+			require.Equal(t, 200000, pricing.LongContextInputThreshold)
+			require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
+			require.InDelta(t, 2.0, pricing.LongContextOutputMultiplier, 1e-12)
+			require.False(t, pricing.SupportsCacheBreakdown)
+		})
+	}
+}
+
+func TestGetModelPricing_GrokOfficialFamilyCards(t *testing.T) {
+	svc := newTestBillingService()
+	for _, tc := range []struct {
+		model                 string
+		input, cached, output float64
+	}{
+		{"grok-4.3", 1.25e-6, 0.2e-6, 2.5e-6},
+		{"grok-4.20-0309-reasoning", 1.25e-6, 0.2e-6, 2.5e-6},
+		{"grok-build-0.1", 1e-6, 0.2e-6, 2e-6},
+	} {
+		p, err := svc.GetModelPricing(tc.model)
+		require.NoError(t, err, tc.model)
+		require.InDelta(t, tc.input*3.5, p.InputPricePerToken, 1e-12)
+		require.InDelta(t, tc.cached*3.5, p.CacheReadPricePerToken, 1e-12)
+		require.InDelta(t, tc.output*3.5, p.OutputPricePerToken, 1e-12)
+		require.Equal(t, 200000, p.LongContextInputThreshold)
+	}
+}
+
+func TestGetModelPricing_UnknownGrokTextFallsBackToGrok46(t *testing.T) {
+	svc := newTestBillingService()
+	baseline, err := svc.GetModelPricing("grok-4.6")
+	require.NoError(t, err)
+
+	for _, model := range []string{"grok-5", "grok-5-latest", "x-ai/grok-7", "grok-4.7-beta"} {
+		pricing, err := svc.GetModelPricing(model)
+		require.NoError(t, err, "model %s", model)
+		require.InDelta(t, baseline.InputPricePerToken, pricing.InputPricePerToken, 1e-12, model)
+		require.InDelta(t, baseline.OutputPricePerToken, pricing.OutputPricePerToken, 1e-12, model)
+		require.InDelta(t, baseline.CacheReadPricePerToken, pricing.CacheReadPricePerToken, 1e-12, model)
+	}
+
+	// Per-unit media ids must not inherit the text card just because they carry
+	// a version number; they are billed by the image/video/audio paths instead.
+	for _, model := range []string{"grok-2-image-1212", "grok-2-audio", "grok-5-video", "x-ai/grok-6-image"} {
+		require.False(t, isGrokUnknownTextFamilyModel(model), "model %s", model)
+	}
+	// Multimodal chat models stay token billed.
+	require.True(t, isGrokUnknownTextFamilyModel("grok-2-vision-1212"))
+
+	for _, model := range []string{
+		"grok-imagine-image-3.0",
+		"grok-imagine-video-2",
+		"grok-voice-latest",
+		"grok-web-search",
+		"grok-x-search",
+		"grok-speech-1",
+	} {
+		_, err := svc.GetModelPricing(model)
+		require.Error(t, err, "non-text grok family %s must not inherit grok-4.5 token rates", model)
+		require.ErrorIs(t, err, ErrModelPricingUnavailable)
+	}
+
+	// Known cards stay on their own rate, not the 4.5 family floor.
+	build, err := svc.GetModelPricing("grok-build-0.1")
+	require.NoError(t, err)
+	require.InDelta(t, 1e-6*3.5, build.InputPricePerToken, 1e-12)
+}
+
+func TestComputeCacheCreationCost_CapsContradictoryBreakdownAtAggregate(t *testing.T) {
+	svc := &BillingService{}
+	pricing := &ModelPricing{
+		SupportsCacheBreakdown: true,
+		CacheCreation5mPrice:   1,
+		CacheCreation1hPrice:   1,
+	}
+
+	tokens := UsageTokens{
+		CacheCreationTokens:   463184,
+		CacheCreation5mTokens: 463184,
+		CacheCreation1hTokens: 463184,
+	}
+
+	cost := svc.computeCacheCreationCost(pricing, tokens, 0, 1)
+	require.Equal(t, float64(tokens.CacheCreationTokens), cost,
+		"billed cache-creation token equivalent must not exceed the positive aggregate")
+}
+
+func TestNormalizeCacheCreationBreakdown_BillingSafetyInvariant(t *testing.T) {
+	tests := []struct {
+		name   string
+		tokens UsageTokens
+		want5m int
+		want1h int
+	}{
+		{
+			name:   "preserves ratio when capping",
+			tokens: UsageTokens{CacheCreationTokens: 100, CacheCreation5mTokens: 90, CacheCreation1hTokens: 60},
+			want5m: 60,
+			want1h: 40,
+		},
+		{
+			name:   "details below aggregate unchanged",
+			tokens: UsageTokens{CacheCreationTokens: 100, CacheCreation5mTokens: 30, CacheCreation1hTokens: 60},
+			want5m: 30,
+			want1h: 60,
+		},
+		{
+			name:   "absent 5m detail unchanged",
+			tokens: UsageTokens{CacheCreationTokens: 100, CacheCreation1hTokens: 60},
+			want5m: 0,
+			want1h: 60,
+		},
+		{
+			name:   "absent 1h detail unchanged",
+			tokens: UsageTokens{CacheCreationTokens: 100, CacheCreation5mTokens: 30},
+			want5m: 30,
+			want1h: 0,
+		},
+		{
+			name:   "negative detail clamped",
+			tokens: UsageTokens{CacheCreationTokens: 100, CacheCreation5mTokens: -50, CacheCreation1hTokens: 60},
+			want5m: 0,
+			want1h: 60,
+		},
+		{
+			name:   "negative detail cannot hide oversized positive detail",
+			tokens: UsageTokens{CacheCreationTokens: 100, CacheCreation5mTokens: -50, CacheCreation1hTokens: 150},
+			want5m: 0,
+			want1h: 100,
+		},
+		{
+			name:   "integer boundary details capped without overflow",
+			tokens: UsageTokens{CacheCreationTokens: 100, CacheCreation5mTokens: int(^uint(0) >> 1), CacheCreation1hTokens: int(^uint(0) >> 1)},
+			want5m: 50,
+			want1h: 50,
+		},
+		{
+			name:   "integer boundary aggregate avoids float conversion overflow",
+			tokens: UsageTokens{CacheCreationTokens: int(^uint(0) >> 1), CacheCreation5mTokens: int(^uint(0) >> 1), CacheCreation1hTokens: 1},
+			want5m: int(^uint(0) >> 1),
+			want1h: 0,
+		},
+		{
+			name:   "zero aggregate unchanged",
+			tokens: UsageTokens{CacheCreation5mTokens: 90, CacheCreation1hTokens: 60},
+			want5m: 90,
+			want1h: 60,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got5m, got1h := normalizeCacheCreationBreakdown(tt.tokens)
+			require.Equal(t, tt.want5m, got5m)
+			require.Equal(t, tt.want1h, got1h)
+		})
+	}
+}
+
+func TestComputeCacheCreationCost_PreservesZeroDetailFallback(t *testing.T) {
+	svc := &BillingService{}
+	pricing := &ModelPricing{
+		SupportsCacheBreakdown: true,
+		CacheCreation5mPrice:   4e-6,
+		CacheCreation1hPrice:   5e-6,
+	}
+
+	tests := []struct {
+		name   string
+		tokens UsageTokens
+	}{
+		{name: "zero details", tokens: UsageTokens{CacheCreationTokens: 100}},
+		{name: "one negative detail", tokens: UsageTokens{CacheCreationTokens: 100, CacheCreation5mTokens: -25}},
+		{name: "both negative details", tokens: UsageTokens{CacheCreationTokens: 100, CacheCreation5mTokens: -25, CacheCreation1hTokens: -75}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cost := svc.computeCacheCreationCost(pricing, tt.tokens, 0, 1)
+			require.InDelta(t, 100*4e-6, cost, 1e-12)
+		})
+	}
+}
+
+func TestGetModelPricingWithChannel_CacheWriteTTLPricesCanDiffer(t *testing.T) {
+	svc := newTestBillingService()
+
+	pricing, err := svc.GetModelPricingWithChannel("claude-fable-5-1", &ChannelModelPricing{
+		CacheWritePrice:   testPtrFloat64(13e-6),
+		CacheWrite1hPrice: testPtrFloat64(21e-6),
+	})
+	require.NoError(t, err)
+	require.True(t, pricing.SupportsCacheBreakdown)
+	require.InDelta(t, 13e-6, pricing.CacheCreationPricePerToken, 1e-12)
+	require.InDelta(t, 13e-6, pricing.CacheCreation5mPrice, 1e-12)
+	require.InDelta(t, 21e-6, pricing.CacheCreation1hPrice, 1e-12)
+}
+
+func TestGetModelPricing_Fable51FallbackPricing(t *testing.T) {
+	svc := newTestBillingService()
+
+	pricing, err := svc.GetModelPricing("claude-fable-5-1")
+	require.NoError(t, err)
+	require.InDelta(t, 10e-6*3.5, pricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 50e-6*3.5, pricing.OutputPricePerToken, 1e-12)
+	require.InDelta(t, 12.5e-6*3.5, pricing.CacheCreation5mPrice, 1e-12)
+	require.InDelta(t, 20e-6*3.5, pricing.CacheCreation1hPrice, 1e-12)
+	require.InDelta(t, 0.25e-6*3.5, pricing.CacheReadPricePerToken, 1e-12)
+	require.NotNil(t, pricing.MaxReasoningEffortMultiplier)
+	require.Equal(t, 3.0, *pricing.MaxReasoningEffortMultiplier)
+}
+
+func TestGetModelPricingWithChannel_PreservesCatalogPriorityRatio(t *testing.T) {
+	svc := newTestBillingService()
+
+	// gpt-5.4 目录价：input 2.5/5（2x），output 15/30（2x）。
+	pricing, err := svc.GetModelPricingWithChannel("gpt-5.4", &ChannelModelPricing{
+		InputPrice:  testPtrFloat64(4e-6),
+		OutputPrice: testPtrFloat64(30e-6),
+	})
+	require.NoError(t, err)
+
+	require.InDelta(t, 4e-6, pricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 8e-6, pricing.InputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 30e-6, pricing.OutputPricePerToken, 1e-12)
+	require.InDelta(t, 60e-6, pricing.OutputPricePerTokenPriority, 1e-12)
+}
+
 func newTestBillingService() *BillingService {
 	return NewBillingService(&config.Config{}, nil)
 }
@@ -281,7 +588,7 @@ func TestCalculateCost_OpenAIGPT54LongContextMarkerRequiresActualCostIncrease(t 
 	require.False(t, cost.LongContextBillingApplied)
 }
 
-func TestCalculateCost_OpenAIGPT55ProUsesGPT55PricingPolicy(t *testing.T) {
+func TestCalculateCost_OpenAIGPT55ProKeepsSeparatePricing(t *testing.T) {
 	svc := newTestBillingService()
 
 	tokens := UsageTokens{
@@ -292,8 +599,8 @@ func TestCalculateCost_OpenAIGPT55ProUsesGPT55PricingPolicy(t *testing.T) {
 	cost, err := svc.CalculateCost("gpt-5.5-pro", tokens, 1.0)
 	require.NoError(t, err)
 
-	expectedInput := float64(tokens.InputTokens) * 17.5e-6 * 2.0
-	expectedOutput := float64(tokens.OutputTokens) * 105e-6 * 1.5
+	expectedInput := float64(tokens.InputTokens) * 30e-6
+	expectedOutput := float64(tokens.OutputTokens) * 180e-6
 	require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
 	require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
 	require.InDelta(t, expectedInput+expectedOutput, cost.TotalCost, 1e-10)
@@ -461,30 +768,30 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 		{
 			name:              "deepseek v4 pro",
 			model:             "deepseek-v4-pro",
-			expectedInput:     4.35e-7,
-			expectedOutput:    floatPtr(8.7e-7),
-			expectedCacheRead: floatPtr(3.625e-9),
+			expectedInput:     6.6e-7,
+			expectedOutput:    floatPtr(1.98e-6),
+			expectedCacheRead: floatPtr(2.2e-8),
 		},
 		{
 			name:              "deepseek v4 flash",
 			model:             "deepseek-v4-flash",
-			expectedInput:     1.4e-7,
-			expectedOutput:    floatPtr(2.8e-7),
-			expectedCacheRead: floatPtr(2.8e-9),
+			expectedInput:     2.2e-7,
+			expectedOutput:    floatPtr(6.6e-7),
+			expectedCacheRead: floatPtr(7e-9),
 		},
 		{
 			name:              "deepseek chat alias → flash",
 			model:             "deepseek-chat",
-			expectedInput:     1.4e-7,
-			expectedOutput:    floatPtr(2.8e-7),
-			expectedCacheRead: floatPtr(2.8e-9),
+			expectedInput:     2.2e-7,
+			expectedOutput:    floatPtr(6.6e-7),
+			expectedCacheRead: floatPtr(7e-9),
 		},
 		{
 			name:              "deepseek reasoner alias → flash",
 			model:             "deepseek-reasoner",
-			expectedInput:     1.4e-7,
-			expectedOutput:    floatPtr(2.8e-7),
-			expectedCacheRead: floatPtr(2.8e-9),
+			expectedInput:     2.2e-7,
+			expectedOutput:    floatPtr(6.6e-7),
+			expectedCacheRead: floatPtr(7e-9),
 		},
 
 		// ---- 智谱 GLM（z.ai USD 口径）----
@@ -877,113 +1184,6 @@ func TestComputeTokenBreakdown_GptImage2ImageEditIssue4386(t *testing.T) {
 	require.InDelta(t, wantImageOutput, cost.ImageOutputCost, 1e-15)
 	require.InDelta(t, 0.016081, cost.TotalCost, 1e-9, "总额应为 $0.016081（修复前为 $0.015025）")
 }
-func TestCalculateCostWithLongContext_BelowThreshold(t *testing.T) {
-	svc := newTestBillingService()
-
-	tokens := UsageTokens{
-		InputTokens:     50000,
-		OutputTokens:    1000,
-		CacheReadTokens: 100000,
-	}
-	// 总输入 150k < 200k 阈值，应走正常计费
-	cost, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 1.0, 200000, 2.0)
-	require.NoError(t, err)
-
-	normalCost, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
-	require.NoError(t, err)
-
-	require.InDelta(t, normalCost.ActualCost, cost.ActualCost, 1e-10)
-}
-
-func TestCalculateCostWithLongContext_AboveThreshold_CacheExceedsThreshold(t *testing.T) {
-	svc := newTestBillingService()
-
-	// 缓存 210k + 输入 10k = 220k > 200k 阈值
-	// 缓存已超阈值：范围内 200k 缓存，范围外 10k 缓存 + 10k 输入
-	tokens := UsageTokens{
-		InputTokens:     10000,
-		OutputTokens:    1000,
-		CacheReadTokens: 210000,
-	}
-	cost, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 1.0, 200000, 2.0)
-	require.NoError(t, err)
-
-	// 范围内：200k cache + 0 input + 1k output
-	inRange, _ := svc.CalculateCost("claude-sonnet-4", UsageTokens{
-		InputTokens:     0,
-		OutputTokens:    1000,
-		CacheReadTokens: 200000,
-	}, 1.0)
-
-	// 范围外：10k cache + 10k input，倍率 2.0
-	outRange, _ := svc.CalculateCost("claude-sonnet-4", UsageTokens{
-		InputTokens:     10000,
-		CacheReadTokens: 10000,
-	}, 2.0)
-
-	require.InDelta(t, inRange.ActualCost+outRange.ActualCost, cost.ActualCost, 1e-10)
-}
-
-func TestCalculateCostWithLongContext_AboveThreshold_CacheBelowThreshold(t *testing.T) {
-	svc := newTestBillingService()
-
-	// 缓存 100k + 输入 150k = 250k > 200k 阈值
-	// 缓存未超阈值：范围内 100k 缓存 + 100k 输入，范围外 50k 输入
-	tokens := UsageTokens{
-		InputTokens:     150000,
-		OutputTokens:    1000,
-		CacheReadTokens: 100000,
-	}
-	cost, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 1.0, 200000, 2.0)
-	require.NoError(t, err)
-
-	require.True(t, cost.ActualCost > 0, "费用应大于 0")
-
-	// 正常费用不含长上下文
-	normalCost, _ := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
-	require.True(t, cost.ActualCost > normalCost.ActualCost, "长上下文费用应高于正常费用")
-}
-
-func TestCalculateCostWithLongContext_MarkerRequiresActualCostIncrease(t *testing.T) {
-	svc := newTestBillingService()
-	tokens := UsageTokens{InputTokens: 300000}
-
-	cost, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 0, 200000, 2.0)
-
-	require.NoError(t, err)
-	require.Zero(t, cost.ActualCost)
-	require.False(t, cost.LongContextBillingApplied)
-}
-
-func TestCalculateCostWithLongContext_DisabledThreshold(t *testing.T) {
-	svc := newTestBillingService()
-
-	tokens := UsageTokens{InputTokens: 300000, CacheReadTokens: 0}
-
-	// threshold <= 0 应禁用长上下文计费
-	cost1, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 1.0, 0, 2.0)
-	require.NoError(t, err)
-
-	cost2, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
-	require.NoError(t, err)
-
-	require.InDelta(t, cost2.ActualCost, cost1.ActualCost, 1e-10)
-}
-
-func TestCalculateCostWithLongContext_ExtraMultiplierLessEqualOne(t *testing.T) {
-	svc := newTestBillingService()
-
-	tokens := UsageTokens{InputTokens: 300000}
-
-	// extraMultiplier <= 1 应禁用长上下文计费
-	cost, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 1.0, 200000, 1.0)
-	require.NoError(t, err)
-
-	normalCost, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
-	require.NoError(t, err)
-
-	require.InDelta(t, normalCost.ActualCost, cost.ActualCost, 1e-10)
-}
 
 func TestCalculateImageCost(t *testing.T) {
 	svc := newTestBillingService()
@@ -1134,23 +1334,10 @@ func TestForceUpdatePricing_NilService(t *testing.T) {
 	require.Contains(t, err.Error(), "not initialized")
 }
 
-func TestCalculateCostWithLongContext_PropagatesError(t *testing.T) {
-	// 使用空的 fallback prices 让 GetModelPricing 失败
-	svc := &BillingService{
-		cfg:            &config.Config{},
-		fallbackPrices: make(map[string]*ModelPricing),
-	}
-
-	tokens := UsageTokens{InputTokens: 300000, CacheReadTokens: 0}
-	_, err := svc.CalculateCostWithLongContext("unknown-model", tokens, 1.0, 200000, 2.0)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "pricing not found")
-}
-
 func TestGetModelPricing_Grok45YuexiangBasePricing(t *testing.T) {
 	svc := newTestBillingService()
 
-	for _, model := range []string{"grok", "grok-latest", "grok-4.5", "grok-4.5-latest"} {
+	for _, model := range []string{"grok-4.5", "grok-4.5-latest"} {
 		model := model
 		t.Run(model, func(t *testing.T) {
 			pricing, err := svc.GetModelPricing(model)
@@ -1203,46 +1390,6 @@ func TestCalculateCostUnified_GroupLongContextToggleUsesPresetLadder(t *testing.
 	require.True(t, enabled.LongContextBillingApplied)
 	require.InDelta(t, disabled.InputCost*2, enabled.InputCost, 1e-12)
 	require.InDelta(t, disabled.OutputCost*2, enabled.OutputCost, 1e-12)
-}
-
-func TestGetModelPricing_UnknownGrokTextFallsBackToGrok45(t *testing.T) {
-	svc := newTestBillingService()
-	baseline, err := svc.GetModelPricing("grok-4.5")
-	require.NoError(t, err)
-
-	for _, model := range []string{"grok-5", "grok-5-latest", "x-ai/grok-7", "grok-4.7-beta"} {
-		pricing, err := svc.GetModelPricing(model)
-		require.NoError(t, err, "model %s", model)
-		require.InDelta(t, baseline.InputPricePerToken, pricing.InputPricePerToken, 1e-12, model)
-		require.InDelta(t, baseline.OutputPricePerToken, pricing.OutputPricePerToken, 1e-12, model)
-		require.InDelta(t, baseline.CacheReadPricePerToken, pricing.CacheReadPricePerToken, 1e-12, model)
-	}
-
-	// Per-unit media ids must not inherit the text card just because they carry
-	// a version number; they are billed by the image/video/audio paths instead.
-	for _, model := range []string{"grok-2-image-1212", "grok-2-audio", "grok-5-video", "x-ai/grok-6-image"} {
-		require.False(t, isGrokUnknownTextFamilyModel(model), "model %s", model)
-	}
-	// Multimodal chat models stay token billed.
-	require.True(t, isGrokUnknownTextFamilyModel("grok-2-vision-1212"))
-
-	for _, model := range []string{
-		"grok-imagine-image-3.0",
-		"grok-imagine-video-2",
-		"grok-voice-latest",
-		"grok-web-search",
-		"grok-x-search",
-		"grok-speech-1",
-	} {
-		_, err := svc.GetModelPricing(model)
-		require.Error(t, err, "non-text grok family %s must not inherit grok-4.5 token rates", model)
-		require.ErrorIs(t, err, ErrModelPricingUnavailable)
-	}
-
-	// Known cards stay on their own 3.5x rate, not the 4.5 family floor.
-	build, err := svc.GetModelPricing("grok-build-0.1")
-	require.NoError(t, err)
-	require.InDelta(t, 3.5e-6, build.InputPricePerToken, 1e-12)
 }
 
 func TestGetModelPricing_GrokCatalogFallbacks(t *testing.T) {
@@ -1591,9 +1738,9 @@ func TestGetModelPricingWithChannel_OverrideInputPriceOnly(t *testing.T) {
 	pricing, err := svc.GetModelPricingWithChannel("claude-sonnet-4", chPricing)
 	require.NoError(t, err)
 
-	// InputPrice overridden (both normal and priority)
+	// No catalog priority ratio: the tier multiplier applies after the override.
 	require.InDelta(t, 99e-6, pricing.InputPricePerToken, 1e-12)
-	require.InDelta(t, 99e-6, pricing.InputPricePerTokenPriority, 1e-12)
+	require.Zero(t, pricing.InputPricePerTokenPriority)
 
 	// OutputPrice remains the scaled Claude base price.
 	require.InDelta(t, 52.5e-6, pricing.OutputPricePerToken, 1e-12)
@@ -1610,7 +1757,7 @@ func TestGetModelPricingWithChannel_OverrideOutputPriceOnly(t *testing.T) {
 
 	// OutputPrice overridden
 	require.InDelta(t, 88e-6, pricing.OutputPricePerToken, 1e-12)
-	require.InDelta(t, 88e-6, pricing.OutputPricePerTokenPriority, 1e-12)
+	require.Zero(t, pricing.OutputPricePerTokenPriority)
 
 	// InputPrice remains the scaled Claude base price.
 	require.InDelta(t, 10.5e-6, pricing.InputPricePerToken, 1e-12)
@@ -1630,14 +1777,14 @@ func TestGetModelPricingWithChannel_OverrideAllFields(t *testing.T) {
 	require.NoError(t, err)
 
 	require.InDelta(t, 10e-6, pricing.InputPricePerToken, 1e-12)
-	require.InDelta(t, 10e-6, pricing.InputPricePerTokenPriority, 1e-12)
+	require.Zero(t, pricing.InputPricePerTokenPriority)
 	require.InDelta(t, 20e-6, pricing.OutputPricePerToken, 1e-12)
-	require.InDelta(t, 20e-6, pricing.OutputPricePerTokenPriority, 1e-12)
+	require.Zero(t, pricing.OutputPricePerTokenPriority)
 	require.InDelta(t, 5e-6, pricing.CacheCreationPricePerToken, 1e-12)
 	require.InDelta(t, 5e-6, pricing.CacheCreation5mPrice, 1e-12)
 	require.InDelta(t, 5e-6, pricing.CacheCreation1hPrice, 1e-12)
 	require.InDelta(t, 1e-6, pricing.CacheReadPricePerToken, 1e-12)
-	require.InDelta(t, 1e-6, pricing.CacheReadPricePerTokenPriority, 1e-12)
+	require.Zero(t, pricing.CacheReadPricePerTokenPriority)
 	require.InDelta(t, 50e-6, pricing.ImageOutputPricePerToken, 1e-12)
 }
 
@@ -1665,9 +1812,9 @@ func TestGetModelPricingWithChannel_CacheReadPriceAffectsPriority(t *testing.T) 
 	pricing, err := svc.GetModelPricingWithChannel("claude-sonnet-4", chPricing)
 	require.NoError(t, err)
 
-	// CacheReadPrice should set both normal and priority
+	// No catalog priority ratio: the tier multiplier applies after the override.
 	require.InDelta(t, 2e-6, pricing.CacheReadPricePerToken, 1e-12)
-	require.InDelta(t, 2e-6, pricing.CacheReadPricePerTokenPriority, 1e-12)
+	require.Zero(t, pricing.CacheReadPricePerTokenPriority)
 }
 
 func TestGetModelPricingWithChannel_UnknownModelReturnsError(t *testing.T) {

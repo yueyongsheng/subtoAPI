@@ -15,11 +15,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	_ "github.com/Wei-Shaw/sub2api/ent/runtime"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -68,6 +71,7 @@ func TestMain(m *testing.M) {
 		tcpostgres.WithUsername("postgres"),
 		tcpostgres.WithPassword("postgres"),
 		tcpostgres.BasicWaitStrategies(),
+		integrationContainerLimits("5432/tcp"),
 	)
 	if err != nil {
 		log.Printf("failed to start postgres container: %v", err)
@@ -78,6 +82,7 @@ func TestMain(m *testing.M) {
 	redisContainer, err := tcredis.Run(
 		ctx,
 		redisImageTag,
+		integrationContainerLimits("6379/tcp"),
 	)
 	if err != nil {
 		log.Printf("failed to start redis container: %v", err)
@@ -130,8 +135,22 @@ func TestMain(m *testing.M) {
 	_ = integrationEntClient.Close()
 	_ = integrationRedis.Close()
 	_ = integrationDB.Close()
+	_ = redisContainer.Terminate(ctx)
+	_ = pgContainer.Terminate(ctx)
 
 	os.Exit(code)
+}
+
+// Opt in when running the suite alongside other services on a shared host.
+func integrationContainerLimits(port nat.Port) testcontainers.CustomizeRequestOption {
+	return testcontainers.WithHostConfigModifier(func(cfg *container.HostConfig) {
+		if os.Getenv("SUB2API_TEST_LOOPBACK_ONLY") != "1" {
+			return
+		}
+		cfg.PortBindings = nat.PortMap{port: {{HostIP: "127.0.0.1", HostPort: "0"}}}
+		cfg.Resources.NanoCPUs = 500_000_000
+		cfg.Resources.Memory = 512 * 1024 * 1024
+	})
 }
 
 func dockerIsAvailable(ctx context.Context) bool {
