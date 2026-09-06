@@ -67,8 +67,6 @@ func normalizeKnownOpenAICodexModel(model string) string {
 	switch {
 	case normalized == "gpt-6-astra":
 		return "gpt-6-astra"
-	case normalized == "gpt-6" || strings.HasPrefix(normalized, "gpt-6-"):
-		return ""
 	case strings.Contains(normalized, "gpt-5.6-sol"):
 		return "gpt-5.6-sol"
 	case strings.Contains(normalized, "gpt-5.6-terra"):
@@ -128,13 +126,12 @@ func isOpenAIGPT56Model(model string) bool {
 	return false
 }
 
-// supportsOpenAIReasoningEffortMax is independent from the GPT-5.6 compact
-// compatibility rule. Astra supports max on normal API requests.
-func supportsOpenAIReasoningEffortMax(model string) bool {
-	if isOpenAIGPT56Model(model) {
-		return true
-	}
-	return canonicalizeOpenAIModelAliasSpelling(model) == "gpt-6-astra"
+// isOpenAIGPT6AstraModel reports only the exact public GPT-6 Astra model ID.
+// Provider/path prefixes are normalized away, while aliases and dated variants
+// remain excluded from paid traffic until explicitly provisioned.
+func isOpenAIGPT6AstraModel(model string) bool {
+	normalized := canonicalizeOpenAIModelAliasSpelling(model)
+	return normalized == "gpt-6-astra"
 }
 
 func appendUsageBillingModelCandidate(candidates []string, seen map[string]struct{}, model string) []string {

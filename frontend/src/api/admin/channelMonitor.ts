@@ -5,12 +5,59 @@
 
 import { apiClient } from '../client'
 
-export type Provider = 'openai' | 'anthropic' | 'gemini' | 'grok'
+export type Provider =
+  | 'openai'
+  | 'anthropic'
+  | 'gemini'
+  | 'grok'
+  | 'antigravity'
+  | 'kimi'
+  | 'zhipu'
+  | 'deepseek'
 export type MonitorStatus = 'operational' | 'degraded' | 'failed' | 'error'
 export type BodyOverrideMode = 'off' | 'merge' | 'replace'
 export type APIMode = 'chat_completions' | 'responses'
-export type MonitorMode = 'active' | 'hybrid'
-export type ObservationSource = 'active_probe' | 'real_traffic'
+/**
+ * probe = LLM 探活（默认）；quota = 仅查关联账号用量（零 LLM 成本）；
+ * quota_probe = 探活 + 配额快照挂主模型行。
+ */
+export type CheckMode = 'probe' | 'quota' | 'quota_probe'
+export type MonitorMode = CheckMode | 'hybrid' | 'active'
+export type ObservationSource = 'probe' | 'quota' | 'quota_probe' | ''
+
+/** 配额快照中的单个用量窗口（与后端 domain.MonitorQuotaTier 一致）。 */
+export interface MonitorQuotaTier {
+  /** 5h | 7d | 7d-sonnet | 7d-fable | 30d | daily | weekly | total */
+  window: string
+  /** 同窗口多档时的机器标识（gemini shared/pro/flash、grok requests/tokens、antigravity 模型名） */
+  label?: string
+  used_percent: number
+  used?: number
+  limit?: number
+  /** RFC3339；空表示无重置时间 */
+  reset_at?: string
+}
+
+export interface MonitorBalance {
+  currency: string
+  balance: number
+}
+
+/** 归一化配额快照（与后端 domain.MonitorQuotaSnapshot 一致）。 */
+export interface MonitorQuotaSnapshot {
+  /** usage | cn_quota | cn_balance */
+  source: string
+  success: boolean
+  tiers?: MonitorQuotaTier[]
+  balance?: number | null
+  balances?: MonitorBalance[]
+  currency?: string
+  plan_level?: string
+  /** 401/403 鉴权失败标记（推导为 failed 状态） */
+  credential_invalid?: boolean
+  error?: string
+  fetched_at: string
+}
 
 export interface ChannelMonitor {
   id: number
@@ -28,16 +75,11 @@ export interface ChannelMonitor {
   primary_model: string
   extra_models: string[]
   group_name: string
-  mode: MonitorMode
-  group_id: number | null
-  probe_api_key_id: number | null
   enabled: boolean
   interval_seconds: number
   /** 每次调度在 interval 基础上 ± [0, jitter] 的随机偏移（秒），0 = 固定间隔 */
   jitter_seconds: number
   last_checked_at: string | null
-  last_observation_source: ObservationSource | ''
-  last_observed_at: string | null
   created_by: number
   created_at: string
   updated_at: string
@@ -54,6 +96,15 @@ export interface ChannelMonitor {
   extra_headers: Record<string, string>
   body_override_mode: BodyOverrideMode
   body_override: Record<string, unknown> | null
+  /** 检测模式：probe（默认）/ quota / quota_probe */
+  check_mode: CheckMode
+  /** 配额模式关联的账号 ID；探活模式为 null */
+  account_id: number | null
+  mode?: MonitorMode
+  group_id?: number | null
+  probe_api_key_id?: number | null
+  /** 主模型最近一次配额快照（配额模式；无历史时为 null） */
+  latest_quota?: MonitorQuotaSnapshot | null
 }
 
 export interface ExtraModelStatus {
@@ -82,14 +133,22 @@ export interface CreateParams {
   name: string
   provider: Provider
   api_mode?: APIMode
+  /** 探活模式必填（base origin）；quota 模式可留空 */
   endpoint: string
+  /** 探活模式必填；quota 模式可留空 */
   api_key: string
-  primary_model: string
-  extra_models?: string[]
-  group_name?: string
+  /** 缺省 probe；antigravity 仅支持 quota */
+  check_mode?: CheckMode
   mode?: MonitorMode
   group_id?: number | null
   probe_api_key_id?: number | null
+  /** 配额模式必填：数据源账号（provider 需与账号平台一致）。
+   * update 语义：>0=换绑，0=解绑（切回 probe 模式时前端发 0 清空存量关联）；
+   * create 绝不发 0——后端会把 0 存成 &0 触发外键违约。 */
+  account_id?: number | null
+  primary_model: string
+  extra_models?: string[]
+  group_name?: string
   enabled?: boolean
   interval_seconds: number
   jitter_seconds?: number
@@ -99,11 +158,10 @@ export interface CreateParams {
   body_override?: Record<string, unknown> | null
 }
 
-// Update request: api_key 空串 = 不修改；clear_template=true 时把 template_id 置空
+// Update request: api_key 空串 = 不修改；clear_template=true 时把 template_id 置空；
+// account_id=0 显式解绑关联账号（null = 不动，见 CreateParams 注释）
 export type UpdateParams = Partial<CreateParams> & {
   clear_template?: boolean
-  clear_group_id?: boolean
-  clear_probe_api_key_id?: boolean
 }
 
 export interface CheckResult {
@@ -113,6 +171,8 @@ export interface CheckResult {
   ping_latency_ms: number | null
   message: string
   checked_at: string
+  /** 配额模式（quota / quota_probe 主模型行）附带的配额快照 */
+  quota?: MonitorQuotaSnapshot | null
 }
 
 export interface RunNowResponse {
@@ -123,17 +183,12 @@ export interface HistoryItem {
   id: number
   model: string
   status: MonitorStatus
-  source: ObservationSource
-  bucket_start: string | null
-  sample_count: number
-  success_count: number
-  failure_count: number
-  recovered_error_count: number
-  slow_count: number
   latency_ms: number | null
   ping_latency_ms: number | null
   message: string
   checked_at: string
+  /** 配额快照（配额模式行；探活行为空） */
+  quota?: MonitorQuotaSnapshot | null
 }
 
 export interface HistoryParams {

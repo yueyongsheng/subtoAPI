@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from './client'
-import type { Provider, MonitorStatus, ObservationSource } from './admin/channelMonitor'
+import type { Provider, MonitorStatus, ObservationSource, MonitorQuotaSnapshot } from './admin/channelMonitor'
 
 export type { Provider, MonitorStatus } from './admin/channelMonitor'
 
@@ -36,6 +36,7 @@ export interface UserMonitorView {
   timeline: MonitorTimelinePoint[]
   last_observation_source: ObservationSource | ''
   last_observed_at: string | null
+  latest_quota?: MonitorQuotaSnapshot | null
 }
 
 export interface UserMonitorListResponse {

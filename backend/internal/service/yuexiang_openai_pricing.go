@@ -1,5 +1,11 @@
 package service
 
+const (
+	openAIGPT54LongContextInputThreshold   = 272000
+	openAIGPT54LongContextInputMultiplier  = 2
+	openAIGPT54LongContextOutputMultiplier = 1.5
+)
+
 var yuexiangOpenAIChargedModels = [...]string{
 	"gpt-6-astra",
 	"gpt-5.6-sol",

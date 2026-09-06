@@ -488,7 +488,8 @@ func (s *OpenAIGatewayService) resolveAccountByPreviousResponseIDForCapability(
 	}
 	// 非 WSv2 场景（如 force_http/全局关闭）不应使用 previous_response_id 粘连，
 	// 以保持“回滚到 HTTP”后的历史行为一致性。
-	if s.getOpenAIWSProtocolResolver().Resolve(account).Transport != OpenAIUpstreamTransportResponsesWebsocketV2 {
+	if s.getOpenAIWSProtocolResolver().Resolve(account).Transport != OpenAIUpstreamTransportResponsesWebsocketV2 &&
+		(account.Type != AccountTypeAPIKey || !account.IsOpenAIWSForceHTTPEnabled()) {
 		return 0, nil, "", nil
 	}
 	if shouldClearStickySession(account, requestedModel) || !account.IsOpenAI() || !account.IsSchedulable() {
@@ -618,14 +619,29 @@ func isOpenAIWSModelCapacityError(payload []byte) bool {
 		!isOpenAIWSRateLimitError(codeRaw, errTypeRaw, msgRaw)
 }
 
-func (s *OpenAIGatewayService) persistOpenAIWSRateLimitSignal(ctx context.Context, account *Account, headers http.Header, responseBody []byte, codeRaw, errTypeRaw, msgRaw string) {
+func (s *OpenAIGatewayService) persistOpenAIWSRateLimitSignal(ctx context.Context, account *Account, headers http.Header, responseBody []byte, codeRaw, errTypeRaw, msgRaw string, canonicalModel ...string) {
 	if s == nil || s.rateLimitService == nil || account == nil || account.Platform != PlatformOpenAI {
 		return
 	}
 	if !isOpenAIWSRateLimitError(codeRaw, errTypeRaw, msgRaw) {
 		return
 	}
-	s.handleOpenAIAccountUpstreamError(ctx, account, http.StatusTooManyRequests, headers, responseBody)
+	accountHeaders := headers
+	if len(canonicalModel) > 0 {
+		if len(responseBody) != 0 {
+			accountHeaders = openAIWSSemantic429Headers(account, canonicalModel[0], headers)
+		}
+	}
+	s.handleOpenAIAccountUpstreamError(ctx, account, http.StatusTooManyRequests, accountHeaders, responseBody, canonicalModel...)
+}
+
+// openAIWSSemantic429Headers prevents handshake-wide quota headers from
+// parking ordinary models. Spark requests use the Codex quota window.
+func openAIWSSemantic429Headers(account *Account, model string, headers http.Header) http.Header {
+	if account == nil || !account.IsOpenAI() || !account.IsOAuth() || !strings.Contains(strings.ToLower(strings.TrimSpace(model)), "codex-spark") {
+		return http.Header{}
+	}
+	return headers
 }
 
 func classifyOpenAIWSErrorEventFromRaw(codeRaw, errTypeRaw, msgRaw string) (string, bool) {
@@ -711,6 +727,29 @@ func openAIWSErrorHTTPStatus(message []byte) int {
 	}
 	codeRaw, errTypeRaw, _ := parseOpenAIWSErrorEventFields(message)
 	return openAIWSErrorHTTPStatusFromRaw(codeRaw, errTypeRaw)
+}
+
+func markOpenAIWSClientVisibleFailure(c *gin.Context, eventType string, payload []byte) {
+	if c == nil || (eventType != "error" && eventType != "response.failed") {
+		return
+	}
+	code, errType, message := parseOpenAIWSErrorEventFields(payload)
+	if strings.TrimSpace(errType) == "" {
+		errType = "upstream_error"
+	}
+	if strings.TrimSpace(message) == "" {
+		message = "OpenAI websocket request failed"
+	}
+	MarkOpsStreamFailure(c, errType, code, message, openAIWSErrorHTTPStatusFromRaw(code, errType))
+}
+
+func (s *OpenAIGatewayService) handleOpenAIWSFailureAccountSideEffects(ctx context.Context, account *Account, model string, headers http.Header, payload []byte) bool {
+	if s == nil || account == nil || account.Platform != PlatformOpenAI || len(payload) == 0 {
+		return false
+	}
+	code, errType, _ := parseOpenAIWSErrorEventFields(payload)
+	status := openAIWSErrorHTTPStatusFromRaw(code, errType)
+	return s.handleOpenAIAccountUpstreamError(ctx, account, status, openAIWSSemantic429Headers(account, model, headers), payload, model)
 }
 
 func (s *OpenAIGatewayService) openAIWSFallbackCooldown() time.Duration {

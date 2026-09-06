@@ -207,6 +207,7 @@ func buildStatusSummary(
 			summary.LastObservationSource = l.Source
 			observedAt := l.CheckedAt
 			summary.LastObservedAt = &observedAt
+			summary.LatestQuota = l.Quota
 		}
 		if a, ok := availByModel[primary]; ok {
 			summary.Availability7d = a.AvailabilityPct

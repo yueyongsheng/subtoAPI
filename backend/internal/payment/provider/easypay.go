@@ -211,7 +211,27 @@ func (e *EasyPay) createAPIPayment(ctx context.Context, req payment.CreatePaymen
 	if tradeNo == "" {
 		tradeNo = resp.OrderID
 	}
-	return &payment.CreatePaymentResponse{TradeNo: tradeNo, PayURL: payURL, QRCode: resp.QRCode}, nil
+	return &payment.CreatePaymentResponse{
+		TradeNo: tradeNo,
+		PayURL:  resolveEasyPayReturnedRef(e.apiBase(), payURL),
+		QRCode:  resolveEasyPayReturnedRef(e.apiBase(), resp.QRCode),
+	}, nil
+}
+
+func resolveEasyPayReturnedRef(apiBase, ref string) string {
+	trimmed := strings.TrimSpace(ref)
+	if !strings.HasPrefix(trimmed, "/") {
+		return ref
+	}
+	base, err := url.Parse(strings.TrimSpace(apiBase))
+	if err != nil || base.Scheme == "" || base.Host == "" {
+		return ref
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil || parsed.Scheme != "" {
+		return ref
+	}
+	return base.ResolveReference(parsed).String()
 }
 
 // resolveURLs returns (notifyURL, returnURL) preferring request values,

@@ -72,6 +72,16 @@ type openAISSELineScanner interface {
 	Err() error
 }
 
+func openAISSEScannerHasOpenFrame(scanner openAISSELineScanner) bool {
+	if scanner == nil {
+		return false
+	}
+	if framed, ok := scanner.(interface{ HasOpenFrame() bool }); ok {
+		return framed.HasOpenFrame()
+	}
+	return false
+}
+
 // validatedOpenAISSELineScanner keeps one complete SSE frame in memory before
 // exposing its lines. This preserves the existing line-oriented callers while
 // preventing a final partial data line from being written to the client.

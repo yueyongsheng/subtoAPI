@@ -52,7 +52,8 @@ describe('useModelWhitelist', () => {
     expect(models).toContain('grok-4.5')
     expect(models).toContain('grok-4.5-latest')
     expect(models).toContain('grok-build-latest')
-    expect(models).toContain('grok-imagine-video-1.5-preview')
+    expect(models).not.toContain('grok-imagine-video')
+    expect(models).not.toContain('grok-imagine-video-1.5')
   })
 
   it('combined 模式支持 Grok 4.5 官方别名映射', () => {

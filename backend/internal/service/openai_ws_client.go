@@ -17,7 +17,8 @@ import (
 	"github.com/coder/websocket/wsjson"
 )
 
-const openAIWSMessageReadLimitBytes int64 = 16 * 1024 * 1024
+// Bound client frames at 64 MiB to accommodate large Codex context payloads.
+const openAIWSMessageReadLimitBytes int64 = 64 * 1024 * 1024
 const (
 	openAIWSProxyTransportMaxIdleConns        = 128
 	openAIWSProxyTransportMaxIdleConnsPerHost = 64

@@ -81,7 +81,8 @@ type ChannelMonitorService struct {
 	settings channelMonitorRuntimeReader
 	// scheduler 由 wire 通过 SetScheduler 注入；CRUD 后调用对应钩子即时同步任务。
 	// 测试或未注入场景下保持 nil，所有钩子调用变为 no-op。
-	scheduler MonitorScheduler
+	scheduler    MonitorScheduler
+	quotaFetcher *ChannelMonitorQuotaFetcher
 }
 
 const maxChannelMonitorNameRunes = 100
@@ -113,6 +114,13 @@ func (s *ChannelMonitorService) SetAPIKeyRepository(repo APIKeyRepository) {
 		return
 	}
 	s.apiKeyRepo = repo
+}
+
+// SetQuotaFetcher injects the account quota source used by quota monitor modes.
+func (s *ChannelMonitorService) SetQuotaFetcher(fetcher *ChannelMonitorQuotaFetcher) {
+	if s != nil {
+		s.quotaFetcher = fetcher
+	}
 }
 
 func (s *ChannelMonitorService) probeRuntime(ctx context.Context) ChannelMonitorRuntime {
@@ -181,7 +189,7 @@ func (s *ChannelMonitorService) Create(ctx context.Context, p ChannelMonitorCrea
 		APIMode:          defaultAPIMode(p.APIMode),
 		Endpoint:         normalizeEndpoint(p.Endpoint),
 		APIKey:           encrypted, // 注意：传入 repository 时该字段为密文
-		PrimaryModel:     normalizeMonitorPrimaryModel(p.Provider, p.PrimaryModel),
+		PrimaryModel:     normalizeMonitorPrimaryModel(p.Provider, defaultCheckMode(p.CheckMode), p.PrimaryModel),
 		ExtraModels:      normalizeModels(p.ExtraModels),
 		GroupName:        strings.TrimSpace(p.GroupName),
 		Mode:             p.Mode,
@@ -195,6 +203,8 @@ func (s *ChannelMonitorService) Create(ctx context.Context, p ChannelMonitorCrea
 		ExtraHeaders:     emptyHeadersIfNil(p.ExtraHeaders),
 		BodyOverrideMode: defaultBodyMode(p.BodyOverrideMode),
 		BodyOverride:     p.BodyOverride,
+		CheckMode:        defaultCheckMode(p.CheckMode),
+		AccountID:        cloneInt64Pointer(p.AccountID),
 	}
 	if err := s.repo.Create(ctx, m); err != nil {
 		return nil, fmt.Errorf("create channel monitor: %w", err)
@@ -375,6 +385,10 @@ func validateCreateParams(p ChannelMonitorCreateParams) error {
 	if err := validateProvider(p.Provider); err != nil {
 		return err
 	}
+	checkMode := defaultCheckMode(p.CheckMode)
+	if err := validateCheckMode(p.Provider, checkMode); err != nil {
+		return err
+	}
 	if err := validateAPIMode(p.Provider, p.APIMode); err != nil {
 		return err
 	}
@@ -384,13 +398,18 @@ func validateCreateParams(p ChannelMonitorCreateParams) error {
 	if err := validateJitter(p.JitterSeconds, p.IntervalSeconds); err != nil {
 		return err
 	}
-	if err := validateEndpoint(p.Endpoint); err != nil {
-		return err
+	if checkMode != MonitorCheckModeQuota {
+		if err := validateEndpoint(p.Endpoint); err != nil {
+			return err
+		}
+		if strings.TrimSpace(p.APIKey) == "" {
+			return ErrChannelMonitorMissingAPIKey
+		}
 	}
-	if strings.TrimSpace(p.APIKey) == "" {
-		return ErrChannelMonitorMissingAPIKey
+	if monitorCheckModeUsesQuota(checkMode) && (p.AccountID == nil || *p.AccountID <= 0) {
+		return ErrChannelMonitorAccountRequired
 	}
-	if normalizeMonitorPrimaryModel(p.Provider, p.PrimaryModel) == "" {
+	if normalizeMonitorPrimaryModel(p.Provider, defaultCheckMode(p.CheckMode), p.PrimaryModel) == "" {
 		return ErrChannelMonitorMissingPrimaryModel
 	}
 	if !isValidMonitorMode(p.Mode) {
@@ -549,6 +568,7 @@ func (s *ChannelMonitorService) persistCheckResults(ctx context.Context, m *Chan
 			PingLatencyMs: r.PingLatencyMs,
 			Message:       r.Message,
 			CheckedAt:     r.CheckedAt,
+			Quota:         r.Quota,
 		})
 	}
 	if err := s.repo.InsertHistoryBatch(ctx, rows); err != nil {
@@ -760,6 +780,22 @@ func applyMonitorUpdate(existing *ChannelMonitor, p ChannelMonitorUpdateParams) 
 		providerChanged = existing.Provider != *p.Provider
 		existing.Provider = *p.Provider
 	}
+	if p.CheckMode != nil {
+		existing.CheckMode = defaultCheckMode(*p.CheckMode)
+	}
+	if p.AccountID != nil {
+		if *p.AccountID > 0 {
+			id := *p.AccountID
+			existing.AccountID = &id
+		} else {
+			existing.AccountID = nil
+		}
+	}
+	if p.Provider != nil || p.CheckMode != nil {
+		if err := validateCheckMode(existing.Provider, existing.CheckMode); err != nil {
+			return err
+		}
+	}
 	if p.Endpoint != nil {
 		if err := validateEndpoint(*p.Endpoint); err != nil {
 			return err
@@ -767,7 +803,7 @@ func applyMonitorUpdate(existing *ChannelMonitor, p ChannelMonitorUpdateParams) 
 		existing.Endpoint = normalizeEndpoint(*p.Endpoint)
 	}
 	if p.PrimaryModel != nil {
-		primaryModel := normalizeMonitorPrimaryModel(existing.Provider, *p.PrimaryModel)
+		primaryModel := normalizeMonitorPrimaryModel(existing.Provider, defaultCheckMode(existing.CheckMode), *p.PrimaryModel)
 		if primaryModel == "" {
 			return ErrChannelMonitorMissingPrimaryModel
 		}

@@ -64,6 +64,9 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 	if err := validateOpenAIWSBearerToken(account, token); err != nil {
 		return err
 	}
+	if _, err := s.prepareCodexAccountIdentitySource(ctx, c, account); err != nil {
+		return err
+	}
 
 	// 预取一次 OpenAI Fast Policy settings，绑定到 ctx，让该 WS session
 	// 内所有帧的 evaluateOpenAIFastPolicy 调用复用同一份快照，避免每帧
@@ -86,6 +89,10 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 				"websocket mode is disabled for this account",
 				nil,
 			)
+		}
+		if ingressMode == OpenAIWSIngressModePassthrough && s.shouldBridgeOpenAIWSPassthroughFirstMessage(account, firstClientMessage) {
+			forceHTTPBridge = true
+			ingressMode = OpenAIWSIngressModeHTTPBridge
 		}
 		switch ingressMode {
 		case OpenAIWSIngressModePassthrough:
@@ -165,7 +172,9 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 
 		// 仅在确实需要修改 payload 且 sjson 失败时，退回 map 路径确保兼容性。
 		payload := make(map[string]any)
-		if unmarshalErr := json.Unmarshal(current, &payload); unmarshalErr != nil {
+		decoder := json.NewDecoder(bytes.NewReader(current))
+		decoder.UseNumber()
+		if unmarshalErr := decoder.Decode(&payload); unmarshalErr != nil {
 			return nil, err
 		}
 		switch path {
@@ -190,6 +199,12 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 		}
 		if !gjson.ValidBytes(trimmed) {
 			return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket request payload", errors.New("invalid json"))
+		}
+		lineageHash := s.openAIWSLineageSessionHashFromContext(c, trimmed)
+		if invalid := s.sessionInvalidEncryptedContentDigests(getOpenAIGroupIDFromContext(c), lineageHash); len(invalid) > 0 {
+			if stripped, count := s.stripSessionInvalidEncryptedContentLogged(trimmed, invalid, "invalid_encrypted_lineage_strip", account.ID, turn); count > 0 {
+				trimmed = bytes.TrimSpace(stripped)
+			}
 		}
 
 		values := gjson.GetManyBytes(trimmed, "type", "model", "prompt_cache_key", "previous_response_id")
@@ -218,7 +233,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			)
 		}
 		if hooks != nil && (hooks.MaxReasoningEffort != "" || len(hooks.ReasoningEffortMappings) > 0) {
-			if capped, changed := ApplyOpenAIReasoningEffortPolicy(normalized, hooks.MaxReasoningEffort, hooks.ReasoningEffortMappings); changed {
+			if capped, changed, policyErr := ApplyOpenAIReasoningEffortPolicy(normalized, hooks.MaxReasoningEffort, hooks.ReasoningEffortMappings, hooks.MaxReasoningEffortOverLimit); policyErr == nil && changed {
 				normalized = capped
 			}
 		}
@@ -281,7 +296,9 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			s.isCodexImageGenerationBridgeEnabled(ctx, account, apiKey)
 		if codexBridgeEnabled {
 			payloadMap := make(map[string]any)
-			if err := json.Unmarshal(normalized, &payloadMap); err != nil {
+			decoder := json.NewDecoder(bytes.NewReader(normalized))
+			decoder.UseNumber()
+			if err := decoder.Decode(&payloadMap); err != nil {
 				return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket request payload", err)
 			}
 			bridgeModified := false
@@ -456,6 +473,9 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 	storeDisabled := false
 	refreshIngressRouteState := func(payload openAIWSClientPayload) {
 		sessionHash = s.GenerateSessionHash(c, payload.rawForHash)
+		if c != nil {
+			c.Set(openAIWSIngressSessionHashContextKey, sessionHash)
+		}
 		if turnState == "" && stateStore != nil && sessionHash != "" {
 			if savedTurnState, ok := stateStore.GetSessionTurnState(groupID, sessionHash); ok {
 				turnState = savedTurnState
@@ -516,7 +536,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 				bridgeReplayInput,
 				bridgeReplayInputExists,
 				currentBridgePayload.payloadRaw,
-				needsBridgeReplay,
+				currentBridgePayload.previousResponseID != "",
 			)
 			if replayInputErr != nil {
 				return fmt.Errorf("build websocket http bridge replay input: %w", replayInputErr)
@@ -580,7 +600,10 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			}
 			bridgeReplayInput = cloneOpenAIWSRawMessages(turnReplayInput)
 			bridgeReplayInputExists = turnReplayInputExists
-			if result.wsReplayInputExists {
+			if len(result.wsAccountFailoverReplayInput) > 0 {
+				bridgeReplayInput = append(bridgeReplayInput, cloneOpenAIWSRawMessages(result.wsAccountFailoverReplayInput)...)
+				bridgeReplayInputExists = true
+			} else if result.wsReplayInputExists {
 				bridgeReplayInput = append(bridgeReplayInput, cloneOpenAIWSRawMessages(result.wsReplayInput)...)
 				bridgeReplayInputExists = true
 			}
@@ -882,13 +905,27 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 				s.handleOpenAIWSErrorEventTransientFailure(ctx, account, canonicalModel, lease.HandshakeHeaders(), upstreamMessage)
 				errCodeRaw, errTypeRaw, errMsgRaw := parseOpenAIWSErrorEventFields(upstreamMessage)
 				s.persistOpenAIWSRateLimitSignal(ctx, account, lease.HandshakeHeaders(), upstreamMessage, errCodeRaw, errTypeRaw, errMsgRaw)
+				parseOpenAIWSResponseUsageFromCompletedEvent(upstreamMessage, &usage)
+				markOpenAICyberPolicyEvent(c, upstreamMessage, http.StatusOK, &usage)
+				if fallbackReason, _ := classifyOpenAIWSErrorEvent(upstreamMessage); fallbackReason == openAIWSFallbackReasonInvalidEncryptedContent {
+					s.markOpenAIWSInvalidEncryptedContentLineageFromPayload(c, payload, "ingress_ws_invalid_encrypted_lineage_mark", account.ID, turn)
+				}
 				if !wroteDownstream && isOpenAIWSModelCapacityError(upstreamMessage) {
+					if hit, code, msg := detectOpenAICyberPolicy(upstreamMessage); hit {
+						MarkOpsCyberPolicy(c, CyberPolicyMark{Code: code, Message: msg, Body: truncateString(string(upstreamMessage), 4096), UpstreamStatus: http.StatusOK, UpstreamInTok: usage.InputTokens, UpstreamOutTok: usage.OutputTokens})
+					}
+					clientMessage := upstreamMessage
+					if rewritten, changed := sanitizeOpenAICapacityShedErrorCodeForClient(clientMessage); changed {
+						clientMessage = rewritten
+					}
+					_ = writeClientMessage(clientMessage)
 					lease.MarkBroken()
 					return nil, &UpstreamFailoverError{
-						StatusCode:             http.StatusBadRequest,
-						ResponseBody:           append([]byte(nil), upstreamMessage...),
-						ResponseHeaders:        cloneHeader(lease.HandshakeHeaders()),
-						RetryableOnSameAccount: account.IsPoolMode(),
+						StatusCode:               http.StatusBadRequest,
+						ResponseBody:             append([]byte(nil), upstreamMessage...),
+						ResponseHeaders:          cloneHeader(lease.HandshakeHeaders()),
+						RetryableOnSameAccount:   account.IsPoolMode(),
+						SafeToFailoverAfterWrite: true,
 					}
 				}
 				fallbackReason, _ := classifyOpenAIWSErrorEventFromRaw(errCodeRaw, errTypeRaw, errMsgRaw)
@@ -972,16 +1009,31 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			if openAIWSEventShouldParseUsage(eventType) {
 				parseOpenAIWSResponseUsageFromCompletedEvent(upstreamMessage, &usage)
 			}
+			if eventType == "error" || eventType == "response.failed" {
+				markOpenAICyberPolicyEvent(c, upstreamMessage, http.StatusOK, &usage)
+			}
 			imageCounter.AddSSEData(upstreamMessage)
 
 			if eventType == "response.failed" {
+				if reason, _ := classifyOpenAIWSErrorEvent(upstreamMessage); reason == openAIWSFallbackReasonInvalidEncryptedContent {
+					s.markOpenAIWSInvalidEncryptedContentLineageFromPayload(c, payload, "ingress_ws_invalid_encrypted_lineage_mark", account.ID, turn)
+				}
 				if !wroteDownstream && isOpenAIWSModelCapacityError(upstreamMessage) {
+					if hit, code, msg := detectOpenAICyberPolicy(upstreamMessage); hit {
+						MarkOpsCyberPolicy(c, CyberPolicyMark{Code: code, Message: msg, Body: truncateString(string(upstreamMessage), 4096), UpstreamStatus: http.StatusOK, UpstreamInTok: usage.InputTokens, UpstreamOutTok: usage.OutputTokens})
+					}
+					clientMessage := upstreamMessage
+					if rewritten, changed := sanitizeOpenAICapacityShedErrorCodeForClient(clientMessage); changed {
+						clientMessage = rewritten
+					}
+					_ = writeClientMessage(clientMessage)
 					lease.MarkBroken()
 					return nil, &UpstreamFailoverError{
-						StatusCode:             http.StatusBadRequest,
-						ResponseBody:           append([]byte(nil), upstreamMessage...),
-						ResponseHeaders:        cloneHeader(lease.HandshakeHeaders()),
-						RetryableOnSameAccount: account.IsPoolMode(),
+						StatusCode:               http.StatusBadRequest,
+						ResponseBody:             append([]byte(nil), upstreamMessage...),
+						ResponseHeaders:          cloneHeader(lease.HandshakeHeaders()),
+						RetryableOnSameAccount:   account.IsPoolMode(),
+						SafeToFailoverAfterWrite: true,
 					}
 				}
 				if hit, code, msg := detectOpenAICyberPolicy(upstreamMessage); hit {

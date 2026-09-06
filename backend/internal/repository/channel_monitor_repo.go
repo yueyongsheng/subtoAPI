@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitor"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/lib/pq"
 
@@ -52,7 +54,8 @@ func (r *channelMonitorRepository) Create(ctx context.Context, m *service.Channe
 		SetJitterSeconds(m.JitterSeconds).
 		SetCreatedBy(m.CreatedBy).
 		SetExtraHeaders(channelMonitorHeadersForPersistence(m)).
-		SetBodyOverrideMode(defaultBodyModeRepo(m.BodyOverrideMode))
+		SetBodyOverrideMode(defaultBodyModeRepo(m.BodyOverrideMode)).
+		SetCheckMode(defaultCheckModeRepo(m.CheckMode))
 	if m.GroupID != nil {
 		builder = builder.SetGroupID(*m.GroupID)
 	}
@@ -61,6 +64,9 @@ func (r *channelMonitorRepository) Create(ctx context.Context, m *service.Channe
 	}
 	if m.TemplateID != nil {
 		builder = builder.SetTemplateID(*m.TemplateID)
+	}
+	if m.AccountID != nil {
+		builder = builder.SetAccountID(*m.AccountID)
 	}
 	if m.BodyOverride != nil {
 		builder = builder.SetBodyOverride(m.BodyOverride)
@@ -126,7 +132,8 @@ func (r *channelMonitorRepository) Update(ctx context.Context, m *service.Channe
 		SetIntervalSeconds(m.IntervalSeconds).
 		SetJitterSeconds(m.JitterSeconds).
 		SetExtraHeaders(channelMonitorHeadersForPersistence(m)).
-		SetBodyOverrideMode(defaultBodyModeRepo(m.BodyOverrideMode))
+		SetBodyOverrideMode(defaultBodyModeRepo(m.BodyOverrideMode)).
+		SetCheckMode(defaultCheckModeRepo(m.CheckMode))
 	if m.GroupID != nil {
 		updater = updater.SetGroupID(*m.GroupID)
 	} else {
@@ -141,6 +148,11 @@ func (r *channelMonitorRepository) Update(ctx context.Context, m *service.Channe
 		updater = updater.SetTemplateID(*m.TemplateID)
 	} else {
 		updater = updater.ClearTemplateID()
+	}
+	if m.AccountID != nil {
+		updater = updater.SetAccountID(*m.AccountID)
+	} else {
+		updater = updater.ClearAccountID()
 	}
 	if m.BodyOverride != nil {
 		updater = updater.SetBodyOverride(m.BodyOverride)
@@ -277,6 +289,9 @@ func (r *channelMonitorRepository) InsertHistoryBatch(ctx context.Context, rows 
 			SetSlowCount(row.SlowCount).
 			SetMessage(row.Message).
 			SetCheckedAt(row.CheckedAt)
+		if row.Quota != nil {
+			c = c.SetQuota(row.Quota)
+		}
 		if row.BucketStart != nil {
 			c = c.SetBucketStart(*row.BucketStart)
 		}
@@ -366,6 +381,7 @@ func (r *channelMonitorRepository) ListHistory(ctx context.Context, monitorID in
 			PingLatencyMs:       row.PingLatencyMs,
 			Message:             row.Message,
 			CheckedAt:           row.CheckedAt,
+			Quota:               row.Quota,
 		}
 		out = append(out, entry)
 	}
@@ -380,7 +396,7 @@ func (r *channelMonitorRepository) ListLatestPerModel(ctx context.Context, monit
 	const q = `
 		SELECT DISTINCT ON (model)
 		    model, status, source, success_count, failure_count, recovered_error_count,
-		    latency_ms, ping_latency_ms, checked_at
+		    latency_ms, ping_latency_ms, checked_at, quota
 		FROM channel_monitor_histories
 		WHERE monitor_id = $1
 		ORDER BY model, checked_at DESC
@@ -395,9 +411,11 @@ func (r *channelMonitorRepository) ListLatestPerModel(ctx context.Context, monit
 	for rows.Next() {
 		l := &service.ChannelMonitorLatest{}
 		var latency, ping sql.NullInt64
-		if err := rows.Scan(&l.Model, &l.Status, &l.Source, &l.SuccessCount, &l.FailureCount, &l.RecoveredErrorCount, &latency, &ping, &l.CheckedAt); err != nil {
+		var quota []byte
+		if err := rows.Scan(&l.Model, &l.Status, &l.Source, &l.SuccessCount, &l.FailureCount, &l.RecoveredErrorCount, &latency, &ping, &l.CheckedAt, &quota); err != nil {
 			return nil, fmt.Errorf("scan latest row: %w", err)
 		}
+		l.Quota = scanMonitorQuota(quota)
 		assignNullInt(&l.LatencyMs, latency)
 		assignNullInt(&l.PingLatencyMs, ping)
 		out = append(out, l)
@@ -413,6 +431,17 @@ func assignNullInt(dst **int, n sql.NullInt64) {
 	}
 	v := int(n.Int64)
 	*dst = &v
+}
+
+func scanMonitorQuota(data []byte) *domain.MonitorQuotaSnapshot {
+	if len(data) == 0 {
+		return nil
+	}
+	var snapshot domain.MonitorQuotaSnapshot
+	if err := json.Unmarshal(data, &snapshot); err != nil {
+		return nil
+	}
+	return &snapshot
 }
 
 // ComputeAvailability 计算指定窗口内每个模型的可用率与平均延迟。
@@ -488,7 +517,7 @@ func (r *channelMonitorRepository) ListLatestForMonitorIDs(ctx context.Context, 
 	const q = `
 		SELECT DISTINCT ON (monitor_id, model)
 		    monitor_id, model, status, source, success_count, failure_count, recovered_error_count,
-		    latency_ms, ping_latency_ms, checked_at
+		    latency_ms, ping_latency_ms, checked_at, quota
 		FROM channel_monitor_histories
 		WHERE monitor_id = ANY($1)
 		ORDER BY monitor_id, model, checked_at DESC
@@ -503,9 +532,11 @@ func (r *channelMonitorRepository) ListLatestForMonitorIDs(ctx context.Context, 
 		var monitorID int64
 		l := &service.ChannelMonitorLatest{}
 		var latency, ping sql.NullInt64
-		if err := rows.Scan(&monitorID, &l.Model, &l.Status, &l.Source, &l.SuccessCount, &l.FailureCount, &l.RecoveredErrorCount, &latency, &ping, &l.CheckedAt); err != nil {
+		var quota []byte
+		if err := rows.Scan(&monitorID, &l.Model, &l.Status, &l.Source, &l.SuccessCount, &l.FailureCount, &l.RecoveredErrorCount, &latency, &ping, &l.CheckedAt, &quota); err != nil {
 			return nil, fmt.Errorf("scan latest batch row: %w", err)
 		}
+		l.Quota = scanMonitorQuota(quota)
 		assignNullInt(&l.LatencyMs, latency)
 		assignNullInt(&l.PingLatencyMs, ping)
 		out[monitorID] = append(out[monitorID], l)
@@ -855,6 +886,8 @@ func entToServiceMonitor(row *dbent.ChannelMonitor) *service.ChannelMonitor {
 		ExtraHeaders:         headers,
 		BodyOverrideMode:     row.BodyOverrideMode,
 		BodyOverride:         row.BodyOverride,
+		CheckMode:            defaultCheckModeRepo(row.CheckMode),
+		AccountID:            row.AccountID,
 		DuplicateOperationID: duplicateOperationID,
 	}
 	if row.TemplateID != nil {
@@ -910,6 +943,13 @@ func defaultMonitorModeRepo(mode string) string {
 		return service.MonitorModeActive
 	}
 	return mode
+}
+
+func defaultCheckModeRepo(mode string) string {
+	if strings.TrimSpace(mode) == "" {
+		return service.MonitorCheckModeProbe
+	}
+	return strings.TrimSpace(mode)
 }
 
 func emptySliceIfNil(in []string) []string {

@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -36,6 +37,7 @@ func TestCalculateOpenAIRecordUsageCost_SearchIsAdditiveToTokens(t *testing.T) {
 		UsageTokens{InputTokens: 1000, OutputTokens: 500},
 		"",
 		boolPtr(false),
+		time.Time{},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, cost)
@@ -66,6 +68,7 @@ func TestCalculateOpenAIRecordUsageCost_SearchOnlyWhenNoTokenPricing(t *testing.
 		UsageTokens{},
 		"",
 		boolPtr(false),
+		time.Time{},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, cost)
@@ -111,6 +114,7 @@ func TestCalculateOpenAIRecordUsageCost_TokenPricingErrorNotSwallowedBySearch(t 
 		UsageTokens{InputTokens: 1000, OutputTokens: 500},
 		"",
 		boolPtr(false),
+		time.Time{},
 	)
 	require.Error(t, err)
 	require.Nil(t, cost)
