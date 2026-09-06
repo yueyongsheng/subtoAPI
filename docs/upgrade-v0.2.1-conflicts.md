@@ -35,4 +35,4 @@ Git 合并阶段发现的 66 个文本冲突已全部处理，`git diff --name-o
 
 - 2026-09-06：生产快照 `/opt/sub2api/backups/sub2api-business-20260906T114051Z-v021-rehearsal.dump` 已恢复并通过迁移演练（267 -> 287，旧记录 checksum 与核心数据指纹不变，二次执行无变化）。
 - 2026-09-06：当前线上仍运行 `release-v0.1.177.6`，应用、PostgreSQL、Redis healthy，应用重启次数为 0；本轮没有修改生产。
-- 发布暂停条件：GitHub CLI 设备认证尚未完成，CI/Security Scan/Production image 结果尚未读取；当前生产 Compose 是单应用实例，必须使用 canary + Caddy 延迟关闭流程，`docker compose up` 重建不满足平滑切换要求。
+- 分支提交 `c197fe7b4` 的 CI `#34033254051` 和 Security Scan `#34033254024` 已通过。Production image 将由固定发布标签触发；当前生产 Compose 是单应用实例，必须使用 canary + Caddy 延迟关闭流程，`docker compose up` 重建不满足平滑切换要求。
