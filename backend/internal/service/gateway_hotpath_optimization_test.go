@@ -713,6 +713,32 @@ func TestGetAvailableModels_OpenAIPassthroughUsesDefaultFallback(t *testing.T) {
 	}
 }
 
+func TestGetAvailableModels_OpenAIRejectsLegacyAndUnknownAstraAliases(t *testing.T) {
+	groupID := int64(12)
+	repo := &modelsListAccountRepoStub{byGroup: map[int64][]Account{
+		groupID: {
+			{
+				ID:       1,
+				Platform: PlatformOpenAI,
+				Credentials: map[string]any{"model_mapping": map[string]any{
+					"gpt-6":               "gpt-6",
+					"astra":               "gpt-6-astra",
+					"gpt-6-astra-preview": "gpt-6-astra",
+					"gpt-6-astra":         "gpt-6-astra",
+					"gpt-5.6-sol":         "gpt-5.6-sol",
+				}},
+			},
+		},
+	}}
+	svc := &GatewayService{
+		accountRepo:        repo,
+		modelsListCache:    gocache.New(time.Minute, time.Minute),
+		modelsListCacheTTL: time.Minute,
+	}
+
+	require.Equal(t, []string{"gpt-5.6-sol", "gpt-6-astra"}, svc.GetAvailableModels(context.Background(), &groupID, PlatformOpenAI))
+}
+
 func TestGetAvailableModels_GlobalListPreservesMappedModelsWithOpenAIPassthrough(t *testing.T) {
 	groupID := int64(11)
 	repo := &modelsListAccountRepoStub{

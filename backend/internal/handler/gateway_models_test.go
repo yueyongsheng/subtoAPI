@@ -486,6 +486,41 @@ func TestGatewayModels_GeminiGroupFiltersMappedModelsByPlatform(t *testing.T) {
 	require.Equal(t, []string{"gemini-2.5-flash"}, modelIDsForTest(got.Data))
 }
 
+func TestGatewayModels_OpenAIExposesOnlyExactAstraID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	groupID := int64(22)
+	h := newGatewayModelsHandlerForTest(&gatewayModelsAccountRepoStub{
+		byGroup: map[int64][]service.Account{
+			groupID: {
+				{
+					ID:       1,
+					Platform: service.PlatformOpenAI,
+					Credentials: map[string]any{"model_mapping": map[string]any{
+						"gpt-6":               "gpt-6",
+						"astra":               "gpt-6-astra",
+						"gpt-6-astra-preview": "gpt-6-astra",
+						"gpt-6-astra":         "gpt-6-astra",
+					}},
+				},
+			},
+		},
+	})
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
+	c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
+		Group: &service.Group{ID: groupID, Platform: service.PlatformOpenAI},
+	})
+
+	h.Models(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var got gatewayModelsResponseForTest
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Equal(t, []string{"gpt-6-astra"}, modelIDsForTest(got.Data))
+}
+
 // Scenario: a Composite group with only Anthropic accounts must not inherit Antigravity Gemini defaults.
 func TestGatewayCodexModels_CompositeAnthropicDoesNotAdvertiseAntigravityDefaults(t *testing.T) {
 	gin.SetMode(gin.TestMode)

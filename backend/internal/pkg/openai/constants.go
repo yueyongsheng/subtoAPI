@@ -19,7 +19,6 @@ type Model struct {
 // DefaultModels OpenAI models list
 var DefaultModels = []Model{
 	{ID: "gpt-5.6-sol", Object: "model", Created: 1780876800, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.6 Sol"},
-	{ID: "gpt-6", Object: "model", Created: 1788480000, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6 (Astra)"},
 	{ID: "gpt-5.6", Object: "model", Created: 1780876800, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.6 (Sol)"},
 	{ID: "gpt-5.6-terra", Object: "model", Created: 1780876800, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.6 Terra"},
 	{ID: "gpt-5.6-luna", Object: "model", Created: 1780876800, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.6 Luna"},
@@ -42,6 +41,23 @@ func DefaultModelIDs() []string {
 		ids[i] = m.ID
 	}
 	return ids
+}
+
+// IsPublicOpenAIModelID reports whether an OpenAI model ID may be exposed in
+// the public model catalog. GPT-6 Astra is intentionally admitted only under
+// its exact, case-sensitive public ID; legacy and unknown Astra aliases must
+// not enter the public or billable model path.
+func IsPublicOpenAIModelID(id string) bool {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return false
+	}
+	if id == "gpt-6-astra" {
+		return true
+	}
+	lower := strings.ToLower(id)
+	return lower != "gpt-6" && lower != "astra" &&
+		!strings.HasPrefix(lower, "gpt-6-") && !strings.Contains(lower, "astra")
 }
 
 // DefaultTestModel default model for testing OpenAI accounts

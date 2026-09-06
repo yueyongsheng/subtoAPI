@@ -1393,6 +1393,9 @@ func writeOpenAIModelsList(c *gin.Context, modelIDs []string) {
 
 	models := make([]openai.Model, 0, len(modelIDs))
 	for _, modelID := range modelIDs {
+		if !openai.IsPublicOpenAIModelID(modelID) {
+			continue
+		}
 		if model, ok := defaultsByID[modelID]; ok {
 			models = append(models, model)
 			continue
