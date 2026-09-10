@@ -272,9 +272,11 @@ import {
   PROVIDER_KIMI,
   PROVIDER_ZHIPU,
   PROVIDER_DEEPSEEK,
+  PROVIDER_MINIMAX,
   DEFAULT_KIMI_ENDPOINT,
   DEFAULT_ZHIPU_ENDPOINT,
   DEFAULT_DEEPSEEK_ENDPOINT,
+  DEFAULT_MINIMAX_ENDPOINT,
 } from '@/constants/channelMonitor'
 
 const props = defineProps<{
@@ -366,85 +368,6 @@ const monitorModes = computed(() => [
 
 const usesQuotaMode = computed(() => form.check_mode !== CHECK_MODE_PROBE)
 const usesProbePart = computed(() => form.check_mode !== CHECK_MODE_QUOTA)
-
-const checkModeOptions = computed(() => [
-  { value: CHECK_MODE_PROBE, label: t('admin.channelMonitor.form.checkModeProbe'), hint: t('admin.channelMonitor.form.checkModeProbeHint'), disabled: form.provider === PROVIDER_ANTIGRAVITY },
-  { value: CHECK_MODE_QUOTA, label: t('admin.channelMonitor.form.checkModeQuota'), hint: t('admin.channelMonitor.form.checkModeQuotaHint'), disabled: false },
-  { value: CHECK_MODE_QUOTA_PROBE, label: t('admin.channelMonitor.form.checkModeQuotaProbe'), hint: t('admin.channelMonitor.form.checkModeQuotaProbeHint'), disabled: form.provider === PROVIDER_ANTIGRAVITY },
-])
-
-function checkModeButtonClass(mode: CheckMode): string {
-  return form.check_mode === mode
-    ? 'border-primary-500 bg-white text-primary-700 shadow-sm dark:border-primary-400 dark:bg-primary-500/15 dark:text-primary-300'
-    : 'border-blue-100 bg-white/70 text-gray-600 hover:border-primary-300 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400'
-}
-
-function selectCheckMode(mode: CheckMode) {
-  if (checkModeOptions.value.find((opt) => opt.value === mode)?.disabled) return
-  form.check_mode = mode
-  if (!usesQuotaMode.value) form.account_id = null
-}
-
-interface LinkedAccount { id: number; name: string }
-const linkedAccounts = ref<LinkedAccount[]>([])
-const accountsLoading = ref(false)
-const accountSearchQuery = ref('')
-const accountHydrationFailed = ref(false)
-const pinnedAccount = ref<LinkedAccount | null>(null)
-let accountSearchSeq = 0
-let accountSearchAbort: AbortController | null = null
-const hydrationAttempted = new Set<number>()
-const accountOptions = computed(() => {
-  const opts = linkedAccounts.value.map((a) => ({ value: String(a.id), label: `${a.name} (#${a.id})` }))
-  if (pinnedAccount.value && !linkedAccounts.value.some((a) => a.id === pinnedAccount.value?.id)) {
-    opts.unshift({ value: String(pinnedAccount.value.id), label: `${pinnedAccount.value.name} (#${pinnedAccount.value.id})` })
-  }
-  return opts
-})
-const accountSelectValue = computed<string>({
-  get: () => form.account_id == null ? '' : String(form.account_id),
-  set: (raw) => {
-    if (!raw) { form.account_id = null; pinnedAccount.value = null; accountHydrationFailed.value = false; return }
-    const id = Number(raw)
-    if (Number.isFinite(id)) { form.account_id = id; pinnedAccount.value = linkedAccounts.value.find((a) => a.id === id) ?? pinnedAccount.value }
-  },
-})
-
-async function ensureSelectedAccountHydrated() {
-  const id = form.account_id
-  if (id == null || !usesQuotaMode.value || linkedAccounts.value.some((a) => a.id === id) || pinnedAccount.value?.id === id || hydrationAttempted.has(id)) return
-  hydrationAttempted.add(id)
-  try {
-    const account = await adminAPI.accounts.getById(id)
-    if (form.account_id !== id) return
-    if (String(account.platform) !== form.provider) { form.account_id = null; pinnedAccount.value = null; accountHydrationFailed.value = true; return }
-    pinnedAccount.value = { id: account.id, name: account.name }
-  } catch {
-    if (form.account_id === id) { form.account_id = null; pinnedAccount.value = null; accountHydrationFailed.value = true }
-  }
-}
-async function loadLinkedAccounts(search = '') {
-  if (!usesQuotaMode.value || !props.show) return
-  accountSearchQuery.value = search
-  const seq = ++accountSearchSeq
-  accountSearchAbort?.abort()
-  const controller = new AbortController(); accountSearchAbort = controller; accountsLoading.value = true
-  try {
-    const res = await adminAPI.accounts.list(1, 50, { platform: form.provider, ...(search ? { search } : {}) }, { signal: controller.signal })
-    if (seq !== accountSearchSeq) return
-    linkedAccounts.value = (res.items || []).map((a) => ({ id: a.id, name: a.name }))
-    await ensureSelectedAccountHydrated()
-  } catch (err) { if (!controller.signal.aborted) { console.warn('load linked accounts failed', err); if (!search) linkedAccounts.value = [] } }
-  finally { if (seq === accountSearchSeq) accountsLoading.value = false }
-}
-function onAccountSearch(query: string) { void loadLinkedAccounts(query) }
-
-watch(() => [props.show, form.provider, form.check_mode] as const, ([show, provider], prev) => {
-  const [prevShow, prevProvider] = prev ?? []
-  if (!show) { accountSearchAbort?.abort(); return }
-  if (show !== prevShow || provider !== prevProvider) { hydrationAttempted.clear(); accountHydrationFailed.value = false; pinnedAccount.value = null }
-  void loadLinkedAccounts()
-}, { immediate: true })
 
 let suppressFormWatchers = false
 
@@ -557,7 +480,191 @@ const providerOptions = computed<ProviderOption[]>(() => [
   { value: PROVIDER_KIMI, label: t('monitorCommon.providers.kimi') },
   { value: PROVIDER_ZHIPU, label: t('monitorCommon.providers.zhipu') },
   { value: PROVIDER_DEEPSEEK, label: t('monitorCommon.providers.deepseek') },
+  { value: PROVIDER_MINIMAX, label: t('monitorCommon.providers.minimax') },
 ])
+
+// 国产 provider 预填的官方 endpoint（仅探活侧；配额模式 endpoint 可留空）。
+const PROVIDER_DEFAULT_ENDPOINTS: Partial<Record<Provider, string>> = {
+  [PROVIDER_KIMI]: DEFAULT_KIMI_ENDPOINT,
+  [PROVIDER_ZHIPU]: DEFAULT_ZHIPU_ENDPOINT,
+  [PROVIDER_DEEPSEEK]: DEFAULT_DEEPSEEK_ENDPOINT,
+  [PROVIDER_MINIMAX]: DEFAULT_MINIMAX_ENDPOINT,
+}
+
+interface CheckModeOption {
+  value: CheckMode
+  label: string
+  hint: string
+  disabled: boolean
+}
+
+const checkModeOptions = computed<CheckModeOption[]>(() => [
+  {
+    value: CHECK_MODE_PROBE,
+    label: t('admin.channelMonitor.form.checkModeProbe'),
+    hint: t('admin.channelMonitor.form.checkModeProbeHint'),
+    // antigravity 无探活 adapter，仅配额模式。
+    disabled: form.provider === PROVIDER_ANTIGRAVITY,
+  },
+  {
+    value: CHECK_MODE_QUOTA,
+    label: t('admin.channelMonitor.form.checkModeQuota'),
+    hint: t('admin.channelMonitor.form.checkModeQuotaHint'),
+    disabled: false,
+  },
+  {
+    value: CHECK_MODE_QUOTA_PROBE,
+    label: t('admin.channelMonitor.form.checkModeQuotaProbe'),
+    hint: t('admin.channelMonitor.form.checkModeQuotaProbeHint'),
+    // antigravity 无探活 adapter，只支持配额模式。
+    disabled: form.provider === PROVIDER_ANTIGRAVITY,
+  },
+])
+
+function checkModeButtonClass(mode: CheckMode): string {
+  const active = form.check_mode === mode
+  if (active) {
+    return 'border-primary-500 bg-white text-primary-700 shadow-sm dark:border-primary-400 dark:bg-primary-500/15 dark:text-primary-300'
+  }
+  return 'border-blue-100 bg-white/70 text-gray-600 hover:border-primary-300 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400'
+}
+
+function selectCheckMode(mode: CheckMode) {
+  if (checkModeOptions.value.find((opt) => opt.value === mode)?.disabled) return
+  form.check_mode = mode
+  if (!usesQuotaMode.value) form.account_id = null
+}
+
+// --- 关联账号选择器 ---
+
+interface LinkedAccount {
+  id: number
+  name: string
+}
+
+const linkedAccounts = ref<LinkedAccount[]>([])
+const accountsLoading = ref(false)
+// 当前搜索词（用于空态文案区分「平台无账号」与「搜索无命中」）。
+const accountSearchQuery = ref('')
+// 已绑定账号回填失败（getById 失败或平台失配）时提示用户重新选择。
+const accountHydrationFailed = ref(false)
+// 固定选项：已绑定/已选中但不在当前结果页里的账号，保证搜索后 label 仍可见。
+const pinnedAccount = ref<LinkedAccount | null>(null)
+let accountSearchSeq = 0
+let accountSearchAbort: AbortController | null = null
+const hydrationAttempted = new Set<number>()
+
+const accountOptions = computed(() => {
+  const opts = linkedAccounts.value.map((a) => ({
+    value: String(a.id),
+    label: `${a.name} (#${a.id})`,
+  }))
+  const pinned = pinnedAccount.value
+  if (pinned && !linkedAccounts.value.some((a) => a.id === pinned.id)) {
+    opts.unshift({ value: String(pinned.id), label: `${pinned.name} (#${pinned.id})` })
+  }
+  return opts
+})
+
+// Select 组件绑定 string，与 number | null 互转。
+const accountSelectValue = computed<string>({
+  get: () => (form.account_id == null ? '' : String(form.account_id)),
+  set: (raw: string) => {
+    if (raw === '') {
+      form.account_id = null
+      pinnedAccount.value = null
+      accountHydrationFailed.value = false
+      return
+    }
+    const id = Number(raw)
+    if (Number.isFinite(id)) {
+      form.account_id = id
+      pinnedAccount.value = linkedAccounts.value.find((a) => a.id === id) ?? pinnedAccount.value
+    }
+  },
+})
+
+// 服务端搜索当前 provider 平台的账号（支持关键字，避免大分页截断取不齐）。
+// seq + abort 防止快速切换 provider / 连续输入时乱序响应覆盖新结果。
+// 失败不阻塞表单：下拉为空 + 空态提示。
+async function loadLinkedAccounts(search = '') {
+  if (!usesQuotaMode.value || !props.show) return
+  accountSearchQuery.value = search
+  const seq = ++accountSearchSeq
+  accountSearchAbort?.abort()
+  const controller = new AbortController()
+  accountSearchAbort = controller
+  accountsLoading.value = true
+  try {
+    const res = await adminAPI.accounts.list(
+      1,
+      50,
+      { platform: form.provider, ...(search ? { search } : {}) },
+      { signal: controller.signal },
+    )
+    if (seq !== accountSearchSeq) return
+    linkedAccounts.value = (res.items || []).map((a) => ({ id: a.id, name: a.name }))
+    await ensureSelectedAccountHydrated()
+  } catch (err: unknown) {
+    if (controller.signal.aborted) return
+    console.warn('load linked accounts failed', err)
+    if (!search) linkedAccounts.value = []
+  } finally {
+    if (seq === accountSearchSeq) accountsLoading.value = false
+  }
+}
+
+// 编辑已有 quota 监控时，已绑定账号可能不在搜索结果第一页：用 getById
+// 回填为固定选项，绑定不因分页截断而丢失。仅当账号确实无法加载或平台
+// 失配时才清空绑定（带可见提示），否则绑定只在用户显式切换 provider 时清空。
+async function ensureSelectedAccountHydrated() {
+  const id = form.account_id
+  if (id == null || !usesQuotaMode.value) return
+  if (linkedAccounts.value.some((a) => a.id === id) || pinnedAccount.value?.id === id) return
+  if (hydrationAttempted.has(id)) return
+  hydrationAttempted.add(id)
+  try {
+    const account = await adminAPI.accounts.getById(id)
+    if (form.account_id !== id) return
+    if (String(account.platform) !== form.provider) {
+      form.account_id = null
+      pinnedAccount.value = null
+      accountHydrationFailed.value = true
+      return
+    }
+    pinnedAccount.value = { id: account.id, name: account.name }
+  } catch {
+    if (form.account_id === id) {
+      form.account_id = null
+      pinnedAccount.value = null
+      accountHydrationFailed.value = true
+    }
+  }
+}
+
+function onAccountSearch(query: string) {
+  void loadLinkedAccounts(query)
+}
+
+watch(
+  () => [props.show, form.provider, form.check_mode] as const,
+  ([show, provider], prev) => {
+    const [prevShow, prevProvider] = prev ?? []
+    if (!show) {
+      accountSearchAbort?.abort()
+      return
+    }
+    // 弹窗重开 / provider 真正变化时重置回填状态（check_mode 变化不重置，
+    // 避免 probe↔quota 切换时无谓地重拉列表）。
+    if (show !== prevShow || provider !== prevProvider) {
+      hydrationAttempted.clear()
+      accountHydrationFailed.value = false
+      pinnedAccount.value = null
+    }
+    void loadLinkedAccounts()
+  },
+  { immediate: true },
+)
 
 function selectProvider(provider: Provider) {
   if (form.provider === provider) return
@@ -566,11 +673,8 @@ function selectProvider(provider: Provider) {
     previousProvider === PROVIDER_GROK && form.endpoint === DEFAULT_GROK_ENDPOINT
   const clearGrokModel =
     previousProvider === PROVIDER_GROK && form.primary_model === DEFAULT_GROK_MODEL
-  const defaults: Partial<Record<Provider, string>> = {
-    [PROVIDER_KIMI]: DEFAULT_KIMI_ENDPOINT,
-    [PROVIDER_ZHIPU]: DEFAULT_ZHIPU_ENDPOINT,
-    [PROVIDER_DEEPSEEK]: DEFAULT_DEEPSEEK_ENDPOINT,
-  }
+  const clearPrevDefaultEndpoint =
+    !!PROVIDER_DEFAULT_ENDPOINTS[previousProvider] && form.endpoint === PROVIDER_DEFAULT_ENDPOINTS[previousProvider]
   form.provider = provider
   form.account_id = null
   pinnedAccount.value = null
@@ -585,9 +689,10 @@ function selectProvider(provider: Provider) {
     if (!form.primary_model.trim()) form.primary_model = DEFAULT_GROK_MODEL
     return
   }
-  if (clearGrokEndpoint) form.endpoint = ''
+  if (clearGrokEndpoint || clearPrevDefaultEndpoint) form.endpoint = ''
   if (clearGrokModel) form.primary_model = ''
-  if (defaults[provider] && !form.endpoint.trim()) form.endpoint = defaults[provider]!
+  const defaultEndpoint = PROVIDER_DEFAULT_ENDPOINTS[provider]
+  if (defaultEndpoint && !form.endpoint.trim()) form.endpoint = defaultEndpoint
 }
 
 // Clear api_key whenever provider changes to avoid cross-provider key mismatch.

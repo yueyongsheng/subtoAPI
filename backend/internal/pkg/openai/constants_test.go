@@ -44,3 +44,18 @@ func TestDefaultModelsPreferConcreteGPT56SolForAccountTests(t *testing.T) {
 	require.NotEmpty(t, DefaultModels)
 	require.Equal(t, "gpt-5.6-sol", DefaultModels[0].ID)
 }
+
+func TestDefaultModelsIncludeGPTImage25(t *testing.T) {
+	require.Contains(t, DefaultModelIDs(), "gpt-image-2.5-flare")
+	require.Contains(t, DefaultModelIDs(), "gpt-image-2.5-sunburst")
+}
+
+func TestGPT6AstraCreatedTimestampRemainsUnknown(t *testing.T) {
+	for _, model := range DefaultModels {
+		if model.ID == "gpt-6-astra" {
+			require.Zero(t, model.Created)
+			return
+		}
+	}
+	t.Fatal("gpt-6-astra is missing from the default model catalog")
+}

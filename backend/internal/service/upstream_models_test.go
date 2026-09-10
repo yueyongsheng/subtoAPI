@@ -998,7 +998,11 @@ func TestSyncUpstreamModelCatalogEnrichesOfficialOpenAIHostWithoutRegistryAPIFie
 	var snapshot UpstreamModelMetadataSnapshot
 	require.NoError(t, json.Unmarshal(encoded, &snapshot))
 	require.Equal(t, "models.dev", snapshot.Source)
-	require.Equal(t, astra, snapshot.Models["gpt-6-astra"])
+	persistedAstra := snapshot.Models["gpt-6-astra"]
+	require.Empty(t, astra.CodexToolCapabilities)
+	require.Nil(t, persistedAstra.CodexToolCapabilities)
+	astra.CodexToolCapabilities = nil
+	require.Equal(t, astra, persistedAstra)
 }
 
 // Scenario: 同一批同步里部分模型能力完整时仍落库完整条目，并对不完整条目告警。

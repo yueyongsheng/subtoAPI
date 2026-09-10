@@ -61,7 +61,13 @@ func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream service.HTTPUp
 			Schedulable: true,
 			Concurrency: 0,
 			Priority:    0,
-			Credentials: map[string]any{"access_token": "token-1"},
+			Credentials: map[string]any{
+				"access_token": "token-1",
+				"model_mapping": map[string]any{
+					"gpt-5.1":     "gpt-5.1",
+					"gpt-6-astra": "gpt-6-astra",
+				},
+			},
 		},
 		{
 			ID:          2,
@@ -72,7 +78,13 @@ func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream service.HTTPUp
 			Schedulable: true,
 			Concurrency: 0,
 			Priority:    1,
-			Credentials: map[string]any{"access_token": "token-2"},
+			Credentials: map[string]any{
+				"access_token": "token-2",
+				"model_mapping": map[string]any{
+					"gpt-5.1":     "gpt-5.1",
+					"gpt-6-astra": "gpt-6-astra",
+				},
+			},
 		},
 	}
 	accountRepo := openAIImagesFailoverAccountRepo{accounts: accounts}

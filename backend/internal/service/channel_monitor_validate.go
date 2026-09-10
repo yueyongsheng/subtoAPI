@@ -208,18 +208,25 @@ func normalizeMonitorPrimaryModel(provider, checkMode, model string) string {
 	return model
 }
 
-// monitorAccountQuotaCapability validates that the linked account can provide
-// quota data through one of the supported usage or balance paths.
-func monitorAccountQuotaCapability(account *Account) error { //nolint:unused // exercised by validation tests
+// monitorAccountQuotaCapability 校验关联账号能否充当配额数据源，与
+// fetchUncached 的路由一一对应（coding→CN 额度端点 / payg→CN 余额端点 /
+// 其余→AccountUsageService）。在创建/更新期拦截注定运行期永久 error 的组合：
+//   - kimi/zhipu/deepseek/minimax coding：GetCodingPlanProvider 须识别官方域名
+//     （deepseek coding、自定义中转、minimax payg 无法路由额度端点）
+//   - kimi/zhipu/deepseek/minimax payg：仅 kimi/deepseek 有公开余额端点
+//   - anthropic：OAuth / Setup Token（API-Key 型无 usage 通道，永久 error）
+//   - openai：OAuth（API-Key 型无 usage 通道）
+//   - gemini/grok/antigravity：本地统计/值通道降级，不会永久 error，放行
+func monitorAccountQuotaCapability(account *Account) error {
 	switch account.Platform {
-	case PlatformKimi, PlatformZhipu, PlatformDeepseek:
+	case PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax:
 		if account.IsCodingPlan() {
-			if p := account.GetCodingPlanProvider(); p != PlatformKimi && p != PlatformZhipu {
+			if p := account.GetCodingPlanProvider(); p != PlatformKimi && p != PlatformZhipu && p != PlatformMiniMax {
 				return ErrChannelMonitorAccountNotSupportable
 			}
 			return nil
 		}
-		if account.Platform == PlatformZhipu {
+		if account.Platform == PlatformZhipu || account.Platform == PlatformMiniMax {
 			return ErrChannelMonitorAccountNotSupportable
 		}
 	case PlatformAnthropic:
