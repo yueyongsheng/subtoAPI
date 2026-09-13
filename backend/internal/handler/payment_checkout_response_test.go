@@ -22,8 +22,8 @@ func TestCheckoutInfoResponseIncludesPromotionalRechargePackages(t *testing.T) {
 	require.NoError(t, json.Unmarshal(encoded, &payload))
 	require.Equal(t, []service.RechargePackage{
 		{PayAmount: 38, CreditedAmount: 1000},
-		{PayAmount: 72, CreditedAmount: 2000, Badge: "recommended"},
-		{PayAmount: 105, CreditedAmount: 3000},
-		{PayAmount: 170, CreditedAmount: 5000, Badge: "best_value"},
+		{PayAmount: 75, CreditedAmount: 2000, Badge: "recommended"},
+		{PayAmount: 112, CreditedAmount: 3000},
+		{PayAmount: 190, CreditedAmount: 5000, Badge: "best_value"},
 	}, payload.RechargePackages)
 }

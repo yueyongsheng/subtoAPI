@@ -299,9 +299,9 @@ func TestCalculateCreditedBalanceUsesPromotionalPackages(t *testing.T) {
 		creditedAmount float64
 	}{
 		{payAmount: 38, creditedAmount: 1000},
-		{payAmount: 72, creditedAmount: 2000},
-		{payAmount: 105, creditedAmount: 3000},
-		{payAmount: 170, creditedAmount: 5000},
+		{payAmount: 75, creditedAmount: 2000},
+		{payAmount: 112, creditedAmount: 3000},
+		{payAmount: 190, creditedAmount: 5000},
 	}
 	for _, tt := range tests {
 		got := calculateCreditedBalance(tt.payAmount, 25)
@@ -319,6 +319,29 @@ func TestCalculateCreditedBalanceRequiresExactPackageAmount(t *testing.T) {
 	}
 }
 
+func TestCalculateCreditedBalanceRetiredPackageAmountsUseStandardRate(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		payAmount      float64
+		creditedAmount float64
+	}{
+		{payAmount: 72, creditedAmount: 1800},
+		{payAmount: 105, creditedAmount: 2625},
+		{payAmount: 170, creditedAmount: 4250},
+		{payAmount: 74.99, creditedAmount: 1874.75},
+		{payAmount: 75.01, creditedAmount: 1875.25},
+		{payAmount: 111.99, creditedAmount: 2799.75},
+		{payAmount: 112.01, creditedAmount: 2800.25},
+		{payAmount: 189.99, creditedAmount: 4749.75},
+		{payAmount: 190.01, creditedAmount: 4750.25},
+	} {
+		if got := calculateCreditedBalance(tt.payAmount, 25); got != tt.creditedAmount {
+			t.Errorf("calculateCreditedBalance(%v) = %v, want %v", tt.payAmount, got, tt.creditedAmount)
+		}
+	}
+}
+
 func TestPromotionalRechargePackagesAreReturnedInDisplayOrder(t *testing.T) {
 	t.Parallel()
 
@@ -328,9 +351,9 @@ func TestPromotionalRechargePackagesAreReturnedInDisplayOrder(t *testing.T) {
 	}
 	want := []RechargePackage{
 		{PayAmount: 38, CreditedAmount: 1000},
-		{PayAmount: 72, CreditedAmount: 2000, Badge: "recommended"},
-		{PayAmount: 105, CreditedAmount: 3000},
-		{PayAmount: 170, CreditedAmount: 5000, Badge: "best_value"},
+		{PayAmount: 75, CreditedAmount: 2000, Badge: "recommended"},
+		{PayAmount: 112, CreditedAmount: 3000},
+		{PayAmount: 190, CreditedAmount: 5000, Badge: "best_value"},
 	}
 	for i := range want {
 		if packages[i] != want[i] {
