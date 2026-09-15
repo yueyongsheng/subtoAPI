@@ -9,22 +9,40 @@ import (
 
 // AdminUserOverview is a manually refreshed, global snapshot, independent of list filters.
 type AdminUserOverview struct {
-	TotalUsers           int64     `json:"total_users"`
-	PositiveBalanceUsers int64     `json:"positive_balance_users"`
-	TotalBalance         float64   `json:"total_balance"`
-	BalanceCNY           float64   `json:"balance_cny"`
-	CurrentConcurrency   *int64    `json:"current_concurrency"`
-	MaxUserConcurrency   *int64    `json:"max_user_concurrency"`
-	ActiveUsers10m       int64     `json:"active_users_10m"`
-	TodayUserCost        float64   `json:"today_user_cost"`
-	TodayUserCostCNY     float64   `json:"today_user_cost_cny"`
-	QueriedAt            time.Time `json:"queried_at"`
-	WindowStart          time.Time `json:"window_start"`
+	TotalUsers              int64              `json:"total_users"`
+	PositiveBalanceUsers    int64              `json:"positive_balance_users"`
+	TotalBalance            float64            `json:"total_balance"`
+	BalanceCNY              float64            `json:"balance_cny"`
+	CurrentConcurrency      *int64             `json:"current_concurrency"`
+	MaxUserConcurrency      *int64             `json:"max_user_concurrency"`
+	MaxConcurrencyUser      *AdminOverviewUser `json:"max_concurrency_user"`
+	MaxConcurrencyUserCount int64              `json:"max_concurrency_user_count"`
+	ActiveUsers10m          int64              `json:"active_users_10m"`
+	TodayUserCost           float64            `json:"today_user_cost"`
+	TodayUserCostCNY        float64            `json:"today_user_cost_cny"`
+	QueriedAt               time.Time          `json:"queried_at"`
+	WindowStart             time.Time          `json:"window_start"`
+}
+
+// AdminOverviewUser exposes only the identity needed by the admin snapshot.
+type AdminOverviewUser struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
 }
 
 // AdminUserOverviewRepository keeps this reporting query separate from user mutation APIs.
 type AdminUserOverviewRepository interface {
 	GetAdminUserOverview(ctx context.Context, start, end, todayStart time.Time) (*AdminUserOverview, []int64, error)
+	GetAdminOverviewUser(ctx context.Context, id int64) (*AdminOverviewUser, error)
+}
+
+func (s *UserService) GetAdminOverviewUser(ctx context.Context, id int64) (*AdminOverviewUser, error) {
+	repo, ok := s.userRepo.(AdminUserOverviewRepository)
+	if !ok {
+		return nil, fmt.Errorf("user overview repository is not configured")
+	}
+	return repo.GetAdminOverviewUser(ctx, id)
 }
 
 func (s *UserService) GetAdminUserOverview(ctx context.Context, queriedAt time.Time) (*AdminUserOverview, []int64, error) {

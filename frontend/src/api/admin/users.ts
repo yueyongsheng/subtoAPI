@@ -406,6 +406,8 @@ export interface AdminUserOverview {
   balance_cny: number
   current_concurrency: number | null
   max_user_concurrency: number | null
+  max_concurrency_user: { id: number; username: string; email: string } | null
+  max_concurrency_user_count: number
   active_users_10m: number
   today_user_cost: number
   today_user_cost_cny: number

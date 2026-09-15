@@ -202,6 +202,9 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		// Available channels feature (default disabled; opt-in)
 		SettingKeyAvailableChannelsEnabled: "false",
 
+		// Subscription feature (default enabled; opt-out)
+		SettingKeySubscriptionEnabled: "true",
+
 		// Model plaza feature (default enabled for Yuexiang, public unless require_auth)
 		SettingKeyModelPlazaEnabled:       "true",
 		SettingKeyModelPlazaRequireAuth:   "false",
@@ -817,6 +820,9 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 
 	// Available channels feature (default: disabled; strict true)
 	result.AvailableChannelsEnabled = settings[SettingKeyAvailableChannelsEnabled] == "true"
+
+	// Subscription feature (default: enabled; only an explicit false disables)
+	result.SubscriptionEnabled = !isFalseSettingValue(settings[SettingKeySubscriptionEnabled])
 
 	// Model plaza feature (default enabled; explicit false disables it)
 	result.ModelPlazaEnabled = !isFalseSettingValue(settings[SettingKeyModelPlazaEnabled])

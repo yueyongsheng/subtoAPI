@@ -11,6 +11,32 @@ import (
 
 var _ service.AdminUserOverviewRepository = (*userRepository)(nil)
 
+// Look up only the selected user's identity, once per admin snapshot.
+func (r *userRepository) GetAdminOverviewUser(ctx context.Context, id int64) (*service.AdminOverviewUser, error) {
+	rows, err := r.sql.QueryContext(ctx, `SELECT id, COALESCE(username, ''), COALESCE(email, '') FROM users WHERE id = $1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+		return nil, sql.ErrNoRows
+	}
+	var result service.AdminOverviewUser
+	if err := rows.Scan(&result.ID, &result.Username, &result.Email); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // Keep the balance, user cohort and usage window in one PostgreSQL statement snapshot.
 // Debt is excluded before summation, never subtracted from other users' unused funds.
 const adminUserOverviewSQL = `

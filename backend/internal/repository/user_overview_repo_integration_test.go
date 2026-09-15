@@ -4,6 +4,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -46,4 +47,27 @@ INSERT INTO users VALUES (1,100.25,NULL),(2,25.50,NULL),(3,-999,NULL),(4,0,NULL)
 	require.Zero(t, stats.ActiveUsers10m)
 	require.Zero(t, stats.TodayUserCost)
 	require.Empty(t, ids)
+}
+
+func TestAdminOverviewUser_IdentityAndDeletedUser(t *testing.T) {
+	ctx := context.Background()
+	tx, err := integrationDB.BeginTx(ctx, nil)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback() }()
+	_, err = tx.ExecContext(ctx, `CREATE TEMP TABLE users (id bigint PRIMARY KEY, username text, email text, deleted_at timestamptz) ON COMMIT DROP;
+INSERT INTO users VALUES (1,'Example','example@example.test',NULL),(2,NULL,NULL,NULL),(3,'Deleted','deleted@example.test',now());`)
+	require.NoError(t, err)
+	repo := newUserRepositoryWithSQL(nil, tx)
+	u, err := repo.GetAdminOverviewUser(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, "Example", u.Username)
+	require.Equal(t, "example@example.test", u.Email)
+	u, err = repo.GetAdminOverviewUser(ctx, 2)
+	require.NoError(t, err)
+	require.Empty(t, u.Username)
+	require.Empty(t, u.Email)
+	for _, id := range []int64{3, 999} {
+		_, err = repo.GetAdminOverviewUser(ctx, id)
+		require.ErrorIs(t, err, sql.ErrNoRows)
+	}
 }

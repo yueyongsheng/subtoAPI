@@ -446,6 +446,11 @@ export default {
         concurrency: 'Current total user concurrency',
         maxConcurrency: 'Current highest user concurrency',
         maxConcurrencyHint: 'Highest active request count for one user',
+        maxConcurrencyUser: 'User: {name}',
+        maxConcurrencyTied: 'Among {count} users tied for highest',
+        noConcurrentUsers: 'No active requests',
+        maxConcurrencyUserUnavailable: 'User information unavailable. Please refresh later.',
+        unnamedUser: 'Unnamed user',
         requests: 'requests',
         concurrencyHint: 'Requests currently being processed across all users',
         concurrencyUnavailable: 'Concurrency unavailable. Please refresh later.',
@@ -460,6 +465,13 @@ export default {
       title: 'User Management',
       description: 'Manage users and their permissions',
       createUser: 'Create User',
+      bulkDelete: {
+        action: 'Delete selected ({count})',
+        title: 'Delete selected users',
+        confirm: 'Delete the {count} selected users? This action cannot be undone. Administrator accounts cannot be deleted.',
+        success: 'Deleted {count} users',
+        failed: 'Failed to delete {count} users. They remain selected for retry.'
+      },
       bulkLimits: {
         action: 'Set limits ({count})',
         title: 'Set user limits',
@@ -783,6 +795,7 @@ export default {
         clearAllConfirm: 'Clear daily / weekly / monthly limits for ALL platforms? All platforms will become "unlimited" with no local undo — you must manually re-enter values before saving.',
         reset: {
           button: 'Reset window',
+          unavailable: 'No limit configured for this platform, so there is no usage window to reset',
           confirm: 'Reset the {window} usage for {platform} for this user? This is effective immediately.',
           success: 'Reset {platform} {window} usage',
           failed: 'Reset failed',
@@ -1000,6 +1013,7 @@ export default {
         zhipu: 'Zhipu GLM',
         deepseek: 'DeepSeek',
         minimax: 'MiniMax',
+        opencode_go: 'OpenCode',
         composite: 'Composite',
       },
       deleteConfirm:

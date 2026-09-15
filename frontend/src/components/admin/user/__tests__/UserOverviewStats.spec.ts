@@ -10,6 +10,8 @@ const snapshot: AdminUserOverview = {
   total_users: 208, positive_balance_users: 192, total_balance: 240073.05,
   balance_cny: 9602.92, current_concurrency: 88, max_user_concurrency: 14, active_users_10m: 36,
   today_user_cost: 123.45, today_user_cost_cny: 4.94,
+  max_concurrency_user: { id: 750, username: '示例用户', email: 'example@example.test' },
+  max_concurrency_user_count: 1,
   queried_at: '2026-09-15T01:00:00Z', window_start: '2026-09-15T00:50:00Z'
 }
 const render = () => mount(UserOverviewStats)
@@ -26,6 +28,8 @@ describe('UserOverviewStats', () => {
     expect(wrapper.get('[data-testid="overview-today-spend"]').text()).toBe('$123.45')
     expect(wrapper.get('[data-testid="overview-today-spend-cny"]').text()).toContain('4.94')
     expect(wrapper.get('[data-testid="overview-max-concurrency"]').text()).toContain('14')
+    expect(wrapper.get('[data-testid="overview-max-user"]').text()).toContain('示例用户')
+    expect(wrapper.get('[data-testid="overview-max-user"]').text()).toContain('#750')
     expect(wrapper.text()).toContain('192')
     expect(wrapper.text()).toContain('2026-09-15 09:00:00')
     expect(wrapper.text()).toContain('08:50:00 – 09:00:00')
@@ -59,6 +63,21 @@ describe('UserOverviewStats', () => {
     await flushPromises()
     expect(wrapper.get('[data-testid="overview-concurrency"]').text()).toBe('—')
     expect(wrapper.get('[data-testid="overview-max-concurrency"]').text()).toBe('—')
+    expect(wrapper.get('[data-testid="overview-max-user"]').text()).toBe('—')
+    wrapper.unmount()
+  })
+
+  it.each([
+    [{ ...snapshot, max_concurrency_user_count: 3 }, 'maxConcurrencyTied'],
+    [{ ...snapshot, max_concurrency_user: { id: 750, username: ' ', email: 'fallback@example.test' } }, 'fallback@example.test'],
+    [{ ...snapshot, max_concurrency_user: { id: 750, username: '', email: '' } }, 'unnamedUser'],
+    [{ ...snapshot, max_concurrency_user: null }, 'maxConcurrencyUserUnavailable'],
+    [{ ...snapshot, max_user_concurrency: 0, max_concurrency_user: null, max_concurrency_user_count: 0 }, 'noConcurrentUsers']
+  ])('shows identity fallback or occupancy state', async (response, expected) => {
+    vi.mocked(getOverview).mockResolvedValueOnce(response)
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="overview-max-user"]').text()).toContain(expected)
     wrapper.unmount()
   })
 })

@@ -23,6 +23,7 @@ func (h *UserHandler) GetOverview(c *gin.Context) {
 	if h.concurrencyService != nil {
 		var total int64
 		var maximum int64
+		var maximumUserID, maximumUserCount int64
 		available := true
 		for start := 0; start < len(ids); start += 500 {
 			end := min(start+500, len(ids))
@@ -41,8 +42,14 @@ func (h *UserHandler) GetOverview(c *gin.Context) {
 					available = false
 					break
 				}
-				total += int64(max(0, load.CurrentConcurrency))
-				maximum = max(maximum, int64(max(0, load.CurrentConcurrency)))
+				current := int64(max(0, load.CurrentConcurrency))
+				total += current
+				if current > maximum {
+					maximum, maximumUserID, maximumUserCount = current, user.ID, 1
+				} else if current > 0 && current == maximum {
+					maximumUserCount++
+					maximumUserID = min(maximumUserID, user.ID)
+				}
 			}
 			if !available {
 				break
@@ -51,6 +58,13 @@ func (h *UserHandler) GetOverview(c *gin.Context) {
 		if available {
 			stats.CurrentConcurrency = &total
 			stats.MaxUserConcurrency = &maximum
+			stats.MaxConcurrencyUserCount = maximumUserCount
+			if maximum > 0 {
+				// Identity failure must not discard the successfully read concurrency.
+				if user, err := h.userService.GetAdminOverviewUser(ctx, maximumUserID); err == nil {
+					stats.MaxConcurrencyUser = user
+				}
+			}
 		}
 	}
 	response.Success(c, stats)
