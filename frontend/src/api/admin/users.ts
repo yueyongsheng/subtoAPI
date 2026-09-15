@@ -404,11 +404,11 @@ export interface AdminUserOverview {
   positive_balance_users: number
   total_balance: number
   balance_cny: number
-    current_concurrency: number | null
-    max_user_concurrency: number | null
-    active_users_10m: number
-    today_user_cost: number
-    today_user_cost_cny: number
+  current_concurrency: number | null
+  max_user_concurrency: number | null
+  active_users_10m: number
+  today_user_cost: number
+  today_user_cost_cny: number
   queried_at: string
   window_start: string
 }

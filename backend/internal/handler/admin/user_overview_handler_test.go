@@ -15,11 +15,11 @@ import (
 
 type overviewUserRepo struct {
 	service.UserRepository
-	start, end time.Time
+	start, end, todayStart time.Time
 }
 
-func (r *overviewUserRepo) GetAdminUserOverview(_ context.Context, start, end, _ time.Time) (*service.AdminUserOverview, []int64, error) {
-	r.start, r.end = start, end
+func (r *overviewUserRepo) GetAdminUserOverview(_ context.Context, start, end, todayStart time.Time) (*service.AdminUserOverview, []int64, error) {
+	r.start, r.end, r.todayStart = start, end, todayStart
 	ids := make([]int64, 1001)
 	for i := range ids {
 		ids[i] = int64(i + 1)
@@ -41,6 +41,11 @@ func (c *overviewConcurrencyCache) GetUsersLoadBatch(_ context.Context, users []
 	loads := make(map[int64]*service.UserLoadInfo, len(users))
 	for _, user := range users {
 		loads[user.ID] = &service.UserLoadInfo{CurrentConcurrency: 2, WaitingCount: 100}
+		if user.ID == 750 {
+			loads[user.ID].CurrentConcurrency = 14
+		} else if user.ID == 1001 {
+			loads[user.ID].CurrentConcurrency = 5
+		}
 	}
 	return loads, nil
 }
@@ -68,11 +73,32 @@ func TestUserOverview_AllUsersAndUnavailableConcurrency(t *testing.T) {
 			require.True(t, payload.Data.QueriedAt.Equal(repo.end))
 			if failed {
 				require.Nil(t, payload.Data.CurrentConcurrency)
+				require.Nil(t, payload.Data.MaxUserConcurrency)
 			} else {
 				require.Equal(t, 1001, cache.seen)
-				require.Equal(t, int64(2002), *payload.Data.CurrentConcurrency)
-				require.Equal(t, int64(2), *payload.Data.MaxUserConcurrency)
+				require.Equal(t, int64(2017), *payload.Data.CurrentConcurrency)
+				require.Equal(t, int64(14), *payload.Data.MaxUserConcurrency)
 			}
+		})
+	}
+}
+
+func TestUserOverview_TodayStartsAtUTC8Midnight(t *testing.T) {
+	for _, tc := range []struct{ queriedAt, expectedStart string }{
+		{"2026-09-15T15:59:59Z", "2026-09-14T16:00:00Z"},
+		{"2026-09-15T16:00:00Z", "2026-09-15T16:00:00Z"},
+		{"2026-09-16T00:05:00+08:00", "2026-09-15T16:00:00Z"},
+	} {
+		t.Run(tc.queriedAt, func(t *testing.T) {
+			repo := &overviewUserRepo{}
+			queriedAt, err := time.Parse(time.RFC3339, tc.queriedAt)
+			require.NoError(t, err)
+			stats, _, err := service.NewUserService(repo, nil, nil, nil).GetAdminUserOverview(context.Background(), queriedAt)
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedStart, repo.todayStart.Format(time.RFC3339))
+			require.True(t, queriedAt.Equal(repo.end))
+			require.Equal(t, 10*time.Minute, repo.end.Sub(repo.start))
+			require.InDelta(t, 10.02, stats.TodayUserCostCNY, 0.000001)
 		})
 	}
 }
