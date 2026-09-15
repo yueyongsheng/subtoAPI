@@ -23,11 +23,14 @@ SELECT COUNT(*),
        COALESCE(array_agg(id), ARRAY[]::bigint[]),
        (SELECT COUNT(DISTINCT l.user_id)
           FROM usage_logs l JOIN live_users u ON u.id = l.user_id
-         WHERE l.created_at >= $1 AND l.created_at < $2)
+         WHERE l.created_at >= $1 AND l.created_at < $2),
+       (SELECT COALESCE(SUM(l.actual_cost), 0)
+          FROM usage_logs l JOIN live_users u ON u.id = l.user_id
+         WHERE l.created_at >= $3 AND l.created_at < $2)
 FROM live_users`
 
-func (r *userRepository) GetAdminUserOverview(ctx context.Context, start, end time.Time) (*service.AdminUserOverview, []int64, error) {
-	rows, err := r.sql.QueryContext(ctx, adminUserOverviewSQL, start, end)
+func (r *userRepository) GetAdminUserOverview(ctx context.Context, start, end, todayStart time.Time) (*service.AdminUserOverview, []int64, error) {
+	rows, err := r.sql.QueryContext(ctx, adminUserOverviewSQL, start, end, todayStart)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -40,7 +43,7 @@ func (r *userRepository) GetAdminUserOverview(ctx context.Context, start, end ti
 	}
 	var result service.AdminUserOverview
 	var ids pq.Int64Array
-	if err := rows.Scan(&result.TotalUsers, &result.PositiveBalanceUsers, &result.TotalBalance, &ids, &result.ActiveUsers10m); err != nil {
+	if err := rows.Scan(&result.TotalUsers, &result.PositiveBalanceUsers, &result.TotalBalance, &ids, &result.ActiveUsers10m, &result.TodayUserCost); err != nil {
 		return nil, nil, err
 	}
 	if err := rows.Err(); err != nil {

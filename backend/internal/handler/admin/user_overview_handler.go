@@ -22,6 +22,7 @@ func (h *UserHandler) GetOverview(c *gin.Context) {
 	// A missing or failed Redis read stays null instead of displaying a false zero.
 	if h.concurrencyService != nil {
 		var total int64
+		var maximum int64
 		available := true
 		for start := 0; start < len(ids); start += 500 {
 			end := min(start+500, len(ids))
@@ -41,6 +42,7 @@ func (h *UserHandler) GetOverview(c *gin.Context) {
 					break
 				}
 				total += int64(max(0, load.CurrentConcurrency))
+				maximum = max(maximum, int64(max(0, load.CurrentConcurrency)))
 			}
 			if !available {
 				break
@@ -48,6 +50,7 @@ func (h *UserHandler) GetOverview(c *gin.Context) {
 		}
 		if available {
 			stats.CurrentConcurrency = &total
+			stats.MaxUserConcurrency = &maximum
 		}
 	}
 	response.Success(c, stats)

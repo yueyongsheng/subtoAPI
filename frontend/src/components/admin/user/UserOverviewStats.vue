@@ -1,6 +1,6 @@
 <template>
   <section class="card rounded-2xl p-5" :aria-label="t('admin.users.overview.title')" :aria-busy="loading">
-    <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-5">
       <div class="min-w-0">
         <p class="mb-2 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
           <Icon name="dollar" size="sm" class="text-primary-500" />
@@ -19,6 +19,21 @@
           {{ t('admin.users.overview.positiveUsers', { count: stats?.positive_balance_users ?? '—' }) }}
         </p>
       </div>
+      <div class="min-w-0 border-t border-gray-100 pt-4 dark:border-dark-600 sm:pt-0 xl:border-l xl:border-t-0 xl:pl-5">
+        <p class="mb-2 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
+          <Icon name="chart" size="sm" class="text-primary-500" />
+          {{ t('admin.users.overview.todaySpend') }}
+        </p>
+        <p class="flex flex-wrap items-baseline gap-x-2 text-3xl font-semibold tabular-nums text-gray-800 dark:text-white">
+          <span data-testid="overview-today-spend">{{ stats ? money(stats.today_user_cost, 'USD') : '—' }}</span>
+          <span class="text-xs font-normal text-gray-500 dark:text-dark-300">USD</span>
+        </p>
+        <p class="mt-2 flex flex-wrap items-baseline gap-x-1 text-xs text-gray-700 dark:text-dark-200">
+          {{ t('admin.users.overview.todaySpendCny') }}
+          <span class="font-medium tabular-nums" data-testid="overview-today-spend-cny">{{ stats ? money(stats.today_user_cost_cny, 'CNY') : '—' }}</span>
+        </p>
+        <p class="mt-2 text-xs text-gray-500 dark:text-dark-300">{{ t('admin.users.overview.todaySpendHint') }}</p>
+      </div>
       <div class="min-w-0 border-t border-gray-100 pt-4 dark:border-dark-600 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
         <p class="mb-2 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
           <Icon name="bolt" size="sm" class="text-primary-500" />
@@ -29,6 +44,17 @@
           <span v-if="stats?.current_concurrency != null" class="text-xs font-normal text-gray-500 dark:text-dark-300">{{ t('admin.users.overview.requests') }}</span>
         </p>
         <p class="mt-3 text-xs text-gray-500 dark:text-dark-300">{{ stats && stats.current_concurrency === null ? t('admin.users.overview.concurrencyUnavailable') : t('admin.users.overview.concurrencyHint') }}</p>
+      </div>
+      <div class="min-w-0 border-t border-gray-100 pt-4 dark:border-dark-600 sm:pt-0 xl:border-l xl:border-t-0 xl:pl-5">
+        <p class="mb-2 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
+          <Icon name="bolt" size="sm" class="text-primary-500" />
+          {{ t('admin.users.overview.maxConcurrency') }}
+        </p>
+        <p class="text-3xl font-semibold tabular-nums text-gray-800 dark:text-white" data-testid="overview-max-concurrency">
+          {{ stats?.max_user_concurrency ?? '—' }}
+          <span v-if="stats?.max_user_concurrency != null" class="text-xs font-normal text-gray-500 dark:text-dark-300">{{ t('admin.users.overview.requests') }}</span>
+        </p>
+        <p class="mt-3 text-xs text-gray-500 dark:text-dark-300">{{ t('admin.users.overview.maxConcurrencyHint') }}</p>
       </div>
       <div class="min-w-0 border-t border-gray-100 pt-4 dark:border-dark-600 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
         <p class="mb-2 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">

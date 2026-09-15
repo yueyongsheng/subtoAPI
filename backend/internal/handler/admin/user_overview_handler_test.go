@@ -18,13 +18,13 @@ type overviewUserRepo struct {
 	start, end time.Time
 }
 
-func (r *overviewUserRepo) GetAdminUserOverview(_ context.Context, start, end time.Time) (*service.AdminUserOverview, []int64, error) {
+func (r *overviewUserRepo) GetAdminUserOverview(_ context.Context, start, end, _ time.Time) (*service.AdminUserOverview, []int64, error) {
 	r.start, r.end = start, end
 	ids := make([]int64, 1001)
 	for i := range ids {
 		ids[i] = int64(i + 1)
 	}
-	return &service.AdminUserOverview{TotalUsers: 1001, PositiveBalanceUsers: 900, TotalBalance: 240073.05, ActiveUsers10m: 36}, ids, nil
+	return &service.AdminUserOverview{TotalUsers: 1001, PositiveBalanceUsers: 900, TotalBalance: 240073.05, ActiveUsers10m: 36, TodayUserCost: 250.5}, ids, nil
 }
 
 type overviewConcurrencyCache struct {
@@ -63,6 +63,7 @@ func TestUserOverview_AllUsersAndUnavailableConcurrency(t *testing.T) {
 			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &payload))
 			require.Equal(t, int64(1001), payload.Data.TotalUsers)
 			require.InDelta(t, 9602.92, payload.Data.BalanceCNY, 0.000001)
+			require.InDelta(t, 10.02, payload.Data.TodayUserCostCNY, 0.000001)
 			require.Equal(t, 10*time.Minute, repo.end.Sub(repo.start))
 			require.True(t, payload.Data.QueriedAt.Equal(repo.end))
 			if failed {
@@ -70,6 +71,7 @@ func TestUserOverview_AllUsersAndUnavailableConcurrency(t *testing.T) {
 			} else {
 				require.Equal(t, 1001, cache.seen)
 				require.Equal(t, int64(2002), *payload.Data.CurrentConcurrency)
+				require.Equal(t, int64(2), *payload.Data.MaxUserConcurrency)
 			}
 		})
 	}
