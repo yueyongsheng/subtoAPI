@@ -433,6 +433,24 @@ export default {
 
     // Users
     users: {
+      overview: {
+        title: 'Global user overview',
+        balance: 'Total remaining user balance',
+        cny: 'CNY equivalent',
+        conversion: '(balance ÷ 25)',
+        positiveUsers: '{count} users with positive balances; debt excluded',
+        concurrency: 'Current total user concurrency',
+        requests: 'requests',
+        concurrencyHint: 'Requests currently being processed across all users',
+        concurrencyUnavailable: 'Concurrency unavailable. Please refresh later.',
+        activeUsers: 'Active users in the last 10 minutes',
+        people: 'users',
+        activeUsersHint: 'Unique users with API usage records',
+        queriedAt: 'Queried at',
+        scope: 'Global totals · Independent of list filters and pagination · Manual refresh',
+        refresh: 'Refresh statistics',
+        loadFailed: 'This query failed. Any displayed data is from the previous query. Please retry.'
+      },
       title: 'User Management',
       description: 'Manage users and their permissions',
       createUser: 'Create User',

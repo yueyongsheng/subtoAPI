@@ -399,7 +399,24 @@ export async function resetPlatformQuotaWindow(
   return data
 }
 
+export interface AdminUserOverview {
+  total_users: number
+  positive_balance_users: number
+  total_balance: number
+  balance_cny: number
+  current_concurrency: number | null
+  active_users_10m: number
+  queried_at: string
+  window_start: string
+}
+
+export async function getOverview(signal?: AbortSignal): Promise<AdminUserOverview> {
+  const { data } = await apiClient.get<AdminUserOverview>('/admin/users/overview', { signal })
+  return data
+}
+
 export const usersAPI = {
+  getOverview,
   list,
   getById,
   create,

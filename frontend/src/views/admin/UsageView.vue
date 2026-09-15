@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <UsageStatsCards :stats="usageStats" />
+      <UsageStatsCards :stats="usageStats" show-cache-hit-rate />
       <!-- Charts Section -->
       <div class="space-y-4">
         <div class="card p-4">
@@ -125,6 +125,7 @@
         <div v-show="activeTab === 'usage'" class="overflow-hidden rounded-b-2xl">
           <UsageTable
             flat
+            show-cache-hit-rate
             :data="usageLogs"
             :loading="loading"
             :columns="visibleColumns"

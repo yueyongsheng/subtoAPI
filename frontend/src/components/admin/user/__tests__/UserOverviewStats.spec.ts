@@ -1,0 +1,56 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { getOverview, type AdminUserOverview } from '@/api/admin/users'
+import UserOverviewStats from '../UserOverviewStats.vue'
+
+vi.mock('@/api/admin/users', () => ({ getOverview: vi.fn() }))
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string, values?: Record<string, unknown>) => values ? `${key} ${JSON.stringify(values)}` : key }) }))
+
+const snapshot: AdminUserOverview = {
+  total_users: 208, positive_balance_users: 192, total_balance: 240073.05,
+  balance_cny: 9602.92, current_concurrency: 88, active_users_10m: 36,
+  queried_at: '2026-09-15T01:00:00Z', window_start: '2026-09-15T00:50:00Z'
+}
+const render = () => mount(UserOverviewStats)
+
+describe('UserOverviewStats', () => {
+  beforeEach(() => vi.mocked(getOverview).mockReset().mockResolvedValue({ ...snapshot }))
+  afterEach(() => vi.useRealTimers())
+
+  it('shows server totals, positive-balance scope and the UTC+8 query window', async () => {
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="overview-balance"]').text()).toBe('$240,073.05')
+    expect(wrapper.get('[data-testid="overview-cny"]').text()).toContain('9,602.92')
+    expect(wrapper.text()).toContain('192')
+    expect(wrapper.text()).toContain('2026-09-15 09:00:00')
+    expect(wrapper.text()).toContain('08:50:00 – 09:00:00')
+    wrapper.unmount()
+  })
+
+  it('refreshes only on request and retains the last snapshot when a refresh fails', async () => {
+    vi.useFakeTimers()
+    const wrapper = render()
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+    expect(getOverview).toHaveBeenCalledTimes(1)
+    vi.mocked(getOverview).mockResolvedValueOnce({ ...snapshot, current_concurrency: 12 })
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="overview-concurrency"]').text()).toContain('12')
+    vi.mocked(getOverview).mockRejectedValueOnce(new Error('network'))
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="overview-balance"]').text()).toBe('$240,073.05')
+    wrapper.unmount()
+  })
+
+  it('does not display zero when concurrency is unavailable', async () => {
+    vi.mocked(getOverview).mockResolvedValueOnce({ ...snapshot, current_concurrency: null })
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="overview-concurrency"]').text()).toBe('—')
+    wrapper.unmount()
+  })
+})

@@ -171,6 +171,11 @@
                 <div v-if="row.cache_read_tokens > 0" class="inline-flex items-center gap-1">
                   <svg class="h-3.5 w-3.5 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                   <span class="font-medium text-sky-600 dark:text-sky-400">{{ formatCacheTokens(row.cache_read_tokens) }}</span>
+                  <span
+                    v-if="showCacheHitRate"
+                    class="ml-1 inline-flex shrink-0 items-center whitespace-nowrap rounded bg-sky-50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-sky-600 dark:bg-sky-500/10 dark:text-sky-400"
+                    :title="`${t('usage.cacheHitRate')}: ${formatCacheHitRate(row)}\n${t('usage.cacheHitRateHint')}`"
+                  >{{ formatCacheHitRate(row) }}</span>
                 </div>
                 <div v-if="row.cache_creation_tokens > 0" class="inline-flex items-center gap-1">
                   <svg class="h-3.5 w-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -381,6 +386,10 @@
             <div v-if="tokenTooltipData && tokenTooltipData.cache_read_tokens > 0" class="flex items-center justify-between gap-4">
               <span class="text-gray-400">{{ t('admin.usage.cacheReadTokens') }}</span>
               <span class="font-medium text-white">{{ tokenTooltipData.cache_read_tokens.toLocaleString() }}</span>
+            </div>
+            <div v-if="showCacheHitRate && tokenTooltipData && tokenTooltipData.cache_read_tokens > 0" class="flex items-center justify-between gap-4">
+              <span class="text-gray-400">{{ t('usage.cacheHitRate') }}</span>
+              <span class="font-medium text-sky-400">{{ formatCacheHitRate(tokenTooltipData) }}</span>
             </div>
           </div>
           <div class="flex items-center justify-between gap-6 border-t border-gray-700 pt-1.5">
@@ -595,6 +604,8 @@ interface Props {
   defaultSortOrder?: 'asc' | 'desc'
   showAccountBilling?: boolean
   showUpstreamEndpoint?: boolean
+  /** 仅由管理员使用记录页面开启，其他复用页面默认隐藏。 */
+  showCacheHitRate?: boolean
   /** 嵌入统一卡片内使用：去掉自身卡片外观 */
   flat?: boolean
 }
@@ -606,6 +617,7 @@ const props = withDefaults(defineProps<Props>(), {
   defaultSortOrder: 'asc',
   showAccountBilling: true,
   showUpstreamEndpoint: true,
+  showCacheHitRate: false,
   flat: false
 })
 const emit = defineEmits<{
@@ -619,6 +631,14 @@ const copiedRequestId = ref<string | null>(null)
 const showAccountBilling = props.showAccountBilling
 const showUpstreamEndpoint = props.showUpstreamEndpoint
 const ipGeoBatchLoading = ref(false)
+
+const formatCacheHitRate = (row: AdminUsageLog): string => {
+  // 持久化用量将普通输入、缓存写入和缓存读取拆成互斥桶；输出不参与命中率。
+  const cacheRead = Math.max(0, row.cache_read_tokens || 0)
+  const totalInput = Math.max(0, row.input_tokens || 0)
+    + Math.max(0, row.cache_creation_tokens || 0) + cacheRead
+  return `${(totalInput > 0 ? cacheRead / totalInput * 100 : 0).toFixed(1)}%`
+}
 
 const showIpGeoToolbar = computed(() => props.columns.some((col) => col.key === 'ip_address'))
 

@@ -433,6 +433,24 @@ export default {
 
     // Users Management
     users: {
+      overview: {
+        title: '全站用户汇总',
+        balance: '用户剩余余额合计',
+        cny: '折合人民币',
+        conversion: '（余额 ÷ 25）',
+        positiveUsers: '仅统计 {count} 位正余额用户，欠费余额不计入',
+        concurrency: '用户当前总并发数',
+        requests: '个',
+        concurrencyHint: '查询时所有用户正在处理的请求合计',
+        concurrencyUnavailable: '并发统计暂不可用，请稍后刷新',
+        activeUsers: '近 10 分钟活跃用户',
+        people: '人',
+        activeUsersHint: '有 API 调用记录的用户，按人去重',
+        queriedAt: '查询时间',
+        scope: '全站统计 · 不受列表筛选与分页影响 · 手动刷新',
+        refresh: '刷新统计',
+        loadFailed: '本次查询失败；已显示的数据仍为上次查询结果，请重试。'
+      },
       title: '用户管理',
       description: '管理用户账户和权限',
       createUser: '创建用户',
