@@ -31,7 +31,7 @@ func (r *userRepository) GetAdminUserOverview(ctx context.Context, start, end ti
 	if err != nil {
 		return nil, nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			return nil, nil, err
@@ -43,5 +43,11 @@ func (r *userRepository) GetAdminUserOverview(ctx context.Context, start, end ti
 	if err := rows.Scan(&result.TotalUsers, &result.PositiveBalanceUsers, &result.TotalBalance, &ids, &result.ActiveUsers10m); err != nil {
 		return nil, nil, err
 	}
-	return &result, []int64(ids), rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, nil, err
+	}
+	return &result, []int64(ids), nil
 }
