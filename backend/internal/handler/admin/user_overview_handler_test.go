@@ -41,9 +41,10 @@ func (c *overviewConcurrencyCache) GetUsersLoadBatch(_ context.Context, users []
 	loads := make(map[int64]*service.UserLoadInfo, len(users))
 	for _, user := range users {
 		loads[user.ID] = &service.UserLoadInfo{CurrentConcurrency: 2, WaitingCount: 100}
-		if user.ID == 750 {
+		switch user.ID {
+		case 750:
 			loads[user.ID].CurrentConcurrency = 14
-		} else if user.ID == 1001 {
+		case 1001:
 			loads[user.ID].CurrentConcurrency = 5
 		}
 	}
