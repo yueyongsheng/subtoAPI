@@ -59,6 +59,10 @@ func TestOAuthHealthLegacyLowRecoveryAndFailedIncrease(t *testing.T) {
 	load := 2
 	stats := OAuthHealthStats{OutputRequests: 50, ObservedRequests: 50, OutputMinutes: 5, CurrentConcurrency: &load}
 	require.Equal(t, 5, evaluateOAuthHealth(a, stats, now).RecommendedConcurrency)
+	legacy := evaluateOAuthHealth(a, stats, now)
+	legacy.LastChange.Action = "cooldown"
+	a.RawHealth, _ = json.Marshal(legacy)
+	require.Equal(t, "increase", evaluateOAuthHealth(a, stats, now).Action)
 	a.Concurrency = 15
 	hold := now.Add(time.Minute)
 	a.RawHealth, _ = json.Marshal(OAuthHealth{PolicyVersion: 2, AccountID: 1, CheckedAt: now.Add(-time.Minute), Concurrency: 15, HoldUntil: &hold, LastChange: &OAuthHealthChange{At: now.Add(-time.Minute), Before: 10, After: 15, Action: "increase"}})

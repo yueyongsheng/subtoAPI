@@ -198,7 +198,8 @@ func evaluateOAuthHealth(a OAuthHealthAccount, stats OAuthHealthStats, now time.
 	case stats.OutputRequests >= 20:
 		h.Reason = "model_observation"
 	}
-	legacyLow := old != nil && old.AccountID == a.ID && old.LastChange != nil && old.LastChange.Action == "reduce" && old.LastChange.After == a.Concurrency && a.Concurrency < 5
+	legacyLow := old != nil && old.AccountID == a.ID && old.LastChange != nil &&
+		(old.LastChange.Action == "reduce" || old.LastChange.Action == "cooldown") && old.LastChange.After == a.Concurrency && a.Concurrency < 5
 	manual := a.ManualConcurrencyValue != "" || (old != nil && old.AccountID == a.ID && old.ManualConcurrency) || a.Concurrency > 30 || (a.Concurrency < 5 && !legacyLow)
 	if old != nil && old.AccountID == a.ID && old.Concurrency != a.Concurrency {
 		manual = true
