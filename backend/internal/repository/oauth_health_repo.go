@@ -51,7 +51,9 @@ func (r *accountRepository) ListOAuthHealthAccounts(ctx context.Context, groupID
 
 // Correlate by account AND gateway request. Both the upstream-events array and
 // terminal upstream error can describe the same attempt. Neither local 429/503
-// nor the number of retries is an account failure count.
+// nor the number of retries is an account failure count. Attributed attempts
+// override terminal metadata even outside the selected scope; a final account
+// may have succeeded after failover. Use attempt time and exclude monitor keys.
 const oauthHealthObservationSQL = `
 WITH scope AS MATERIALIZED (
  SELECT * FROM jsonb_to_recordset($1::jsonb) AS x(id bigint,since timestamptz)
@@ -59,18 +61,27 @@ WITH scope AS MATERIALIZED (
  SELECT o.* FROM ops_error_logs o
  WHERE o.created_at >= (SELECT min(since) FROM scope) AND o.created_at < $2
  AND o.is_count_tokens=FALSE
-), events AS (
- SELECT s.id,COALESCE(NULLIF(o.request_id,''),'error:'||o.id::text) req,
- o.created_at, e->>'upstream_status_code' code,
- lower(COALESCE(e->>'message','')||' '||COALESCE(e->>'detail','')||' '||COALESCE(e->>'upstream_response_body','')) msg
+ AND NOT EXISTS(SELECT 1 FROM channel_monitors m WHERE m.probe_api_key_id=o.api_key_id)
+), attempts AS MATERIALIZED (
+ SELECT o.id log_id,e,
+ CASE WHEN e->>'at_unix_ms' ~ '^[0-9]{1,13}$'
+ THEN to_timestamp((e->>'at_unix_ms')::double precision/1000) ELSE o.created_at END at
  FROM logs o CROSS JOIN LATERAL jsonb_array_elements(
  CASE WHEN jsonb_typeof(o.upstream_errors)='array' THEN o.upstream_errors ELSE '[]'::jsonb END) e
- JOIN scope s ON e->>'account_id'=s.id::text AND o.created_at>=s.since
+ WHERE e->>'account_id' ~ '^[1-9][0-9]{0,17}$'
+ AND e->>'upstream_status_code' ~ '^[45][0-9]{2}$'
+), events AS (
+ SELECT s.id,COALESCE(NULLIF(o.request_id,''),'error:'||o.id::text) req,
+ a.at created_at, e->>'upstream_status_code' code,
+ lower(COALESCE(e->>'message','')||' '||COALESCE(e->>'detail','')||' '||COALESCE(e->>'upstream_response_body','')) msg
+ FROM logs o JOIN attempts a ON a.log_id=o.id
+ JOIN scope s ON e->>'account_id'=s.id::text AND a.at>=s.since AND a.at<$2
  UNION ALL
  SELECT s.id,COALESCE(NULLIF(o.request_id,''),'error:'||o.id::text),o.created_at,
  o.upstream_status_code::text,lower(COALESCE(o.upstream_error_message,'')||' '||COALESCE(o.upstream_error_detail,''))
  FROM logs o JOIN scope s ON o.account_id=s.id AND o.created_at>=s.since
  WHERE o.upstream_status_code>=400
+ AND NOT EXISTS(SELECT 1 FROM attempts a WHERE a.log_id=o.id)
 ), classified AS (
  SELECT *,code='429' AND msg ~ '(insufficient_quota|usage_limit_reached|quota_exceeded|quota exhausted|quota exceeded|weekly.{0,20}limit|daily.{0,20}limit)' quota
  FROM events WHERE code IN ('401','403','429','500','502','503','504')
@@ -85,6 +96,7 @@ WITH scope AS MATERIALIZED (
  (u.output_tokens>0 OR u.image_count>0) has_output,u.first_token_ms
  FROM usage_logs u JOIN scope s ON s.id=u.account_id AND u.created_at>=s.since
  WHERE u.created_at >= (SELECT min(since) FROM scope) AND u.created_at < $2
+ AND NOT EXISTS(SELECT 1 FROM channel_monitors m WHERE m.probe_api_key_id=u.api_key_id)
 ), observed AS (
  SELECT id,req FROM requests UNION SELECT id,req FROM usage
 ), counts AS (

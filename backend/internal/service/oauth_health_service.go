@@ -239,7 +239,8 @@ func (s *OAuthHealthService) Change(ctx context.Context, groupID *int64, selecte
 			result.Accounts = append(result.Accounts, a)
 			continue
 		}
-		target, action := a.Concurrency, "reduce"
+		var target int
+		action := "reduce"
 		if restore {
 			if h.LastChange == nil || h.LastChange.Action != "reduce" || h.LastChange.After != a.Concurrency {
 				result.Accounts = append(result.Accounts, a)

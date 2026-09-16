@@ -49,6 +49,10 @@ func TestOAuthHealthSQLScopeDedupAndAtomicAdjustment(t *testing.T) {
 	require.Equal(t, 2, stats[1].PressureRequests)
 	require.Equal(t, 1, stats[2].OverloadedRequests) // failing-over account attribution
 	require.InDelta(t, 2150, *stats[1].P95FirstTokenMS, 0.01)
+	// Array attribution wins even when every failed account is outside the scope.
+	finalAccount, err := r.ObserveOAuthHealth(ctx, []service.OAuthHealthObservationScope{{ID: 4, Since: end.Add(-30 * time.Minute)}}, end)
+	require.NoError(t, err)
+	require.Zero(t, finalAccount[4].ObservedRequests)
 	newEvidence, err := r.ObserveOAuthHealth(ctx, []service.OAuthHealthObservationScope{{ID: 1, Since: end.Add(-90 * time.Second)}}, end)
 	require.NoError(t, err)
 	require.Zero(t, newEvidence[1].PressureRequests)

@@ -1,6 +1,8 @@
 .PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical
 
 FRONTEND_CRITICAL_VITEST := \
+	src/components/admin/account/__tests__/OAuthHealthDialog.spec.ts \
+	src/views/admin/__tests__/AccountsView.oauthHealth.spec.ts \
 	src/components/admin/user/__tests__/UserOverviewStats.spec.ts \
 	src/views/admin/__tests__/UsersView.spec.ts \
 	src/views/admin/__tests__/UsageView.spec.ts \
