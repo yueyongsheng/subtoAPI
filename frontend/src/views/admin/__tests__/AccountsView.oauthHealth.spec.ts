@@ -59,12 +59,14 @@ function mountView() {
       stubs: {
         AppLayout: { template: '<div><slot /></div>' },
         TablePageLayout: {
-          template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
+          template: '<div><slot name="actions" /><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
         },
         DataTable: DataTableStub,
         AccountTableActions: { template: '<div><slot name="before" /><slot name="after" /></div>' },
         AccountTableFilters: true,
         OAuthHealthDialog: true,
+        UserOverviewStats: { name: 'UserOverviewStats', template: '<div><slot name="extra" /></div>' },
+        OAuthGroupAvailability: true,
         AccountBulkActionsBar: true,
         Pagination: true,
         ConfirmDialog: true,
@@ -99,6 +101,19 @@ describe('AccountsView OAuth health scope', () => {
   beforeEach(() => {
     localStorage.clear()
     listAccounts.mockReset().mockResolvedValue({ items: [], total: 0, page: 1, page_size: 20, pages: 0 })
+  })
+  it('refreshes group statistics with the overview button, independently of account filters', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    const availability = wrapper.findComponent({ name: 'OAuthGroupAvailability' })
+    expect(availability.props('refreshKey')).toBe(0)
+    wrapper.findComponent({ name: 'AccountTableFilters' }).vm.$emit('update:filters', { group: '15', type: 'apikey', search: 'example' })
+    await wrapper.vm.$nextTick()
+    expect(availability.props('refreshKey')).toBe(0)
+    wrapper.findComponent({ name: 'UserOverviewStats' }).vm.$emit('refresh')
+    await wrapper.vm.$nextTick()
+    expect(availability.props('refreshKey')).toBe(1)
+    wrapper.unmount()
   })
   it.each([['', null], ['15', 15], ['ungrouped', -1]])('captures group %s and ignores other list filters', async (group, expected) => {
     const wrapper = mountView()

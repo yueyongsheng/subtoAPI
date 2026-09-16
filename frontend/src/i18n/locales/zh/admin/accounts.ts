@@ -1,5 +1,11 @@
 export default {
     accounts: {
+      oauthAvailability: {
+        title: '分组可用 OAuth', unit: '个', queriedAt: '查询于',
+        hint: '仅统计启用分组中状态正常、调度开启且未在限流、过载或临时停调期的 OAuth；未分组不计。共用账号在各组分别计数，忙碌账号仍计入。当前调度状态不代表全部模型调用成功。',
+        empty: '启用分组中暂无 OAuth 账号。',
+        failed: '分组统计刷新失败；如有旧数据，仍显示上次查询时间。'
+      },
       oauthHealth: {
         button: 'OAuth 检测', title: 'OAuth 账号检测与并发优化', allOAuth: '全站 OAuth 账号',
         scope: '检测范围：{scope}',

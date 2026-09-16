@@ -72,6 +72,10 @@ type healthMemoryRepo struct {
 	alternatives []int64
 }
 
+func (r *healthMemoryRepo) GetOAuthGroupAvailability(context.Context, time.Time) ([]OAuthGroupAvailability, error) {
+	return nil, nil
+}
+
 func (r *healthMemoryRepo) OAuthHealthCooldownAlternatives(_ context.Context, _ OAuthHealthAccount, _ []string, _ time.Time, excluded []int64) ([]int64, error) {
 	result := []int64{}
 	for _, id := range r.alternatives {

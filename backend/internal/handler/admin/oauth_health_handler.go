@@ -11,6 +11,19 @@ import (
 
 func (h *AccountHandler) SetOAuthHealthService(s *service.OAuthHealthService) { h.oauthHealth = s }
 
+func (h *AccountHandler) GetOAuthGroupAvailability(c *gin.Context) {
+	if h.oauthHealth == nil {
+		response.Error(c, http.StatusServiceUnavailable, "OAuth availability service unavailable")
+		return
+	}
+	report, err := h.oauthHealth.GroupAvailability(c.Request.Context())
+	if err != nil {
+		response.Error(c, http.StatusServiceUnavailable, "OAuth availability query failed")
+		return
+	}
+	response.Success(c, report)
+}
+
 type oauthHealthRequest struct {
 	GroupID  *int64                         `json:"group_id"`
 	Accounts []service.OAuthHealthSelection `json:"accounts"`

@@ -1,5 +1,11 @@
 export default {
     accounts: {
+      oauthAvailability: {
+        title: 'Available OAuth by group', unit: 'accounts', queriedAt: 'Queried at',
+        hint: 'Active groups only: healthy OAuth accounts with scheduling enabled and no active rate-limit, overload or temporary pause. Ungrouped accounts are excluded. Shared accounts count in each group; busy accounts still count. Scheduling state does not guarantee every model succeeds.',
+        empty: 'No OAuth accounts in active groups.',
+        failed: 'Group statistics could not refresh. Any retained data shows its original query time.'
+      },
       oauthHealth: {
         button: 'OAuth check', title: 'OAuth health and concurrency', allOAuth: 'All OAuth accounts',
         scope: 'Scope: {scope}',

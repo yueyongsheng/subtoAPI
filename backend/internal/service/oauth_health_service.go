@@ -98,6 +98,7 @@ type OAuthHealthObservationScope struct {
 }
 
 type OAuthHealthRepository interface {
+	GetOAuthGroupAvailability(context.Context, time.Time) ([]OAuthGroupAvailability, error)
 	ListOAuthHealthAccounts(context.Context, *int64) ([]OAuthHealthAccount, error)
 	ObserveOAuthHealth(context.Context, []OAuthHealthObservationScope, time.Time) (map[int64]OAuthHealthStats, error)
 	SaveOAuthHealth(context.Context, OAuthHealthAccount, *OAuthHealth, int, *int64) (bool, error)

@@ -1,6 +1,6 @@
 <template>
   <section class="card rounded-2xl p-5" :aria-label="t('admin.users.overview.title')" :aria-busy="loading">
-    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-5">
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2" :class="$slots.extra ? 'xl:grid-cols-3 2xl:grid-cols-6' : 'xl:grid-cols-5'">
       <div class="min-w-0">
         <p class="mb-2 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
           <Icon name="dollar" size="sm" class="text-primary-500" />
@@ -79,6 +79,7 @@
         <p class="mt-3 text-xs text-gray-500 dark:text-dark-300">{{ t('admin.users.overview.activeUsersHint') }}</p>
         <p v-if="stats" class="mt-1 text-xs tabular-nums text-gray-500 dark:text-dark-300">{{ clock(stats.window_start) }} – {{ clock(stats.queried_at) }}</p>
       </div>
+      <slot name="extra" />
     </div>
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-dark-600">
       <div class="text-xs">
@@ -86,7 +87,7 @@
         <p v-if="error" role="alert" class="text-red-600 dark:text-red-400">{{ t('admin.users.overview.loadFailed') }}</p>
         <p class="mt-1 text-gray-500 dark:text-dark-300">{{ t('admin.users.overview.scope') }}</p>
       </div>
-      <button type="button" class="btn btn-secondary" :disabled="loading" @click="loadOverview">
+      <button type="button" class="btn btn-secondary" :disabled="loading" @click="refreshOverview">
         <Icon name="refresh" size="sm" :class="{ 'animate-spin': loading }" />
         {{ t('admin.users.overview.refresh') }}
       </button>
@@ -101,6 +102,7 @@ import { getOverview, type AdminUserOverview } from '@/api/admin/users'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
+const emit = defineEmits<{ refresh: [] }>()
 const stats = ref<AdminUserOverview | null>(null)
 const loading = ref(false)
 const error = ref(false)
@@ -126,6 +128,11 @@ async function loadOverview() {
   } finally {
     loading.value = false
   }
+}
+
+function refreshOverview() {
+  emit('refresh')
+  void loadOverview()
 }
 
 onMounted(loadOverview)

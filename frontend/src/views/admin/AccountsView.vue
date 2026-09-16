@@ -2,7 +2,9 @@
   <AppLayout>
     <TablePageLayout>
       <template #actions>
-        <UserOverviewStats />
+        <UserOverviewStats @refresh="oauthAvailabilityRefreshKey++">
+          <template #extra><OAuthGroupAvailability :refresh-key="oauthAvailabilityRefreshKey" /></template>
+        </UserOverviewStats>
       </template>
       <template #filters>
         <div class="flex flex-wrap-reverse items-start justify-between gap-3">
@@ -510,6 +512,7 @@ import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import UserOverviewStats from '@/components/admin/user/UserOverviewStats.vue'
+import OAuthGroupAvailability from '@/components/admin/account/OAuthGroupAvailability.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -548,6 +551,7 @@ import { formatMultiplier } from '@/utils/formatters'
 import type { Account, AccountListItem, AccountPlatform, AccountSchedulerGroupScore, AccountType, AccountUsageInfo, Proxy as AccountProxy, AdminGroup, WindowStats, ClaudeModel, UpstreamBillingProbeSnapshot } from '@/types'
 
 const { t } = useI18n()
+const oauthAvailabilityRefreshKey = ref(0)
 const appStore = useAppStore()
 const authStore = useAuthStore()
 
