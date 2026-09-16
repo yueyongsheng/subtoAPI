@@ -19,6 +19,11 @@
             @refresh="handleManualRefresh"
             @create="showCreate = true"
           >
+            <template #before>
+              <button class="btn btn-secondary" data-testid="oauth-health-open" @click="openOAuthHealth">
+                <Icon name="shield" size="sm" />{{ t('admin.accounts.oauthHealth.button') }}
+              </button>
+            </template>
             <template #after>
               <!-- Auto Refresh Dropdown -->
               <div class="relative" ref="autoRefreshDropdownRef">
@@ -290,8 +295,9 @@
             <AccountCapacityCell :account="row" />
           </template>
           <template #cell-status="{ row }">
-            <div class="flex items-center gap-1.5">
+            <div class="flex flex-col items-start gap-1.5">
               <AccountStatusIndicator :account="row" @show-temp-unsched="handleShowTempUnsched" />
+              <OAuthHealthBadge v-if="row.type === 'oauth'" :account-id="row.id" :value="row.extra?.oauth_health" />
             </div>
           </template>
           <template #cell-schedulable="{ row }">
@@ -453,6 +459,7 @@
       </template>
       <template #pagination><Pagination v-if="pagination.total > 0" :page="pagination.page" :total="pagination.total" :page-size="pagination.page_size" @update:page="handlePageChange" @update:pageSize="handlePageSizeChange" /></template>
     </TablePageLayout>
+    <OAuthHealthDialog :show="showOAuthHealth" :group-id="oauthHealthGroupID" :scope-label="oauthHealthScopeLabel" @close="showOAuthHealth = false" @updated="reload" />
     <CreateAccountModal :show="showCreate" :proxies="proxies" :groups="groups" @close="showCreate = false" @created="reload" />
     <EditAccountModal :show="showEdit" :account="edAcc" :proxies="proxies" :groups="groups" @close="showEdit = false" @updated="handleAccountUpdated" />
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
@@ -509,6 +516,8 @@ import Pagination from '@/components/common/Pagination.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { CreateAccountModal, EditAccountModal, BulkEditAccountModal, SyncFromCrsModal, TempUnschedStatusModal } from '@/components/account'
 import AccountTableActions from '@/components/admin/account/AccountTableActions.vue'
+import OAuthHealthDialog from '@/components/admin/account/OAuthHealthDialog.vue'
+import OAuthHealthBadge from '@/components/admin/account/OAuthHealthBadge.vue'
 import AccountTableFilters from '@/components/admin/account/AccountTableFilters.vue'
 import AccountBulkActionsBar from '@/components/admin/account/AccountBulkActionsBar.vue'
 import AccountActionMenu from '@/components/admin/account/AccountActionMenu.vue'
@@ -544,6 +553,15 @@ const authStore = useAuthStore()
 
 const proxies = ref<AccountProxy[]>([])
 const groups = ref<AdminGroup[]>([])
+const showOAuthHealth = ref(false)
+const oauthHealthGroupID = ref<number | null>(null)
+const oauthHealthScopeLabel = ref('')
+const openOAuthHealth = () => {
+  const group = params.group
+  oauthHealthGroupID.value = group === 'ungrouped' ? -1 : group ? Number(group) : null
+  oauthHealthScopeLabel.value = group === 'ungrouped' ? t('admin.accounts.ungroupedGroup') : group ? groups.value.find(g => g.id === Number(group))?.name ?? String(group) : t('admin.accounts.oauthHealth.allOAuth')
+  showOAuthHealth.value = true
+}
 const groupsByID = computed(() => new Map(groups.value.map(group => [group.id, group])))
 const accountGroupsForRow = (account: Pick<AccountListItem, 'group_ids'>): AdminGroup[] => {
   const groupIDs = account.group_ids ?? []
@@ -1360,6 +1378,7 @@ watch(accounts, (rows) => {
 
 const isAnyModalOpen = computed(() => {
   return (
+    showOAuthHealth.value ||
     showCreate.value ||
     showEdit.value ||
     showSync.value ||

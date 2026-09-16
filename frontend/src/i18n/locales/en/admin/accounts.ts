@@ -1,5 +1,33 @@
 export default {
     accounts: {
+      oauthHealth: {
+        button: 'OAuth check', title: 'OAuth health and concurrency', allOAuth: 'All OAuth accounts',
+        scope: 'Scope: {scope}',
+        description: 'Checks every OAuth account in the selected group, regardless of pagination, search or other filters. Uses existing requests from the last 30 minutes without model load tests. Rate limits, overload and credential errors are classified separately.',
+        rules: 'Retries of the same account/request count once. A reduction requires errors within 5 minutes, at least 5 affected requests across 3 minutes, and at least 20% of observed requests. Recommended concurrency is halved, with a floor of 1. Wait 30 minutes after a change and assess only new evidence. No recorded errors does not prove high concurrency capacity.',
+        checkedAt: 'Checked at', historical: 'Past check · ', checking: 'Analyzing recent requests…',
+        summary: '{total} OAuth accounts checked; {recommended} reductions recommended',
+        empty: 'No OAuth accounts in this scope. API key pools are excluded.',
+        concurrency: 'Concurrency limit', observed: 'Observed requests', outputs: 'Records with output', p95: 'Forwarding TTFT P95',
+        sharedGroups: 'Shared by {count} groups. A concurrency change affects all of them.',
+        selectAccount: 'Select concurrency adjustment for account #{id}', conflict: 'Account state changed. Skipped; check again.',
+        recheck: 'Check again', apply: 'Apply recommendations ({count})', restore: 'Restore to {value}',
+        applied: '{done} accounts updated; {skipped} skipped. Changed account state or stale reports are skipped. Check again to refresh.',
+        failed: 'The operation did not complete. Saved results are retained. Check again before retrying.',
+        status: { insufficient: 'Needs observation', stable: 'Recently stable', rate_limited: 'Rate limits observed', quota_limited: 'Quota limited', overloaded: 'Upstream 503', auth_error: 'Authorization error', upstream_error: 'Upstream error' },
+        reason: {
+          insufficient: 'Insufficient evidence. Keep the current concurrency.', observe: 'Errors recorded, but reduction criteria have not been met.',
+          refresh_credentials: 'Check authorization, account status and access restrictions. Refresh expired credentials and verify a request. Concurrency is unchanged.',
+          wait_reset: 'Quota or rate-limit cooldown is active. Preserve the reset time; lowering concurrency does not replenish quota.',
+          inspect_errors: 'Other upstream errors need investigation. Concurrency is unchanged.',
+          observed_stable: 'Recent output with none of these upstream errors recorded. Keep concurrency; this is not a capacity test.',
+          shared_credential: 'Parent and shadow accounts share credentials. Assess capacity together; no adjustment is made.',
+          paused: 'Account is disabled or scheduling is paused. Report only; do not adjust or reactivate.',
+          cooldown: 'Temporary cooldown remains active. Keep the current settings.', change_cooldown: 'Concurrency changed. Observe new requests; no further reductions for 30 minutes.',
+          reduce_concurrency: 'Sustained 429 or 503 responses meet protection criteria. Reduce concurrency and observe; 503 can also indicate an upstream service outage.'
+        },
+        change: { reduce: 'Concurrency reduced', restore: 'Concurrency restored' }
+      },
       title: 'Account Management',
       description: 'Manage AI platform accounts and credentials',
       createAccount: 'Create Account',

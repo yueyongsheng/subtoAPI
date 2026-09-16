@@ -1,5 +1,33 @@
 export default {
     accounts: {
+      oauthHealth: {
+        button: 'OAuth 检测', title: 'OAuth 账号检测与并发优化', allOAuth: '全站 OAuth 账号',
+        scope: '检测范围：{scope}',
+        description: '按所选分组检查全部 OAuth 账号，不受分页、搜索或其他筛选影响。读取近 30 分钟已有请求记录，不发起模型压测；429 限流、503 服务异常和授权异常分别标记。',
+        rules: '同一账号的同一请求重试只计一次。近 5 分钟仍有异常，且至少 5 个请求、跨 3 个分钟、占已观测请求至少 20% 时，建议并发减半（最低 1）。调整后观察 30 分钟，仅使用调整后的新样本。无异常不代表已验证高并发容量。',
+        checkedAt: '检测时间', historical: '历史检测 · ', checking: '正在分析近期请求…',
+        summary: '检测 {total} 个 OAuth 账号，{recommended} 个建议降低并发',
+        empty: '此范围没有 OAuth 账号；API Key 号池不参与本次检测。',
+        concurrency: '并发上限', observed: '已观测请求', outputs: '有输出记录', p95: '转发阶段首字 P95',
+        sharedGroups: '账号共用 {count} 个分组，并发修改对这些分组共同生效。',
+        selectAccount: '选择账号 #{id} 的并发调整', conflict: '账号状态已变化，本次跳过，请重新检测。',
+        recheck: '重新检测', apply: '应用并发建议（{count}）', restore: '恢复至 {value}',
+        applied: '已处理 {done} 个账号，跳过 {skipped} 个。账号状态或检测结果变化时会跳过，请重新检测后查看。',
+        failed: '检测或处理未完成。已保存的结果会保留，请重新检测后再操作。',
+        status: { insufficient: '待观察', stable: '近期稳定', rate_limited: '出现限流', quota_limited: '额度受限', overloaded: '上游 503', auth_error: '授权异常', upstream_error: '上游异常' },
+        reason: {
+          insufficient: '有效样本不足，保持当前并发。', observe: '已记录异常，尚未满足降低并发的条件。',
+          refresh_credentials: '检查授权、账号状态及访问限制；确认凭据过期时刷新并验证，本次保持并发。',
+          wait_reset: '存在额度或限流冷却，保留现有恢复时间；降低并发不会补充额度。',
+          inspect_errors: '存在其他上游错误，需检查具体原因，本次保持并发。',
+          observed_stable: '近期有输出且未记录到这些上游错误，保持当前并发；这不是容量压测结论。',
+          shared_credential: '母子账号共用凭据，请联合评估并发，本次保持配置。',
+          paused: '账号已停用或暂停调度，本次只标记，不调整或重新启用。',
+          cooldown: '账号仍在临时冷却中，保持现有设置。', change_cooldown: '已调整并发，先观察新请求；30 分钟内不重复降低。',
+          reduce_concurrency: '持续 429 或 503 达到保护条件，建议降低并发并观察；503 也可能来自上游服务故障。'
+        },
+        change: { reduce: '已降低并发', restore: '已恢复并发' }
+      },
       title: '账号管理',
       description: '管理 AI 平台账号和 Cookie',
       createAccount: '添加账号',
