@@ -4,10 +4,17 @@ export interface OAuthHealthChange {
   at: string
   before: number
   after: number
-  action: 'reduce' | 'restore'
+  action: 'reduce' | 'restore' | 'increase' | 'rollback' | 'cooldown'
   actor_id: number
 }
 export interface OAuthHealth {
+  policy_version?: number
+  action?: 'reduce' | 'increase' | 'rollback' | 'cooldown' | ''
+  observation_started_at?: string
+  hold_until?: string
+  cooldown_until?: string
+  manual_concurrency?: boolean
+  required_models?: string[]
   account_id: number
   checked_at: string
   window_start: string
@@ -17,6 +24,9 @@ export interface OAuthHealth {
   concurrency: number
   recommended_concurrency: number
   stats: {
+    current_concurrency?: number
+    output_minutes?: number
+    models?: { model: string; output_requests: number; error_requests: number; had_error: boolean }[]
     observed_requests: number
     output_requests: number
     rate_limited_requests: number
@@ -69,7 +79,7 @@ export function readOAuthHealth(value: unknown): OAuthHealth | null {
 }
 
 export function oauthHealthTone(status: string) {
-  if (status === 'stable') return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+  if (['stable', 'recovered'].includes(status)) return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
   if (['rate_limited', 'quota_limited', 'overloaded'].includes(status)) return 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
   if (['auth_error', 'upstream_error'].includes(status)) return 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
   return 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-gray-300'

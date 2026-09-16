@@ -25,7 +25,7 @@
               </div>
               <p v-if="account.group_ids?.length > 1" class="mt-1 text-xs text-amber-700 dark:text-amber-300">{{ t('admin.accounts.oauthHealth.sharedGroups', { count: account.group_ids.length }) }}</p>
             </div>
-            <span class="whitespace-nowrap text-sm">{{ t('admin.accounts.oauthHealth.concurrency') }} <strong>{{ account.concurrency }}</strong><span v-if="canAdjust(account)" class="text-amber-700 dark:text-amber-300"> → {{ account.health?.recommended_concurrency }}</span></span>
+            <span class="whitespace-nowrap text-sm">{{ t('admin.accounts.oauthHealth.concurrency') }} <strong>{{ account.concurrency }}</strong><span v-if="canAdjust(account)" class="text-amber-700 dark:text-amber-300"> → {{ account.health?.action === 'cooldown' ? t('admin.accounts.oauthHealth.cooldownAction') : account.health?.recommended_concurrency }}</span></span>
           </div>
           <template v-if="account.health">
             <div class="mt-3 grid grid-cols-2 gap-x-5 gap-y-2 text-xs sm:grid-cols-4">
@@ -37,11 +37,16 @@
               <span>500 / 502 / 504 <b>{{ account.health.stats.other_error_requests }}</b></span>
               <span class="col-span-2">{{ t('admin.accounts.oauthHealth.p95') }} <b>{{ account.health.stats.p95_first_token_ms == null ? '—' : `${(account.health.stats.p95_first_token_ms / 1000).toFixed(2)}s` }}</b></span>
             </div>
+            <p class="mt-3 text-xs text-gray-500">{{ t('admin.accounts.oauthHealth.pressureSummary', { count: account.health.stats.pressure_requests, total: account.health.stats.observed_requests, rate: pressureRate(account), last: account.health.stats.latest_pressure_at ? formatTime(account.health.stats.latest_pressure_at) : '—' }) }}</p>
+            <p v-if="account.health.stats.current_concurrency != null" class="mt-1 text-xs text-gray-500">{{ t('admin.accounts.oauthHealth.currentLoad', { value: account.health.stats.current_concurrency, limit: account.concurrency }) }}</p>
+            <p v-if="account.health.required_models?.length" class="mt-1 break-all text-xs text-gray-500">{{ t('admin.accounts.oauthHealth.recoveryModels', { models: account.health.required_models.join(', ') }) }}</p>
             <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">{{ account.outcome === 'conflict' ? t('admin.accounts.oauthHealth.conflict') : t(`admin.accounts.oauthHealth.reason.${account.health.reason}`) }}</p>
+            <p v-if="account.health.hold_until" class="mt-1 text-xs text-gray-500">{{ t('admin.accounts.oauthHealth.holdUntil', { time: formatTime(account.health.hold_until) }) }}</p>
+            <p v-if="account.health.cooldown_until" class="mt-1 text-xs text-gray-500">{{ t('admin.accounts.oauthHealth.cooldownUntil', { time: formatTime(account.health.cooldown_until) }) }}</p>
+            <div v-if="canAdjust(account)" class="mt-3"><button class="btn btn-secondary text-xs" :disabled="busy" @click="change([account], false)">{{ t(`admin.accounts.oauthHealth.action.${account.health.action}`, { value: account.health.recommended_concurrency }) }}</button></div>
             <p class="mt-1 text-xs text-gray-500">{{ formatTime(account.health.window_start) }} — {{ formatTime(account.health.window_end) }} (UTC+8)</p>
             <div v-if="account.health.last_change" class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-xs dark:border-dark-700">
               <span>{{ t(`admin.accounts.oauthHealth.change.${account.health.last_change.action}`) }} {{ account.health.last_change.before }} → {{ account.health.last_change.after }} · {{ formatTime(account.health.last_change.at) }}</span>
-              <button v-if="account.health.last_change.action === 'reduce' && account.concurrency === account.health.last_change.after" class="btn btn-secondary text-xs" :disabled="busy" @click="change([account], true)">{{ t('admin.accounts.oauthHealth.restore', { value: account.health.last_change.before }) }}</button>
             </div>
           </template>
         </div>
@@ -71,7 +76,8 @@ const busy = ref(false)
 const error = ref('')
 const message = ref('')
 const selected = ref<number[]>([])
-const canAdjust = (a: OAuthHealthAccount) => a.outcome !== 'conflict' && a.health?.reason === 'reduce_concurrency' && a.health.recommended_concurrency < a.concurrency
+const canAdjust = (a: OAuthHealthAccount) => a.outcome !== 'conflict' && a.health?.policy_version === 2 && ['reduce', 'increase', 'rollback', 'cooldown'].includes(a.health.action ?? '')
+const pressureRate = (a: OAuthHealthAccount) => a.health?.stats.observed_requests ? (a.health.stats.pressure_requests / a.health.stats.observed_requests * 100).toFixed(2) : '0.00'
 const recommendations = computed(() => report.value?.accounts.filter(canAdjust) ?? [])
 const selectedAccounts = computed(() => recommendations.value.filter(a => selected.value.includes(a.id)))
 const formatTime = (value: string) => new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
@@ -93,7 +99,7 @@ async function change(accounts: OAuthHealthAccount[], restore: boolean) {
     const result = await adjustOAuthHealth(props.groupId, accounts, restore)
     const updates = new Map(result.accounts.map(a => [a.id, a]))
     if (report.value) report.value.accounts = report.value.accounts.map(a => updates.get(a.id) ?? a)
-    const done = result.accounts.filter(a => a.outcome === 'reduce' || a.outcome === 'restore').length
+    const done = result.accounts.filter(a => ['reduce', 'increase', 'rollback', 'cooldown'].includes(a.outcome ?? '')).length
     message.value = t('admin.accounts.oauthHealth.applied', { done, skipped: result.accounts.length - done })
     selected.value = []; emit('updated')
   } catch { error.value = t('admin.accounts.oauthHealth.failed'); selected.value = []; emit('updated') }

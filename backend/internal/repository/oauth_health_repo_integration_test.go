@@ -49,6 +49,10 @@ func TestOAuthHealthSQLScopeDedupAndAtomicAdjustment(t *testing.T) {
 	require.Equal(t, 2, stats[1].PressureRequests)
 	require.Equal(t, 1, stats[2].OverloadedRequests) // failing-over account attribution
 	require.InDelta(t, 2150, *stats[1].P95FirstTokenMS, 0.01)
+	require.Equal(t, 2, stats[1].OutputMinutes)
+	require.Len(t, stats[1].Models, 1)
+	require.True(t, stats[1].Models[0].HadError)
+	require.Equal(t, 2, stats[1].Models[0].OutputRequests)
 	// Array attribution wins even when every failed account is outside the scope.
 	finalAccount, err := r.ObserveOAuthHealth(ctx, []service.OAuthHealthObservationScope{{ID: 4, Since: end.Add(-30 * time.Minute)}}, end)
 	require.NoError(t, err)
@@ -85,4 +89,45 @@ func TestOAuthHealthSQLScopeDedupAndAtomicAdjustment(t *testing.T) {
 	saved, err = r.SaveOAuthHealth(ctx, a, h, 2, &group)
 	require.NoError(t, err)
 	require.False(t, saved) // scope changed
+}
+
+func TestOAuthHealthCooldownNeedsEveryGroupAndWritesOutbox(t *testing.T) {
+	ctx := context.Background()
+	tx, err := integrationDB.BeginTx(ctx, nil)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback() }()
+	_, err = tx.ExecContext(ctx, oauthHealthFixtureSQL)
+	require.NoError(t, err)
+	r := newAccountRepositoryWithSQL(nil, tx, nil)
+	accounts, err := r.ListOAuthHealthAccounts(ctx, nil)
+	require.NoError(t, err)
+	a := accounts[0]
+	now := time.Now().UTC()
+	_, err = tx.ExecContext(ctx, "INSERT INTO usage_logs(id,request_id,account_id,created_at,output_tokens,model) VALUES(20,'alternative',2,$1,20,'fixture-model')", now.Add(-time.Minute))
+	require.NoError(t, err)
+	models := []string{"fixture-model"}
+	ids, err := r.OAuthHealthCooldownAlternatives(ctx, a, models, now, nil)
+	require.NoError(t, err)
+	require.Empty(t, ids)
+	_, err = tx.ExecContext(ctx, "INSERT INTO account_groups VALUES(2,15)")
+	require.NoError(t, err)
+	ids, err = r.OAuthHealthCooldownAlternatives(ctx, a, models, now, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, ids)
+	blocked, err := r.OAuthHealthCooldownAlternatives(ctx, a, models, now, []int64{2})
+	require.NoError(t, err)
+	require.Empty(t, blocked)
+	until := now.Add(3 * time.Minute)
+	h := &service.OAuthHealth{PolicyVersion: 2, AccountID: a.ID, CheckedAt: now, Concurrency: a.Concurrency, RequiredModels: models, CooldownModels: models, CooldownAlternatives: ids, CooldownUntil: &until, LastChange: &service.OAuthHealthChange{At: now, Action: "cooldown", Before: a.Concurrency, After: a.Concurrency}}
+	saved, err := r.SaveOAuthHealth(ctx, a, h, a.Concurrency, nil)
+	require.NoError(t, err)
+	require.True(t, saved)
+	var got time.Time
+	var reason string
+	var notices int
+	require.NoError(t, tx.QueryRowContext(ctx, "SELECT temp_unschedulable_until,temp_unschedulable_reason FROM accounts WHERE id=1").Scan(&got, &reason))
+	require.WithinDuration(t, until, got, time.Microsecond)
+	require.Equal(t, "oauth_health_cooldown", reason)
+	require.NoError(t, tx.QueryRowContext(ctx, "SELECT count(*) FROM scheduler_outbox").Scan(&notices))
+	require.Equal(t, 1, notices)
 }

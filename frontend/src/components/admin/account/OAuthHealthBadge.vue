@@ -17,5 +17,5 @@ const health = computed(() => {
   return props.accountId != null && h?.account_id !== props.accountId ? null : h
 })
 const stale = computed(() => health.value && now.value.getTime() - Date.parse(health.value.checked_at) > 30 * 60000)
-const tooltip = computed(() => health.value ? `${t('admin.accounts.oauthHealth.checkedAt')}: ${new Date(health.value.checked_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} (UTC+8) · ${t(`admin.accounts.oauthHealth.reason.${health.value.reason}`)}` : '')
+const tooltip = computed(() => health.value ? `${t('admin.accounts.oauthHealth.checkedAt')}: ${new Date(health.value.checked_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} (UTC+8) · ${t(`admin.accounts.oauthHealth.reason.${health.value.reason}`)} · ${t('admin.accounts.oauthHealth.shortEvidence', { count: health.value.stats.pressure_requests, total: health.value.stats.observed_requests })}` : '')
 </script>

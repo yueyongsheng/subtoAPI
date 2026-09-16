@@ -9,7 +9,7 @@ vi.mock('@/api/client', () => ({ apiClient: {} }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string, args?: object) => key + (args ? JSON.stringify(args) : '') }) }))
 
 const account = (id = 1): OAuthHealthAccount => ({ id, name: `fixture-${id}`, platform: 'openai', group_ids: [15, 16], concurrency: 10, schedulable: true, outcome: 'checked', health: {
-  account_id: id, checked_at: new Date().toISOString(), window_start: new Date(Date.now() - 30 * 60000).toISOString(), window_end: new Date().toISOString(), status: 'rate_limited', reason: 'reduce_concurrency', concurrency: 10, recommended_concurrency: 5,
+  policy_version: 2, action: 'reduce', account_id: id, checked_at: new Date().toISOString(), window_start: new Date(Date.now() - 30 * 60000).toISOString(), window_end: new Date().toISOString(), status: 'rate_limited', reason: 'reduce_concurrency', concurrency: 10, recommended_concurrency: 5,
   stats: { observed_requests: 20, output_requests: 15, rate_limited_requests: 5, quota_requests: 0, overloaded_requests: 0, auth_requests: 0, other_error_requests: 0, pressure_requests: 5, pressure_minutes: 3 }
 } })
 const render = (groupId: number | null = 15) => mount(OAuthHealthDialog, { props: { show: true, groupId, scopeLabel: 'fixture-group' }, global: { stubs: { BaseDialog: { template: '<div><slot/><slot name="footer"/></div>' } } } })
@@ -25,15 +25,23 @@ describe('OAuth health controls', () => {
     expect(w.text()).toContain('sharedGroups')
     w.unmount()
   })
-  it('applies selected recommendations and offers restoration', async () => {
+  it('applies recommendations without an unguarded restore shortcut', async () => {
     const w = render(); await flushPromises()
-    const a = account(); a.concurrency = 5; a.outcome = 'reduce'; a.health!.concurrency = 5; a.health!.recommended_concurrency = 5; a.health!.reason = 'change_cooldown'; a.health!.last_change = { at: new Date().toISOString(), before: 10, after: 5, action: 'reduce', actor_id: 1 }
+    const a = account(); a.concurrency = 5; a.outcome = 'reduce'; a.health!.concurrency = 5; a.health!.recommended_concurrency = 5; a.health!.reason = 'change_cooldown'; a.health!.action = '';  a.health!.last_change = { at: new Date().toISOString(), before: 10, after: 5, action: 'reduce', actor_id: 1 }
     vi.mocked(adjustOAuthHealth).mockResolvedValue({ checked_at: new Date().toISOString(), group_id: 15, accounts: [a] })
     await button(w, '.apply').trigger('click'); await flushPromises()
     expect(adjustOAuthHealth).toHaveBeenCalledWith(15, [expect.objectContaining({ id: 1 })], false)
     expect(button(w, '.apply').attributes('disabled')).toBeDefined()
-    await button(w, '.restore').trigger('click'); await flushPromises()
-    expect(adjustOAuthHealth).toHaveBeenLastCalledWith(15, [expect.objectContaining({ concurrency: 5 })], true)
+    expect(w.findAll('button').some(b => b.text().includes('.restore'))).toBe(false)
+    w.unmount()
+  })
+  it.each(['increase', 'cooldown', 'rollback'] as const)('offers actionable %s recommendations', async action => {
+    const a = account(); a.health!.action = action; a.health!.reason = action === 'increase' ? 'increase_concurrency' : action === 'cooldown' ? 'cooldown_recommended' : 'rollback_increase'
+    a.health!.recommended_concurrency = action === 'increase' ? 15 : action === 'cooldown' ? 10 : 5
+    vi.mocked(checkOAuthHealth).mockResolvedValueOnce({ checked_at: new Date().toISOString(), group_id: 15, accounts: [a] })
+    const w = render(); await flushPromises()
+    expect(button(w, '.apply').attributes('disabled')).toBeUndefined()
+    expect(w.text()).toContain(`.action.${action}`)
     w.unmount()
   })
   it('does not apply conflicting or insufficient evidence', async () => {

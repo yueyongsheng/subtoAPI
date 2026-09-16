@@ -657,6 +657,8 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 	requestedProbeEnabledUpdate := input.ProbeEnabled
 	requestedRateSyncEnabledUpdate := input.RateSyncEnabled
 	if input.Extra != nil {
+		delete(normalizedExtra, OAuthHealthExtraKey)
+		delete(normalizedExtra, OAuthHealthManualKey)
 		requestedProbeEnabled, hasRequestedProbeEnabled := normalizedExtra[UpstreamBillingProbeEnabledExtraKey]
 		if hasRequestedProbeEnabled {
 			enabled, ok := requestedProbeEnabled.(bool)
@@ -676,6 +678,7 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 		delete(normalizedExtra, OllamaCloudUsageSnapshotExtraKey)
 		// 保留配额用量和专用服务受管字段，防止普通账号编辑意外覆盖。
 		for _, key := range []string{
+			OAuthHealthExtraKey, OAuthHealthManualKey,
 			"quota_used",
 			"quota_daily_used",
 			"quota_daily_start",
@@ -777,7 +780,14 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 	}
 	// 只在指针非 nil 时更新 Concurrency（支持设置为 0）
 	if input.Concurrency != nil {
-		account.Concurrency = normalizeAccountConcurrency(account.Platform, account.Type, *input.Concurrency)
+		next := normalizeAccountConcurrency(account.Platform, account.Type, *input.Concurrency)
+		if account.Type == AccountTypeOAuth && next != account.Concurrency {
+			if account.Extra == nil {
+				account.Extra = map[string]any{}
+			}
+			account.Extra[OAuthHealthManualKey] = time.Now().UTC().Format(time.RFC3339Nano)
+		}
+		account.Concurrency = next
 	}
 	// 只在指针非 nil 时更新 Priority（支持设置为 0）
 	if input.Priority != nil {
@@ -930,6 +940,8 @@ func (s *adminServiceImpl) UpdateAccountExtra(ctx context.Context, id int64, upd
 func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUpdateAccountsInput) (*BulkUpdateAccountsResult, error) {
 	// Managed probe/session state may only enter through dedicated typed endpoints.
 	input.Extra = sanitizedCodexFingerprintExtraUpdates(input.Extra)
+	delete(input.Extra, OAuthHealthExtraKey)
+	delete(input.Extra, OAuthHealthManualKey)
 	input.Extra = stripOpenAIAutoResetCreditManagedExtra(input.Extra, true)
 	delete(input.Extra, UpstreamBillingProbeEnabledExtraKey)
 	delete(input.Extra, UpstreamBillingRateSyncEnabledExtraKey)
@@ -1115,6 +1127,10 @@ func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUp
 	}
 	if input.Concurrency != nil {
 		repoUpdates.Concurrency = input.Concurrency
+		if repoUpdates.Extra == nil {
+			repoUpdates.Extra = map[string]any{}
+		}
+		repoUpdates.Extra[OAuthHealthManualKey] = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 	if input.Priority != nil {
 		repoUpdates.Priority = input.Priority

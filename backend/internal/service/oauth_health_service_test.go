@@ -36,9 +36,9 @@ func TestOAuthHealthClassificationAndGuards(t *testing.T) {
 		{"temporary cooldown", "rate_limited", "cooldown", 10, func(a *OAuthHealthAccount, _ *OAuthHealthStats) { a.TempUnschedulableUntil = &future }},
 		{"shadow", "rate_limited", "shared_credential", 10, func(a *OAuthHealthAccount, _ *OAuthHealthStats) { id := int64(99); a.ParentAccountID = &id }},
 		{"parent", "rate_limited", "shared_credential", 10, func(a *OAuthHealthAccount, _ *OAuthHealthStats) { a.HasChildren = true }},
-		{"floor", "rate_limited", "observe", 1, func(a *OAuthHealthAccount, _ *OAuthHealthStats) { a.Concurrency = 1 }},
+		{"floor", "rate_limited", "manual_concurrency", 1, func(a *OAuthHealthAccount, _ *OAuthHealthStats) { a.Concurrency = 1 }},
 		{"empty", "insufficient", "insufficient", 10, func(_ *OAuthHealthAccount, s *OAuthHealthStats) { *s = OAuthHealthStats{} }},
-		{"stable", "stable", "observed_stable", 10, func(_ *OAuthHealthAccount, s *OAuthHealthStats) {
+		{"stable", "stable", "recovery_observation", 10, func(_ *OAuthHealthAccount, s *OAuthHealthStats) {
 			*s = OAuthHealthStats{OutputRequests: 20, ObservedRequests: 20}
 		}},
 		{"incomplete output", "insufficient", "insufficient", 10, func(_ *OAuthHealthAccount, s *OAuthHealthStats) { *s = OAuthHealthStats{ObservedRequests: 30} }},
@@ -46,7 +46,7 @@ func TestOAuthHealthClassificationAndGuards(t *testing.T) {
 			*s = OAuthHealthStats{OutputRequests: 30, OtherErrorRequests: 1}
 		}},
 		{"change cooldown", "rate_limited", "change_cooldown", 10, func(a *OAuthHealthAccount, _ *OAuthHealthStats) {
-			a.RawHealth, _ = json.Marshal(OAuthHealth{AccountID: a.ID, CheckedAt: now, LastChange: &OAuthHealthChange{At: recent}})
+			a.RawHealth, _ = json.Marshal(OAuthHealth{AccountID: a.ID, Concurrency: a.Concurrency, CheckedAt: now, LastChange: &OAuthHealthChange{At: recent}})
 		}},
 	}
 	for _, tt := range cases {
@@ -62,13 +62,30 @@ func TestOAuthHealthClassificationAndGuards(t *testing.T) {
 }
 
 type healthMemoryRepo struct {
-	accounts    []OAuthHealthAccount
-	stats       map[int64]OAuthHealthStats
-	scopes      []OAuthHealthObservationScope
-	group       *int64
-	failObserve bool
-	conflict    bool
-	saves       int
+	accounts     []OAuthHealthAccount
+	stats        map[int64]OAuthHealthStats
+	scopes       []OAuthHealthObservationScope
+	group        *int64
+	failObserve  bool
+	conflict     bool
+	saves        int
+	alternatives []int64
+}
+
+func (r *healthMemoryRepo) OAuthHealthCooldownAlternatives(_ context.Context, _ OAuthHealthAccount, _ []string, _ time.Time, excluded []int64) ([]int64, error) {
+	result := []int64{}
+	for _, id := range r.alternatives {
+		found := false
+		for _, x := range excluded {
+			if id == x {
+				found = true
+			}
+		}
+		if !found {
+			result = append(result, id)
+		}
+	}
+	return result, nil
 }
 
 func (r *healthMemoryRepo) ListOAuthHealthAccounts(_ context.Context, g *int64) ([]OAuthHealthAccount, error) {
@@ -91,6 +108,9 @@ func (r *healthMemoryRepo) SaveOAuthHealth(_ context.Context, a OAuthHealthAccou
 		if r.accounts[i].ID == a.ID {
 			r.accounts[i].RawHealth, _ = json.Marshal(h)
 			r.accounts[i].Concurrency = target
+			if h.LastChange != nil && h.LastChange.Action == "cooldown" {
+				r.accounts[i].TempUnschedulableUntil = h.CooldownUntil
+			}
 		}
 	}
 	return true, nil
@@ -127,9 +147,9 @@ func TestOAuthHealthCheckApplyRepeatRestore(t *testing.T) {
 	require.Equal(t, "change_cooldown", report.Accounts[0].Health.Reason)
 	restored, err := s.Change(ctx, nil, []OAuthHealthSelection{{ID: 1, CheckedAt: report.Accounts[0].Health.CheckedAt}}, true, 42)
 	require.NoError(t, err)
-	require.Equal(t, "restore", restored.Accounts[0].Outcome)
-	require.Equal(t, 10, r.accounts[0].Concurrency)
-	require.Len(t, restored.Accounts[0].Health.History, 2)
+	require.Equal(t, "conflict", restored.Accounts[0].Outcome)
+	require.Equal(t, 5, r.accounts[0].Concurrency)
+	require.Len(t, restored.Accounts[0].Health.History, 1)
 }
 func TestOAuthHealthStaleConcurrentAndDisabled(t *testing.T) {
 	for _, mode := range []string{"stale", "manual change", "paused", "rescan", "cas conflict", "outside scope", "monitoring disabled"} {
