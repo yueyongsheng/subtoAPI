@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { getOverview, type AdminUserOverview } from '@/api/admin/users'
 import UserOverviewStats from '../UserOverviewStats.vue'
 
-vi.mock('@/api/admin/users', () => ({ getOverview: vi.fn() }))
+vi.mock('@/api/admin/users', () => ({ getOverview: vi.fn(), getSpendingRanking: vi.fn(), getConcurrencyRanking: vi.fn() }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string, values?: Record<string, unknown>) => values ? `${key} ${JSON.stringify(values)}` : key }) }))
 
 const snapshot: AdminUserOverview = {
@@ -43,14 +43,14 @@ describe('UserOverviewStats', () => {
     await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
     expect(getOverview).toHaveBeenCalledTimes(1)
     vi.mocked(getOverview).mockResolvedValueOnce({ ...snapshot, current_concurrency: 12, max_user_concurrency: 8, today_user_cost: 250.50, today_user_cost_cny: 10.02 })
-    await wrapper.get('button').trigger('click')
+    await wrapper.get('[data-testid="overview-refresh"]').trigger('click')
     await flushPromises()
     expect(wrapper.get('[data-testid="overview-concurrency"]').text()).toContain('12')
     expect(wrapper.get('[data-testid="overview-max-concurrency"]').text()).toContain('8')
     expect(wrapper.get('[data-testid="overview-today-spend"]').text()).toBe('$250.50')
     expect(wrapper.get('[data-testid="overview-today-spend-cny"]').text()).toContain('10.02')
     vi.mocked(getOverview).mockRejectedValueOnce(new Error('network'))
-    await wrapper.get('button').trigger('click')
+    await wrapper.get('[data-testid="overview-refresh"]').trigger('click')
     await flushPromises()
     expect(wrapper.get('[role="alert"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="overview-balance"]').text()).toBe('$240,073.05')

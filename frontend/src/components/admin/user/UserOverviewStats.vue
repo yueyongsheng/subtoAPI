@@ -20,10 +20,11 @@
         </p>
       </div>
       <div class="min-w-0 border-t border-gray-100 pt-4 dark:border-dark-600 sm:border-t-0 sm:pt-0 xl:border-l xl:pl-5">
-        <p class="mb-2 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
+        <div class="mb-2 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
           <Icon name="chart" size="sm" class="text-primary-500" />
-          {{ t('admin.users.overview.todaySpend') }}
-        </p>
+          <span class="min-w-0 truncate" :title="t('admin.users.overview.todaySpend')">{{ t('admin.users.overview.todaySpend') }}</span>
+          <UserRankingDropdown kind="spending" />
+        </div>
         <p class="flex flex-wrap items-baseline gap-x-2 text-3xl font-semibold tabular-nums text-gray-800 dark:text-white">
           <span data-testid="overview-today-spend">{{ stats ? money(stats.today_user_cost, 'USD') : '—' }}</span>
           <span class="text-xs font-normal text-gray-500 dark:text-dark-300">USD</span>
@@ -47,10 +48,11 @@
         <p class="mt-3 text-xs text-gray-500 dark:text-dark-300">{{ stats && stats.current_concurrency === null ? t('admin.users.overview.concurrencyUnavailable') : t('admin.users.overview.concurrencyHint') }}</p>
       </div>
       <div class="min-w-0 border-t border-gray-100 pt-4 dark:border-dark-600 sm:border-t-0 sm:pt-0 xl:border-l xl:pl-5">
-        <p class="mb-2 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
+        <div class="mb-2 flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
           <Icon name="bolt" size="sm" class="text-primary-500" />
-          {{ t('admin.users.overview.maxConcurrency') }}
-        </p>
+          <span class="min-w-0 truncate" :title="t('admin.users.overview.maxConcurrency')">{{ t('admin.users.overview.maxConcurrency') }}</span>
+          <UserRankingDropdown kind="concurrency" />
+        </div>
         <p class="text-3xl font-semibold tabular-nums text-gray-800 dark:text-white" data-testid="overview-max-concurrency">
           {{ stats?.max_user_concurrency ?? '—' }}
           <span v-if="stats?.max_user_concurrency != null" class="text-xs font-normal text-gray-500 dark:text-dark-300">{{ t('admin.users.overview.requests') }}</span>
@@ -87,7 +89,7 @@
         <p v-if="error" role="alert" class="text-red-600 dark:text-red-400">{{ t('admin.users.overview.loadFailed') }}</p>
         <p class="mt-1 text-gray-500 dark:text-dark-300">{{ t('admin.users.overview.scope') }}</p>
       </div>
-      <button type="button" class="btn btn-secondary" :disabled="loading" @click="refreshOverview">
+      <button type="button" class="btn btn-secondary" :disabled="loading" data-testid="overview-refresh" @click="refreshOverview">
         <Icon name="refresh" size="sm" :class="{ 'animate-spin': loading }" />
         {{ t('admin.users.overview.refresh') }}
       </button>
@@ -100,6 +102,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getOverview, type AdminUserOverview } from '@/api/admin/users'
 import Icon from '@/components/icons/Icon.vue'
+import UserRankingDropdown from './UserRankingDropdown.vue'
 
 const { t } = useI18n()
 const emit = defineEmits<{ refresh: [] }>()

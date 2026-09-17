@@ -420,6 +420,36 @@ export async function getOverview(signal?: AbortSignal): Promise<AdminUserOvervi
   return data
 }
 
+export interface AdminUserSpendingRanking {
+  queried_at: string
+  window_start: string
+  users: Array<{
+    user_id: number
+    user: AdminUserOverview['max_concurrency_user']
+    cost: number
+    cost_cny: number
+  }>
+}
+
+export interface AdminUserConcurrencyRanking {
+  queried_at: string
+  users: Array<{
+    user_id: number
+    user: AdminUserOverview['max_concurrency_user']
+    current_concurrency: number
+  }>
+}
+
+export async function getSpendingRanking(signal?: AbortSignal): Promise<AdminUserSpendingRanking> {
+  const { data } = await apiClient.get<AdminUserSpendingRanking>('/admin/users/overview/spending-ranking', { signal })
+  return data
+}
+
+export async function getConcurrencyRanking(signal?: AbortSignal): Promise<AdminUserConcurrencyRanking> {
+  const { data } = await apiClient.get<AdminUserConcurrencyRanking>('/admin/users/overview/concurrency-ranking', { signal })
+  return data
+}
+
 export const usersAPI = {
   getOverview,
   list,

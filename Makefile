@@ -6,6 +6,7 @@ FRONTEND_CRITICAL_VITEST := \
 	src/components/admin/account/__tests__/OAuthHealthDialog.spec.ts \
 	src/views/admin/__tests__/AccountsView.oauthHealth.spec.ts \
 	src/components/admin/user/__tests__/UserOverviewStats.spec.ts \
+	src/components/admin/user/__tests__/UserRankingDropdown.spec.ts \
 	src/views/admin/__tests__/UsersView.spec.ts \
 	src/views/admin/__tests__/UsageView.spec.ts \
 	src/components/admin/usage/__tests__/UsageStatsCards.spec.ts \

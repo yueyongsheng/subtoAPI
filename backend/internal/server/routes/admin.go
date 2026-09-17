@@ -302,6 +302,8 @@ func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		users.GET("", h.Admin.User.List)
 		users.GET("/overview", h.Admin.User.GetOverview)
+		users.GET("/overview/spending-ranking", h.Admin.User.GetSpendingRanking)
+		users.GET("/overview/concurrency-ranking", h.Admin.User.GetConcurrencyRanking)
 		users.GET("/:id", h.Admin.User.GetByID)
 		users.POST("/:id/auth-identities", h.Admin.User.BindAuthIdentity)
 		users.POST("", h.Admin.User.Create)
