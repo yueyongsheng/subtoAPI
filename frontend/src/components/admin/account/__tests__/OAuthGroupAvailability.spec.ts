@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { getOAuthGroupAvailability } from '@/api/admin/oauthAvailability'
 import OAuthGroupAvailability from '../OAuthGroupAvailability.vue'
+import HelpTooltip from '@/components/common/HelpTooltip.vue'
 
 vi.mock('@/api/admin/oauthAvailability', () => ({ getOAuthGroupAvailability: vi.fn() }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
@@ -19,7 +20,7 @@ describe('OAuth group availability', () => {
     expect(w.get('[data-group-id="15"]').text()).toContain('企业pro8')
     expect(w.get('[data-group-id="2"] dd').text()).toMatch(/^0/)
     expect(w.text()).toContain('2026-09-17 08:00:00')
-    expect(w.text()).toContain('oauthAvailability.hint')
+    expect(w.findComponent(HelpTooltip).props('content')).toContain('oauthAvailability.hint')
     w.unmount()
   })
   it('does not poll and refreshes only with the statistics refresh key', async () => {
@@ -55,5 +56,43 @@ describe('OAuth group availability', () => {
     const signal = vi.mocked(getOAuthGroupAvailability).mock.calls[0]?.[0]
     w.unmount()
     expect(signal?.aborted).toBe(true)
+  })
+  it('shows the same fewest-first groups in the overview and popup without requesting again', async () => {
+    const groups = [
+      { group_id: 9, group_name: 'Pool nine', available_accounts: 2 },
+      { group_id: 4, group_name: 'Pool four', available_accounts: 0 },
+      { group_id: 2, group_name: 'Pool two', available_accounts: 2 },
+      { group_id: 7, group_name: 'Pool seven', available_accounts: 1 },
+    ]
+    vi.mocked(getOAuthGroupAvailability).mockResolvedValueOnce({ ...snapshot, groups })
+    const w = mount(OAuthGroupAvailability, { attachTo: document.body, props: { refreshKey: 0 } })
+    try {
+      await flushPromises()
+      const order = ['Pool four', 'Pool seven', 'Pool two', 'Pool nine']
+      expect(w.findAll('dt').map(row => row.text())).toEqual(order)
+      const trigger = w.get<HTMLButtonElement>('button[aria-haspopup="dialog"]')
+      await trigger.trigger('click')
+      await flushPromises()
+      const popup = document.querySelector<HTMLElement>('[role="dialog"]')!
+      expect(Array.from(popup.querySelectorAll('dt'), row => row.textContent)).toEqual(order)
+      expect(document.activeElement).toBe(popup)
+      expect(trigger.attributes('aria-expanded')).toBe('true')
+      popup.querySelector('dt')!.click()
+      await flushPromises()
+      expect(document.querySelector('[role="dialog"]')).toBe(popup)
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      await flushPromises()
+      expect(document.querySelector('[role="dialog"]')).toBeNull()
+      expect(document.activeElement).toBe(trigger.element)
+      await trigger.trigger('click')
+      await flushPromises()
+      document.body.click()
+      await flushPromises()
+      expect(document.querySelector('[role="dialog"]')).toBeNull()
+      expect(getOAuthGroupAvailability).toHaveBeenCalledTimes(1)
+      expect(groups.map(group => group.group_id)).toEqual([9, 4, 2, 7])
+    } finally {
+      w.unmount()
+    }
   })
 })

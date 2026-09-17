@@ -5,9 +5,11 @@ const props = withDefaults(defineProps<{
   content?: string
   trigger?: 'hover' | 'click'
   widthClass?: string
+  placement?: 'top' | 'bottom'
 }>(), {
   trigger: 'hover',
   widthClass: 'w-64',
+  placement: 'top',
 })
 
 const show = ref(false)
@@ -80,6 +82,14 @@ function updatePosition() {
   const el = triggerRef.value
   if (!el) return
   const rect = el.getBoundingClientRect()
+  if (props.placement === 'bottom') {
+    const halfWidth = (tooltipRef.value?.offsetWidth || 256) / 2
+    tooltipStyle.value = {
+      top: `${rect.bottom}px`,
+      left: `${Math.max(halfWidth + 12, Math.min(rect.left + rect.width / 2, window.innerWidth - halfWidth - 12))}px`,
+    }
+    return
+  }
   tooltipStyle.value = {
     top: `${rect.top + window.scrollY}px`,
     left: `${rect.left + rect.width / 2 + window.scrollX}px`,
@@ -134,10 +144,12 @@ onBeforeUnmount(() => {
         v-show="show"
         role="tooltip"
         :class="[
-          'fixed z-[99999] -translate-x-1/2 -translate-y-full rounded-lg bg-gray-900 p-3 text-xs leading-relaxed text-white shadow-xl ring-1 ring-white/10 selection:bg-primary-200 selection:text-gray-900 before:absolute before:inset-x-0 before:top-full before:h-3 dark:bg-gray-800 dark:selection:bg-primary-200 dark:selection:text-gray-900',
+          'fixed z-[99999] -translate-x-1/2 rounded-lg bg-gray-900 p-3 text-xs leading-relaxed text-white shadow-xl ring-1 ring-white/10 selection:bg-primary-200 selection:text-gray-900 before:absolute before:inset-x-0 before:h-3 dark:bg-gray-800 dark:selection:bg-primary-200 dark:selection:text-gray-900',
+          props.placement === 'top' ? '-translate-y-full before:top-full' : 'before:bottom-full',
+          props.trigger === 'click' ? 'pr-8' : '',
           props.widthClass,
         ]"
-        :style="{ top: `calc(${tooltipStyle.top} - 8px)`, left: tooltipStyle.left }"
+        :style="{ top: `calc(${tooltipStyle.top} ${props.placement === 'top' ? '-' : '+'} 8px)`, left: tooltipStyle.left }"
         @mouseleave="onTooltipLeave"
       >
         <button
@@ -152,7 +164,7 @@ onBeforeUnmount(() => {
           </svg>
         </button>
         <slot>{{ content }}</slot>
-        <div class="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-800"></div>
+        <div class="absolute left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-800" :class="props.placement === 'top' ? '-bottom-1' : '-top-1'"></div>
       </div>
     </Teleport>
   </div>

@@ -2,6 +2,13 @@ export default {
     accounts: {
       oauthAvailability: {
         title: '分组可用 OAuth', unit: '个', queriedAt: '查询于',
+        details: '查看统计口径',
+        allCount: '全部 {count}',
+        viewAll: '查看全部 {count} 个分组',
+        allGroups: '全部分组',
+        groupName: '分组名称',
+        availableAccounts: '可用 OAuth',
+        sortAscending: '按可用账号数量从少到多排列，数量相同时按分组 ID 排列',
         hint: '仅统计启用分组中状态正常、调度开启且未在限流、过载或临时停调期的 OAuth；未分组不计。共用账号在各组分别计数，忙碌账号仍计入。当前调度状态不代表全部模型调用成功。',
         empty: '启用分组中暂无 OAuth 账号。',
         failed: '分组统计刷新失败；如有旧数据，仍显示上次查询时间。'
