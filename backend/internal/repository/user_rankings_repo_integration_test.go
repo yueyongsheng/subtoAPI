@@ -23,8 +23,9 @@ UPDATE users SET status='disabled' WHERE id=3;`)
 	require.NoError(t, err)
 	start := time.Date(2026, 9, 16, 16, 0, 0, 0, time.UTC)
 	end := start.Add(12 * time.Hour)
-	_, err = tx.ExecContext(ctx, `INSERT INTO usage_logs SELECT n,$1,50,9999 FROM generate_series(1,15) n;
-INSERT INTO usage_logs VALUES (1,$1,25.001,0),(1,$1,25.001,0),(2,$1,50.001,0),
+	_, err = tx.ExecContext(ctx, `INSERT INTO usage_logs SELECT n,$1,50,9999 FROM generate_series(1,15) n`, start)
+	require.NoError(t, err)
+	_, err = tx.ExecContext(ctx, `INSERT INTO usage_logs VALUES (1,$1,25.001,0),(1,$1,25.001,0),(2,$1,50.001,0),
 (14,$1,-50,0),(2,$2,99999,0),(3,$1::timestamptz-interval '1 microsecond',99999,0);`, start, end)
 	require.NoError(t, err)
 	repo := newUserRepositoryWithSQL(nil, tx)
