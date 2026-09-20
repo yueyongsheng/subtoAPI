@@ -78,6 +78,7 @@ function mountView() {
   return mount(AccountsView, {
     global: {
       stubs: {
+      RouterLink: true,
         AppLayout: { template: '<div><slot /></div>' },
         TablePageLayout: {
           template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
@@ -251,3 +252,5 @@ describe('admin AccountsView scheduler score column', () => {
     expect(emptyCell.text()).toBe('-')
   })
 })
+
+vi.mock('@/api/admin/plugins', () => ({ list: async () => [], status: vi.fn() }))

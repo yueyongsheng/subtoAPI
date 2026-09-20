@@ -103,6 +103,7 @@ const AccountTableFiltersStub = {
 const mountView = () => mount(AccountsView, {
   global: {
     stubs: {
+      RouterLink: true,
       AppLayout: { template: '<div><slot /></div>' },
       TablePageLayout: {
         template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
@@ -234,6 +235,10 @@ describe('admin AccountsView select all filtered results', () => {
 
     expect(wrapper.get('[data-test="selected-count"]').text()).toBe('0')
     expect(wrapper.get('[data-test="all-results-selected"]').text()).toBe('false')
+    // Let the filter's debounced reload finish before the next test resets its mock.
+    await new Promise(resolve => setTimeout(resolve, 350))
+    await flushPromises()
+    wrapper.unmount()
   })
 
   it('keeps the original page selection when loading all results fails', async () => {
@@ -263,5 +268,8 @@ describe('admin AccountsView select all filtered results', () => {
     expect(wrapper.get('[data-test="selected-count"]').text()).toBe('20')
     expect(wrapper.get('[data-test="all-results-selected"]').text()).toBe('false')
     expect(showError).toHaveBeenCalledWith('admin.accounts.bulkActions.selectAllFailed')
+    wrapper.unmount()
   })
 })
+
+vi.mock('@/api/admin/plugins', () => ({ list: async () => [], status: vi.fn() }))

@@ -1,5 +1,19 @@
 export default {
     accounts: {
+      stateKit: {
+        refresh: '刷新 STATE', configure: '插件配置', renewalFailed: '续期失败，旧票据仍可用',
+        hint: '显示已配置账号及模型的 STATE 票据状态。每 30 秒只读刷新，页面隐藏时暂停；不额外调用模型。倒计时是票据剩余有效期，不代表账号额度、模型能力或请求成功保证。',
+        queriedAt: '状态查询于 {time}', expiresAt: '票据到期于 {time}', attempts: '最近一轮采集尝试：{count} 次',
+        summary: { loading: 'STATE：读取中', healthy: 'STATE：按模型显示票据状态', disabled: 'STATE：插件已停用', unavailable: 'STATE：状态读取失败，当前有效性待确认', stale: 'STATE：状态待刷新', absent: 'STATE：未安装' },
+        states: { ready: '可用', renewing: '续期中', harvesting: '采集中', cooldown: '冷却中', expired: '已过期', disabled: '未启用', waiting_host: '等待宿主', waiting_account: '等待账号', queued: '等待采集', unavailable: '状态读取失败', stale: '状态待刷新' },
+        errors: {
+          upstream_unauthorized: '上游授权失败（401）', upstream_forbidden: '上游拒绝访问（403）', upstream_rate_limited: '上游限流（429）',
+          model_mismatch: '返回模型不匹配，等待重新采集', state_312: '票据异常信号，等待重新采集',
+          harvest_failed: '动态出口采集失败', fixed_proxy_validation_failed: '业务出口复验失败', unexpected_state_length: '票据长度不符合所选套餐',
+          identity_unavailable: '账号身份暂不可用', identity_changed: '账号身份发生变化', invalid_dynamic_proxy: '动态代理配置异常',
+          managed_proxy_unavailable: '所选代理暂不可用', ticket_persistence_failed: '票据保存失败', attempts_exhausted: '本轮采集次数已用尽', unknown: '采集异常，详情请查看插件配置页'
+        }
+      },
       oauthAvailability: {
         title: '分组可用 OAuth', unit: '个', queriedAt: '查询于',
         details: '查看统计口径',

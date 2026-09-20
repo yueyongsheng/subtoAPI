@@ -91,8 +91,8 @@ export interface PluginUISession {
   expires_at: string
 }
 
-export async function list(): Promise<PluginInstallation[]> {
-  const { data } = await apiClient.get<PluginInstallation[]>('/admin/plugins')
+export async function list(signal?: AbortSignal): Promise<PluginInstallation[]> {
+  const { data } = await apiClient.get<PluginInstallation[]>('/admin/plugins', { signal })
   return data
 }
 
@@ -145,8 +145,8 @@ export async function test(id: number): Promise<PluginTestResult> {
   return data
 }
 
-export async function status(id: number): Promise<PluginStatusResult> {
-  const { data } = await apiClient.get<PluginStatusResult>(`/admin/plugins/${id}/status`)
+export async function status(id: number, signal?: AbortSignal): Promise<PluginStatusResult> {
+  const { data } = await apiClient.get<PluginStatusResult>(`/admin/plugins/${id}/status`, { signal })
   return data
 }
 

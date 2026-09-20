@@ -70,6 +70,7 @@ const mountView = () =>
   mount(AccountsView, {
     global: {
       stubs: {
+      RouterLink: true,
         AppLayout: { template: '<div><slot /></div>' },
         TablePageLayout: {
           template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
@@ -213,6 +214,7 @@ const mountViewWithRow = () =>
   mount(AccountsView, {
     global: {
       stubs: {
+      RouterLink: true,
         AppLayout: { template: '<div><slot /></div>' },
         TablePageLayout: {
           template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
@@ -580,3 +582,5 @@ describe('admin AccountsView — 账号行展示', () => {
     wrapper.unmount()
   })
 })
+
+vi.mock('@/api/admin/plugins', () => ({ list: async () => [], status: vi.fn() }))

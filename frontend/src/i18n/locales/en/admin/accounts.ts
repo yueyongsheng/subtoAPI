@@ -1,5 +1,19 @@
 export default {
     accounts: {
+      stateKit: {
+        refresh: 'Refresh STATE', configure: 'Plugin settings', renewalFailed: 'Renewal failed; existing ticket usable',
+        hint: 'STATE tickets for configured accounts and models. Reads status every 30 seconds while this page is visible; no additional model calls. The countdown shows ticket lifetime, not quota, model capability or a guarantee of request success.',
+        queriedAt: 'Status checked at {time}', expiresAt: 'Ticket expires at {time}', attempts: 'Latest collection attempts: {count}',
+        summary: { loading: 'STATE: loading', healthy: 'STATE: ticket status by model', disabled: 'STATE: plugin disabled', unavailable: 'STATE: status unavailable; validity unconfirmed', stale: 'STATE: refresh needed', absent: 'STATE: not installed' },
+        states: { ready: 'Ready', renewing: 'Renewing', harvesting: 'Collecting', cooldown: 'Cooling down', expired: 'Expired', disabled: 'Disabled', waiting_host: 'Waiting for host', waiting_account: 'Waiting for account', queued: 'Queued', unavailable: 'Status unavailable', stale: 'Refresh needed' },
+        errors: {
+          upstream_unauthorized: 'Upstream authorization failed (401)', upstream_forbidden: 'Upstream access denied (403)', upstream_rate_limited: 'Upstream rate limit (429)',
+          model_mismatch: 'Response model mismatch; reacquisition pending', state_312: 'Abnormal ticket signal; reacquisition pending',
+          harvest_failed: 'Collection through dynamic proxy failed', fixed_proxy_validation_failed: 'Business route validation failed', unexpected_state_length: 'Ticket length does not match selected plan',
+          identity_unavailable: 'Account identity unavailable', identity_changed: 'Account identity changed', invalid_dynamic_proxy: 'Invalid dynamic proxy configuration',
+          managed_proxy_unavailable: 'Selected proxy unavailable', ticket_persistence_failed: 'Ticket persistence failed', attempts_exhausted: 'Collection attempts exhausted', unknown: 'Collection error; see plugin settings for details'
+        }
+      },
       oauthAvailability: {
         title: 'Available OAuth by group', unit: 'accounts', queriedAt: 'Queried at',
         details: 'View counting rules',

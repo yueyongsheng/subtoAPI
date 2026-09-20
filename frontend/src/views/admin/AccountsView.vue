@@ -171,6 +171,16 @@
             </template>
           </AccountTableActions>
         </div>
+        <div v-if="stateKitAvailability !== 'absent'" class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400" data-testid="state-kit-status-bar">
+          <span :class="{ 'text-amber-600 dark:text-amber-400': ['unavailable', 'stale'].includes(stateKitAvailability) }">
+            {{ t(`admin.accounts.stateKit.summary.${stateKitAvailability}`) }}
+          </span>
+          <HelpTooltip :content="t('admin.accounts.stateKit.hint')" width-class="w-72" />
+          <button type="button" class="text-primary-600 hover:underline disabled:opacity-50 dark:text-primary-400" :disabled="stateKitLoading" @click="refreshStateKit">
+            {{ t('admin.accounts.stateKit.refresh') }}
+          </button>
+          <RouterLink to="/admin/plugins" class="text-primary-600 hover:underline dark:text-primary-400">{{ t('admin.accounts.stateKit.configure') }}</RouterLink>
+        </div>
         <div
           v-if="hasPendingListSync"
           class="mt-2 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200"
@@ -324,6 +334,13 @@
             </div>
           </template>
           <template #cell-usage="{ row }">
+            <AccountStateTickets
+              v-if="row.platform === 'openai' && row.type === 'oauth'"
+              :tickets="stateKitTickets[row.id] ?? []"
+              :availability="stateKitAvailability"
+              :elapsed-seconds="stateKitElapsedSeconds"
+              :queried-at="stateKitQueriedAt"
+            />
             <AccountUsageCell
               :account="row"
               :today-stats="todayStatsByAccountId[String(row.id)] ?? null"
@@ -500,6 +517,9 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, toRaw, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
+import { RouterLink } from 'vue-router'
+import { useStateKitStatus } from '@/composables/useStateKitStatus'
+import AccountStateTickets from '@/components/account/AccountStateTickets.vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
@@ -551,6 +571,10 @@ import { formatMultiplier } from '@/utils/formatters'
 import type { Account, AccountListItem, AccountPlatform, AccountSchedulerGroupScore, AccountType, AccountUsageInfo, Proxy as AccountProxy, AdminGroup, WindowStats, ClaudeModel, UpstreamBillingProbeSnapshot } from '@/types'
 
 const { t } = useI18n()
+const {
+  ticketsByAccount: stateKitTickets, availability: stateKitAvailability, loading: stateKitLoading,
+  queriedAt: stateKitQueriedAt, elapsedSeconds: stateKitElapsedSeconds, refresh: refreshStateKit
+} = useStateKitStatus()
 const oauthAvailabilityRefreshKey = ref(0)
 const appStore = useAppStore()
 const authStore = useAuthStore()
@@ -1505,6 +1529,7 @@ const refreshAccountsIncrementally = async () => {
 }
 
 const handleManualRefresh = async () => {
+  void refreshStateKit()
   await Promise.all([load(), loadUpstreamBillingProbeGlobalState()])
   // Force usage cells to refetch /usage on explicit user refresh.
   usageManualRefreshToken.value += 1

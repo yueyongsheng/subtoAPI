@@ -57,6 +57,7 @@ function mountView() {
   return mount(AccountsView, {
     global: {
       stubs: {
+      RouterLink: true,
         AppLayout: { template: '<div><slot /></div>' },
         TablePageLayout: {
           template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
@@ -150,3 +151,5 @@ describe('admin AccountsView priority column preferences', () => {
     expect(JSON.parse(localStorage.getItem('account-hidden-columns') || '[]')).not.toContain('priority')
   })
 })
+
+vi.mock('@/api/admin/plugins', () => ({ list: async () => [], status: vi.fn() }))

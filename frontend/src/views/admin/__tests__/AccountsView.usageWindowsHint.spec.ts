@@ -92,6 +92,7 @@ function mountView() {
   return mount(AccountsView, {
     global: {
       stubs: {
+      RouterLink: true,
         AppLayout: { template: '<div><slot /></div>' },
         TablePageLayout: {
           template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
@@ -237,3 +238,5 @@ describe('admin AccountsView usage windows hint', () => {
     expect(indicator.attributes('title')).toBe('admin.accounts.upstreamBilling.syncedRateTooltip')
   })
 })
+
+vi.mock('@/api/admin/plugins', () => ({ list: async () => [], status: vi.fn() }))
