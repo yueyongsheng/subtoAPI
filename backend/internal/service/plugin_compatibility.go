@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	pluginv1 "github.com/Wei-Shaw/sub2api/pkg/pluginapi/v1"
@@ -35,8 +36,10 @@ func EvaluatePluginCompatibility(manifest PluginManifest, host PluginHostInfo) P
 		return result
 	}
 	result.Compatible = true
+	current, _ := parsePluginVersion(host.Version)
 	for _, tested := range manifest.Requires.TestedSub2APIVersions {
-		if normalizeSemver(tested) == normalizeSemver(host.Version) {
+		declared, valid := parsePluginVersion(tested)
+		if valid && declared.identity == current.identity {
 			result.Tested = true
 			break
 		}
@@ -49,6 +52,43 @@ func EvaluatePluginCompatibility(manifest PluginManifest, host PluginHostInfo) P
 		result.Message = "版本范围兼容，但插件未声明已测试当前 Sub2API 版本"
 	}
 	return result
+}
+
+// Local releases append a numeric revision to the upstream stable version.
+// Keep that revision for ordering and exact tested-version matching.
+var pluginRevisionVersion = regexp.MustCompile(`^v?((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\.(0|[1-9][0-9]*)$`)
+
+type pluginVersion struct {
+	base, revision, identity string
+}
+
+func parsePluginVersion(raw string) (pluginVersion, bool) {
+	if v := normalizeSemver(raw); v != "" {
+		return pluginVersion{base: v, revision: "0", identity: v}, true
+	}
+	parts := pluginRevisionVersion.FindStringSubmatch(strings.TrimSpace(raw))
+	if parts == nil {
+		return pluginVersion{}, false
+	}
+	base := normalizeSemver(parts[1])
+	if base == "" {
+		return pluginVersion{}, false
+	}
+	return pluginVersion{base: base, revision: parts[2], identity: base + "." + parts[2]}, true
+}
+
+func comparePluginVersions(a, b pluginVersion) int {
+	if compared := semver.Compare(a.base, b.base); compared != 0 {
+		return compared
+	}
+	// Compare arbitrary-length numeric revisions without integer overflow.
+	if len(a.revision) < len(b.revision) {
+		return -1
+	}
+	if len(a.revision) > len(b.revision) {
+		return 1
+	}
+	return strings.Compare(a.revision, b.revision)
 }
 
 func normalizeSemver(version string) string {
@@ -66,8 +106,8 @@ func normalizeSemver(version string) string {
 }
 
 func matchesSemverRange(version, expression string) bool {
-	v := normalizeSemver(version)
-	if v == "" {
+	v, valid := parsePluginVersion(version)
+	if !valid {
 		return false
 	}
 	tokens := strings.Fields(strings.ReplaceAll(expression, ",", " "))
@@ -84,11 +124,11 @@ func matchesSemverRange(version, expression string) bool {
 				break
 			}
 		}
-		bound := normalizeSemver(raw)
-		if bound == "" {
+		bound, valid := parsePluginVersion(raw)
+		if !valid {
 			return false
 		}
-		comparison := semver.Compare(v, bound)
+		comparison := comparePluginVersions(v, bound)
 		matched := map[string]bool{
 			">=": comparison >= 0,
 			"<=": comparison <= 0,

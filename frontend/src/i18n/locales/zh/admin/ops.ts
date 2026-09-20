@@ -495,6 +495,8 @@ export default {
           account: '账号级别指标'
         },
         metrics: {
+          stateTicketRenewalFailed: 'STATE 续期失败且即将过期数',
+          stateTicketUnavailable: 'STATE 过期或无有效票据数',
           successRate: '成功率 (%)',
           errorRate: '错误率 (%)',
           upstreamErrorRate: '上游错误率 (%)',
@@ -513,6 +515,8 @@ export default {
           overloadAccountCount: '过载账号数'
         },
         metricDescriptions: {
+          stateTicketRenewalFailed: '已配置且启用的账号/模型中，续期失败且旧票据剩余不超过 10 分钟的数量。读取当前插件状态，统计窗口不参与计算，不发起模型探测；读取异常不解除已有告警。',
+          stateTicketUnavailable: '已配置且启用的账号/模型中，票据已过期或暂无有效票据的数量。首次采集也计入，建议连续 2 轮再提醒；停用或等待宿主/账号的条目排除。读取异常不解除已有告警。',
           successRate: '统计窗口内成功请求占比（0~100）。',
           errorRate: '统计窗口内失败请求占比（0~100）。',
           upstreamErrorRate: '统计窗口内上游错误占比（0~100）。',

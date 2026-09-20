@@ -675,6 +675,8 @@ export type OpsPhase = string
 export type AlertSeverity = 'critical' | 'warning' | 'info'
 export type ThresholdMode = 'count' | 'percentage' | 'both'
 export type MetricType =
+  | 'state_ticket_renewal_failed_count'
+  | 'state_ticket_unavailable_count'
   | 'success_rate'
   | 'error_rate'
   | 'upstream_error_rate'

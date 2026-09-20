@@ -495,6 +495,8 @@ export default {
           account: 'Account-level Metrics'
         },
         metrics: {
+          stateTicketRenewalFailed: 'STATE renewal failures near expiry',
+          stateTicketUnavailable: 'STATE expired or unavailable tickets',
           successRate: 'Success Rate (%)',
           errorRate: 'Error Rate (%)',
           upstreamErrorRate: 'Upstream Error Rate (%)',
@@ -513,6 +515,8 @@ export default {
           overloadAccountCount: 'Overloaded Accounts'
         },
         metricDescriptions: {
+          stateTicketRenewalFailed: 'Configured, enabled account/model pairs with a renewal error and at most 10 minutes left on a valid ticket. Uses current plugin status, not the statistical window; no model probes. Read failures do not resolve alerts.',
+          stateTicketUnavailable: 'Configured, enabled account/model pairs with expired or missing valid tickets. Includes initial collection; use 2 consecutive samples to reduce noise. Disabled and waiting entries are excluded. Read failures do not resolve alerts.',
           successRate: 'Percentage of successful requests in the window (0-100).',
           errorRate: 'Percentage of failed requests in the window (0-100).',
           upstreamErrorRate: 'Percentage of upstream failures in the window (0-100).',

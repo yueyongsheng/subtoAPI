@@ -32,10 +32,11 @@ return 0
 `)
 
 type OpsAlertEvaluatorService struct {
-	opsService   *OpsService
-	opsRepo      OpsRepository
-	emailService *EmailService
-	proxyRepo    ProxyRepository
+	opsService        *OpsService
+	opsRepo           OpsRepository
+	emailService      *EmailService
+	proxyRepo         ProxyRepository
+	stateTicketSource stateTicketStatusSource
 
 	redisClient *redis.Client
 	cfg         *config.Config
@@ -193,6 +194,7 @@ func (s *OpsAlertEvaluatorService) evaluateOnce(interval time.Duration) {
 		return
 	}
 
+	stateSnapshot := loadStateAlertSnapshot(ctx, s.stateTicketSource, rules)
 	rulesTotal := len(rules)
 	rulesEnabled := 0
 	rulesEvaluated := 0
@@ -226,7 +228,14 @@ func (s *OpsAlertEvaluatorService) evaluateOnce(interval time.Duration) {
 		windowStart := safeEnd.Add(-time.Duration(windowMinutes) * time.Minute)
 		windowEnd := safeEnd
 
-		metricValue, ok := s.computeRuleMetric(ctx, rule, systemMetrics, windowStart, windowEnd, scopePlatform, scopeGroupID)
+		var metricValue float64
+		var description string
+		var ok bool
+		if isStateTicketMetric(rule.MetricType) {
+			metricValue, description, ok = s.stateTicketMetric(ctx, stateSnapshot, rule, now, scopePlatform, scopeGroupID)
+		} else {
+			metricValue, ok = s.computeRuleMetric(ctx, rule, systemMetrics, windowStart, windowEnd, scopePlatform, scopeGroupID)
+		}
 		if !ok {
 			s.resetRuleState(rule.ID, now)
 			continue
@@ -284,6 +293,9 @@ func (s *OpsAlertEvaluatorService) evaluateOnce(interval time.Duration) {
 				CreatedAt:      now,
 			}
 
+			if description != "" {
+				firedEvent.Description = description
+			}
 			created, err := s.opsRepo.CreateAlertEvent(ctx, firedEvent)
 			if err != nil {
 				logger.LegacyPrintf("service.ops_alert_evaluator", "[OpsAlertEvaluator] create event failed (rule=%d): %v", rule.ID, err)
@@ -299,8 +311,8 @@ func (s *OpsAlertEvaluatorService) evaluateOnce(interval time.Duration) {
 			continue
 		}
 
-		// Not breached: resolve active event if present.
-		if activeEvent != nil {
+		// Only a confirmed recovery resolves an incident, including after restart.
+		if activeEvent != nil && !breachedNow {
 			resolvedAt := now
 			if err := s.opsRepo.UpdateAlertEventStatus(ctx, activeEvent.ID, OpsAlertStatusResolved, &resolvedAt); err != nil {
 				logger.LegacyPrintf("service.ops_alert_evaluator", "[OpsAlertEvaluator] resolve event failed (event=%d): %v", activeEvent.ID, err)

@@ -17,6 +17,8 @@ import (
 )
 
 var validOpsAlertMetricTypes = []string{
+	service.StateTicketRenewalFailedMetric,
+	service.StateTicketUnavailableMetric,
 	"success_rate",
 	"error_rate",
 	"upstream_error_rate",

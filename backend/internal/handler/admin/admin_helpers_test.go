@@ -217,6 +217,13 @@ func TestOpsAlertRuleValidation(t *testing.T) {
 	validated, err := validateOpsAlertRulePayload(raw)
 	require.NoError(t, err)
 	require.Equal(t, "High error rate", validated.Name)
+	for _, metric := range []string{service.StateTicketRenewalFailedMetric, service.StateTicketUnavailableMetric} {
+		raw["metric_type"] = json.RawMessage(`"` + metric + `"`)
+		validated, err := validateOpsAlertRulePayload(raw)
+		require.NoError(t, err)
+		require.Equal(t, metric, validated.MetricType)
+		require.False(t, isPercentOrRateMetric(metric))
+	}
 
 	_, err = validateOpsAlertRulePayload(map[string]json.RawMessage{})
 	require.Error(t, err)

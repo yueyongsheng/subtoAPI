@@ -201,6 +201,22 @@ const metricDefinitions = computed(() => {
 
     // Account-level metrics
     {
+      type: 'state_ticket_renewal_failed_count',
+      group: 'account',
+      label: t('admin.ops.alertRules.metrics.stateTicketRenewalFailed'),
+      description: t('admin.ops.alertRules.metricDescriptions.stateTicketRenewalFailed'),
+      recommendedOperator: '>',
+      recommendedThreshold: 0
+    },
+    {
+      type: 'state_ticket_unavailable_count',
+      group: 'account',
+      label: t('admin.ops.alertRules.metrics.stateTicketUnavailable'),
+      description: t('admin.ops.alertRules.metricDescriptions.stateTicketUnavailable'),
+      recommendedOperator: '>',
+      recommendedThreshold: 0
+    },
+    {
       type: 'account_rate_limited_count',
       group: 'account',
       label: t('admin.ops.alertRules.metrics.accountRateLimitedCount'),
