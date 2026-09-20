@@ -52,7 +52,9 @@ func TestUpdateSettingsPluginMenuRoundTrip(t *testing.T) {
 			require.Equal(t, tc.want, public.PluginManagementEnabled)
 			injected, err := h.settingService.GetPublicSettingsForInjection(c.Request.Context())
 			require.NoError(t, err)
-			require.Equal(t, tc.want, injected.(*service.PublicSettingsInjectionPayload).PluginManagementEnabled)
+			payload, ok := injected.(*service.PublicSettingsInjectionPayload)
+			require.True(t, ok)
+			require.Equal(t, tc.want, payload.PluginManagementEnabled)
 		})
 	}
 }
