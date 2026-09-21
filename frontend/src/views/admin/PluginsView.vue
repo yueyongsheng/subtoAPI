@@ -596,8 +596,6 @@ function handlePluginFrameLoad(): void {
   // outstanding responses so a late config response is never sent to the new document.
   if (pluginFrameLoaded.value) {
     clearPendingBridgeRequests();
-    uiLoading.value = true;
-    startUILoadTimeout();
   }
   pluginFrameLoaded.value = true;
   // A document load also fires for error pages or when scripts are blocked.

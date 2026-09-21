@@ -254,6 +254,11 @@ describe('插件配置加载生命周期', () => {
     expect(wrapper.text()).toContain('admin.plugins.loadingUI')
     await ready('current')
     expect(wrapper.text()).not.toContain('admin.plugins.loadingUI')
+    // A ready message can arrive before the document load event, including
+    // after navigation. A later load must not restart the finished wait.
+    await wrapper.get('iframe').trigger('load')
+    await wrapper.get('iframe').trigger('load')
+    expect(wrapper.text()).not.toContain('admin.plugins.loadingUI')
     await vi.advanceTimersByTimeAsync(30_000)
     expect(wrapper.text()).not.toContain('admin.plugins.uiLoadTimeout')
     expect(wrapper.get('iframe').attributes('sandbox')).toBe('allow-scripts')
