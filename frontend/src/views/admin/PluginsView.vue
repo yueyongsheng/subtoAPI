@@ -311,6 +311,14 @@
               {{ t("admin.plugins.uiUnavailable") }}
             </p>
             <p class="mt-1 max-w-xl text-sm text-gray-500">{{ uiError }}</p>
+            <button
+              type="button"
+              class="btn btn-secondary mt-4"
+              data-testid="plugin-ui-retry"
+              @click="configPlugin && openConfiguration(configPlugin)"
+            >
+              {{ t("admin.plugins.retryUI") }}
+            </button>
           </div>
           <iframe
             v-if="uiSession"
@@ -380,6 +388,28 @@ const uiError = ref("");
 const iframeHeight = ref(640);
 const pluginFrameLoaded = ref(false);
 const pendingBridgeRequests = new Map<string, number>();
+let configurationGeneration = 0;
+let uiLoadTimeout: number | undefined;
+let uiSessionController: AbortController | undefined;
+
+function cancelUILoad(): void {
+  configurationGeneration++;
+  window.clearTimeout(uiLoadTimeout);
+  uiLoadTimeout = undefined;
+  uiSessionController?.abort();
+  uiSessionController = undefined;
+}
+
+function startUILoadTimeout(): void {
+  window.clearTimeout(uiLoadTimeout);
+  uiLoadTimeout = window.setTimeout(() => {
+    cancelUILoad();
+    clearPendingBridgeRequests();
+    uiSession.value = null;
+    uiLoading.value = false;
+    uiError.value = t("admin.plugins.uiLoadTimeout");
+  }, 30_000);
+}
 
 function errorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -523,6 +553,8 @@ async function testPlugin(plugin: PluginInstallation): Promise<void> {
 }
 
 async function openConfiguration(plugin: PluginInstallation): Promise<void> {
+  cancelUILoad();
+  const generation = configurationGeneration;
   configPlugin.value = plugin;
   uiSession.value = null;
   pluginFrameLoaded.value = false;
@@ -530,15 +562,22 @@ async function openConfiguration(plugin: PluginInstallation): Promise<void> {
   uiLoading.value = true;
   uiError.value = "";
   iframeHeight.value = 640;
+  uiSessionController = new AbortController();
+  startUILoadTimeout();
   try {
-    uiSession.value = await adminAPI.plugins.createUISession(plugin.id);
+    const session = await adminAPI.plugins.createUISession(plugin.id, uiSessionController.signal);
+    if (generation !== configurationGeneration) return;
+    uiSession.value = session;
   } catch (error: unknown) {
+    if (generation !== configurationGeneration) return;
+    cancelUILoad();
     uiLoading.value = false;
     uiError.value = errorMessage(error);
   }
 }
 
 function closeConfiguration(): void {
+  cancelUILoad();
   clearPendingBridgeRequests();
   pluginFrameLoaded.value = false;
   configPlugin.value = null;
@@ -555,9 +594,14 @@ function clearPendingBridgeRequests(): void {
 function handlePluginFrameLoad(): void {
   // A load can also be caused by a plugin navigating its iframe. Drop all
   // outstanding responses so a late config response is never sent to the new document.
-  if (pluginFrameLoaded.value) clearPendingBridgeRequests();
+  if (pluginFrameLoaded.value) {
+    clearPendingBridgeRequests();
+    uiLoading.value = true;
+    startUILoadTimeout();
+  }
   pluginFrameLoaded.value = true;
-  uiLoading.value = false;
+  // A document load also fires for error pages or when scripts are blocked.
+  // Only the authenticated bridge ready message proves that the UI is running.
 }
 
 function registerBridgeRequest(requestID: string): void {
@@ -572,6 +616,7 @@ function postBridgeResult(
   payload: Record<string, unknown>,
 ): void {
   if (!pluginFrame.value?.contentWindow || !uiSession.value) return;
+  if (request.bridge_token !== uiSession.value.bridge_token) return;
   const requestID = typeof request.request_id === "string" ? request.request_id.trim() : "";
   const timeout = pendingBridgeRequests.get(requestID);
   if (!requestID || timeout === undefined) return;
@@ -621,6 +666,8 @@ async function handleBridgeMessage(event: MessageEvent): Promise<void> {
   try {
     switch (message.type) {
       case "sub2api.plugin.ready":
+        window.clearTimeout(uiLoadTimeout);
+        uiLoadTimeout = undefined;
         uiLoading.value = false;
         break;
       case "config.load": {
@@ -722,6 +769,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  cancelUILoad();
   window.removeEventListener("message", handleBridgeMessage);
   clearPendingBridgeRequests();
 });

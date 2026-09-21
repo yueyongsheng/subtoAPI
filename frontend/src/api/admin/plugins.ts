@@ -150,8 +150,8 @@ export async function status(id: number, signal?: AbortSignal): Promise<PluginSt
   return data
 }
 
-export async function createUISession(id: number): Promise<PluginUISession> {
-  const { data } = await apiClient.post<PluginUISession>(`/admin/plugins/${id}/ui-session`)
+export async function createUISession(id: number, signal?: AbortSignal): Promise<PluginUISession> {
+  const { data } = await apiClient.post<PluginUISession>(`/admin/plugins/${id}/ui-session`, undefined, { signal })
   return data
 }
 
