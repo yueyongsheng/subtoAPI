@@ -219,6 +219,15 @@ func TestBillingService_AstraPricingAndUnknownGPT6FailClosed(t *testing.T) {
 	require.InDelta(t, 43.75e-6, pricing.CacheCreationPricePerToken, 1e-12)
 	require.InDelta(t, 3.5e-6, pricing.CacheReadPricePerToken, 1e-12)
 	require.Equal(t, 272000, pricing.LongContextInputThreshold)
+	sol, err := svc.GetModelPricing("gpt-6-sol")
+	require.NoError(t, err)
+	require.InDelta(t, 2e-6, sol.InputPricePerToken, 1e-12)
+	require.InDelta(t, 10e-6, sol.OutputPricePerToken, 1e-12)
+	require.InDelta(t, 2.5e-6, sol.CacheCreationPricePerToken, 1e-12)
+	require.InDelta(t, 0.2e-6, sol.CacheReadPricePerToken, 1e-12)
+	require.InDelta(t, 4e-6, sol.InputPricePerTokenPriority, 1e-12)
+	require.InDelta(t, 20e-6, sol.OutputPricePerTokenPriority, 1e-12)
+	require.Equal(t, 272000, sol.LongContextInputThreshold)
 
 	for _, model := range []string{"gpt-6", "gpt-6-pro", "openai/gpt-6-preview"} {
 		_, err := svc.GetModelPricing(model)
@@ -241,6 +250,7 @@ func TestDefaultPricingIncludesOfficialGPT56Rates(t *testing.T) {
 		input, cached, cacheWrite, output                                 float64
 		inputPriority, cachedPriority, cacheWritePriority, outputPriority float64
 	}{
+		{model: "gpt-6-sol", input: 2e-6, cached: 0.2e-6, cacheWrite: 2.5e-6, output: 10e-6, inputPriority: 4e-6, cachedPriority: 0.4e-6, cacheWritePriority: 5e-6, outputPriority: 20e-6},
 		{model: "gpt-5.6-sol", input: 17.5e-6, cached: 1.75e-6, cacheWrite: 21.875e-6, output: 105e-6, inputPriority: 35e-6, cachedPriority: 3.5e-6, cacheWritePriority: 43.75e-6, outputPriority: 210e-6},
 		{model: "gpt-5.6-terra", input: 7e-6, cached: 0.7e-6, cacheWrite: 8.75e-6, output: 42e-6, inputPriority: 14e-6, cachedPriority: 1.4e-6, cacheWritePriority: 17.5e-6, outputPriority: 84e-6},
 		{model: "gpt-5.6-luna", input: 0.7e-6, cached: 0.07e-6, cacheWrite: 0.875e-6, output: 4.2e-6, inputPriority: 1.4e-6, cachedPriority: 0.14e-6, cacheWritePriority: 1.75e-6, outputPriority: 8.4e-6},

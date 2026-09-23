@@ -25,6 +25,7 @@ var DefaultModels = []Model{
 	// The API /v1/models created timestamp remains unknown until an official
 	// API-key response is verified; zero prevents inventing release metadata.
 	{ID: "gpt-6-astra", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6 Astra"},
+	{ID: "gpt-6-sol", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6 Sol"},
 	{ID: "gpt-5.5", Object: "model", Created: 1776873600, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.5"},
 	{ID: "gpt-5.4", Object: "model", Created: 1738368000, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.4"},
 	{ID: "gpt-5.4-mini", Object: "model", Created: 1738368000, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.4 Mini"},
@@ -56,7 +57,7 @@ func IsPublicOpenAIModelID(id string) bool {
 	if id == "" {
 		return false
 	}
-	if id == "gpt-6-astra" {
+	if id == "gpt-6-astra" || id == "gpt-6-sol" {
 		return true
 	}
 	lower := strings.ToLower(id)
@@ -145,7 +146,7 @@ func CanonicalizeOpenAIModelAliasSpelling(model string) string {
 }
 
 // CodexBaseInstructionsForModel 按模型返回最匹配的真实 Codex base instructions：
-//   - 精确 gpt-6-astra（允许供应商路径前缀）→ GPT-6 Astra prompt
+//   - 精确 gpt-6-astra / gpt-6-sol（允许供应商路径前缀）→ GPT-6 prompt
 //   - 含 "codex" 的模型（gpt-5-codex / gpt-5.x-codex / codex-max / spark 等）→ GPT-5-Codex prompt
 //   - gpt-5.5 系非 codex 模型 → GPT-5.5 prompt
 //   - gpt-5.2 系非 codex 模型 → GPT-5.2 prompt
@@ -156,7 +157,7 @@ func CanonicalizeOpenAIModelAliasSpelling(model string) string {
 func CodexBaseInstructionsForModel(model string) string {
 	canonical := CanonicalizeOpenAIModelAliasSpelling(model)
 	switch {
-	case canonical == "gpt-6-astra":
+	case canonical == "gpt-6-astra" || canonical == "gpt-6-sol":
 		if v := strings.TrimSpace(instructionsGPT6Astra); v != "" {
 			return instructionsGPT6Astra
 		}

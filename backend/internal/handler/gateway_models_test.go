@@ -312,7 +312,7 @@ func TestGatewayModels_UnmappedOpenAIAccountsSupplementMappedModels(t *testing.T
 				require.ElementsMatch(t, tt.want, modelIDsForTest(got.Data))
 				for _, model := range got.Data {
 					require.Equal(t, "model", model.Object, model.ID)
-					if model.ID == "gpt-6-astra" {
+					if model.ID == "gpt-6-astra" || model.ID == "gpt-6-sol" {
 						require.Zero(t, model.Created, model.ID)
 					} else {
 						require.Positive(t, model.Created, model.ID)

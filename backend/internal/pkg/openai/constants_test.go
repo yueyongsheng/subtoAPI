@@ -22,6 +22,19 @@ func TestDefaultModelsIncludeGPT6Astra(t *testing.T) {
 	require.Equal(t, "openai", model.OwnedBy)
 }
 
+func TestDefaultModelsIncludeGPT6Sol(t *testing.T) {
+	byID := make(map[string]Model, len(DefaultModels))
+	for _, model := range DefaultModels {
+		byID[model.ID] = model
+	}
+
+	model, ok := byID["gpt-6-sol"]
+	require.True(t, ok)
+	require.Equal(t, "GPT-6 Sol", model.DisplayName)
+	require.Equal(t, "openai", model.OwnedBy)
+	require.Zero(t, model.Created)
+}
+
 func TestDefaultModelsExposeOnlyExactGPT6AstraID(t *testing.T) {
 	ids := DefaultModelIDs()
 	require.Contains(t, ids, "gpt-6-astra")
@@ -31,6 +44,7 @@ func TestDefaultModelsExposeOnlyExactGPT6AstraID(t *testing.T) {
 
 func TestIsPublicOpenAIModelIDRequiresExactAstraID(t *testing.T) {
 	require.True(t, IsPublicOpenAIModelID("gpt-6-astra"))
+	require.True(t, IsPublicOpenAIModelID("gpt-6-sol"))
 	for _, id := range []string{
 		"gpt-6", "astra", "GPT-6-ASTRA", "gpt-6-astra-preview",
 		"gpt-6-other", "openai/gpt-6-astra", "my-astra-alias",
