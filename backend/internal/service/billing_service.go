@@ -535,18 +535,18 @@ func (s *BillingService) initFallbackPricing() {
 		LongContextInputMultiplier:         2,
 		LongContextOutputMultiplier:        1.5,
 	}
-	// OpenAI GPT-6 Sol official pricing (USD/token). Fast is 2x and
-	// long-context pricing follows the official 272K threshold policy.
+	// GPT-6 Sol Yuexiang base pricing is 3.5x the official rate (USD/token).
+	// Fast is 2x and long-context pricing follows the official 272K threshold policy.
 	// Source: https://developers.openai.com/api/docs/models/gpt-6-sol
 	s.fallbackPrices["gpt-6-sol"] = &ModelPricing{
-		InputPricePerToken:                 2e-6,
-		InputPricePerTokenPriority:         4e-6,
-		OutputPricePerToken:                10e-6,
-		OutputPricePerTokenPriority:        20e-6,
-		CacheCreationPricePerToken:         2.5e-6,
-		CacheCreationPricePerTokenPriority: 5e-6,
-		CacheReadPricePerToken:             0.2e-6,
-		CacheReadPricePerTokenPriority:     0.4e-6,
+		InputPricePerToken:                 7e-6,
+		InputPricePerTokenPriority:         14e-6,
+		OutputPricePerToken:                35e-6,
+		OutputPricePerTokenPriority:        70e-6,
+		CacheCreationPricePerToken:         8.75e-6,
+		CacheCreationPricePerTokenPriority: 17.5e-6,
+		CacheReadPricePerToken:             0.7e-6,
+		CacheReadPricePerTokenPriority:     1.4e-6,
 		LongContextInputThreshold:          272_000,
 		LongContextInputMultiplier:         2,
 		LongContextOutputMultiplier:        1.5,
