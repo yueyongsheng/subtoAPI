@@ -25,7 +25,8 @@
           {{ siteName }}
         </router-link>
         <!-- Version Badge -->
-        <VersionBadge :version="siteVersion" />
+        <span v-if="route.meta.preview === true" class="px-2 text-xs text-gray-500">{{ siteVersion }}</span>
+        <VersionBadge v-else :version="siteVersion" />
       </div>
     </div>
 
@@ -908,6 +909,7 @@ function handleMenuItemClick(itemPath: string) {
 }
 
 function isActive(path: string): boolean {
+  if (path === '/admin/accounts' && route.meta.preview === true) return true
   return route.path === path || route.path.startsWith(path + '/')
 }
 
@@ -960,7 +962,7 @@ if (
 watch(
   isAdmin,
   (v) => {
-    if (v) {
+    if (v && route.meta.preview !== true) {
       adminSettingsStore.fetch()
     }
   },
@@ -969,7 +971,7 @@ watch(
 
 onMounted(() => {
   void refreshBatchImageAccess()
-  if (isAdmin.value) {
+  if (isAdmin.value && route.meta.preview !== true) {
     adminSettingsStore.fetch()
   }
   // Restore sidebar scroll position after route change re-mounts the component

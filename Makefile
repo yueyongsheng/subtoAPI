@@ -1,6 +1,7 @@
 .PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical
 
 FRONTEND_CRITICAL_VITEST := \
+	src/components/admin/account/__tests__/OAuthQualityDialog.spec.ts \
 	src/components/admin/account/__tests__/OAuthGroupAvailability.spec.ts \
 	src/components/common/__tests__/HelpTooltip.spec.ts \
 	src/components/admin/account/__tests__/OAuthHealthDialog.spec.ts \

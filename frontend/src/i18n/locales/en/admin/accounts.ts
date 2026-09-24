@@ -74,6 +74,81 @@ export default {
         action: { reduce: 'Reduce to {value}', increase: 'Recover / increase to {value}', rollback: 'Roll back to {value}', cooldown: 'Cool for 3 minutes' },
         change: { reduce: 'Concurrency reduced', restore: 'Legacy restoration', increase: 'Concurrency increased', rollback: 'Increase rolled back', cooldown: 'Temporary cooldown' }
       },
+      oauthQuality: {
+  "button": "Quality check",
+  "title": "Account capability quality check",
+  "allOAuth": "All groups",
+  "allAccounts": "All groups",
+  "scope": "Scope: {scope}",
+  "description": "Choose accounts and checks to compare responses from the same model. A single result is for review and does not adjust concurrency.",
+  "scopeTitle": "1. Choose accounts",
+  "group": "Group",
+  "types": "Account types (multiple)",
+  "search": "Search accounts",
+  "searchPlaceholder": "Account name or ID",
+  "scopeHint": "Includes all pages in the chosen group and types. Select all or individual accounts. Changing group or types clears the selection.",
+  "selectAll": "Select all filtered accounts",
+  "clearSelection": "Deselect filtered accounts",
+  "clearAll": "Clear all selections",
+  "hiddenSelected": "{count} selected outside search results",
+  "selected": "{count} / {total} accounts selected",
+  "selectAccount": "Select account #{id}",
+  "notSchedulable": "Not schedulable",
+  "loadingAccounts": "Loading all matching accounts…",
+  "empty": "No accounts match this group, type, and search.",
+  "loadFailed": "Account loading failed. Narrow the scope or reopen the check.",
+  "methodsTitle": "2. Choose checks (multiple)",
+  "methods": {
+    "svg_html": {
+      "label": "Pelican on a bicycle",
+      "hint": "Generate HTML / SVG animation; inspect the source and animation manually."
+    },
+    "reasoning_exact": {
+      "label": "Bun reasoning puzzle",
+      "hint": "Choose by shape: 9 round + 12 star-shaped buns; expected answer: 21."
+    },
+    "english_knowledge": {
+      "label": "English knowledge question",
+      "hint": "Thibault Sottiaux on X; reference yes, for comparison only. Suggested model: gpt-6-astra."
+    },
+    "structured_output": {
+      "label": "Strict JSON",
+      "hint": "Check that the output is only the specified JSON, with the expected fields and types."
+    },
+    "custom": {
+      "label": "Custom question",
+      "hint": "Enter your question with an optional expected answer and compare account responses."
+    }
+  },
+  "customPrompt": "Custom question",
+  "customPlaceholder": "Enter the complete question to send to each account…",
+  "customExpected": "Expected answer (optional)",
+  "expectedPlaceholder": "Leave empty to collect responses for manual review",
+  "expectedHint": "Matches the complete text, ignoring leading and trailing whitespace. Empty means manual review. Limits: 8,000 characters for the question and 2,000 for the answer.",
+  "model": "Test model",
+  "modelPlaceholder": "e.g. gpt-6-astra",
+  "rules": "Each account runs only the selected checks using the same model. Live checks consume upstream quota; choose a model supported by these accounts.",
+  "run": "Run checks ({count} accounts)",
+  "running": "Checking…",
+  "completed": "Checks completed. Click an account or details to inspect its responses.",
+  "runFailed": "The request did not complete. Further checks stopped; completed results are retained. Verify request status before retrying.",
+  "resultSummary": "{passed} / {total} accounts matched the selected checks",
+  "probeSummary": "{passed} / {total} checks passed",
+  "passed": "Matched",
+  "review": "Review",
+  "failed": "Request failed",
+  "previewNotice": "Local preview · Demo accounts and results; no live model requests.",
+  "estimate": "{accounts} accounts × {methods} checks = {requests} requests",
+  "resultTitle": "3. Results",
+  "progress": "{done} / {total} accounts completed",
+  "account": "Account",
+  "result": "Details / matched",
+  "details": "View details",
+  "manualReview": "Manual review",
+  "stop": "Stop after current account",
+  "stopping": "Waiting for current account…",
+  "stopped": "Further checks stopped. Completed results are retained."
+},
       title: 'Account Management',
       description: 'Manage AI platform accounts and credentials',
       createAccount: 'Create Account',

@@ -25,6 +25,9 @@
               <button class="btn btn-secondary" data-testid="oauth-health-open" @click="openOAuthHealth">
                 <Icon name="shield" size="sm" />{{ t('admin.accounts.oauthHealth.button') }}
               </button>
+              <button class="btn btn-secondary" data-testid="oauth-quality-open" @click="openOAuthQuality">
+                <Icon name="check" size="sm" />{{ t('admin.accounts.oauthQuality.button') }}
+              </button>
             </template>
             <template #after>
               <!-- Auto Refresh Dropdown -->
@@ -479,6 +482,7 @@
       <template #pagination><Pagination v-if="pagination.total > 0" :page="pagination.page" :total="pagination.total" :page-size="pagination.page_size" @update:page="handlePageChange" @update:pageSize="handlePageSizeChange" /></template>
     </TablePageLayout>
     <OAuthHealthDialog :show="showOAuthHealth" :group-id="oauthHealthGroupID" :scope-label="oauthHealthScopeLabel" @close="showOAuthHealth = false" @updated="reload" />
+    <OAuthQualityDialog :show="showOAuthQuality" :group-id="oauthQualityGroupID" :scope-label="oauthQualityScopeLabel" :groups="groups" :initial-types="oauthQualityTypes" :initial-account-ids="selIds" @close="showOAuthQuality = false" />
     <CreateAccountModal :show="showCreate" :proxies="proxies" :groups="groups" @close="showCreate = false" @created="reload" />
     <EditAccountModal :show="showEdit" :account="edAcc" :proxies="proxies" :groups="groups" @close="showEdit = false" @updated="handleAccountUpdated" />
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
@@ -540,6 +544,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { CreateAccountModal, EditAccountModal, BulkEditAccountModal, SyncFromCrsModal, TempUnschedStatusModal } from '@/components/account'
 import AccountTableActions from '@/components/admin/account/AccountTableActions.vue'
 import OAuthHealthDialog from '@/components/admin/account/OAuthHealthDialog.vue'
+import OAuthQualityDialog from '@/components/admin/account/OAuthQualityDialog.vue'
 import OAuthHealthBadge from '@/components/admin/account/OAuthHealthBadge.vue'
 import AccountTableFilters from '@/components/admin/account/AccountTableFilters.vue'
 import AccountBulkActionsBar from '@/components/admin/account/AccountBulkActionsBar.vue'
@@ -584,11 +589,29 @@ const groups = ref<AdminGroup[]>([])
 const showOAuthHealth = ref(false)
 const oauthHealthGroupID = ref<number | null>(null)
 const oauthHealthScopeLabel = ref('')
-const openOAuthHealth = () => {
+const showOAuthQuality = ref(false)
+const oauthQualityGroupID = ref<number | null>(null)
+const oauthQualityScopeLabel = ref('')
+const oauthQualityTypes = ref<string[]>([])
+const selectedOAuthGroup = (quality = false) => {
   const group = params.group
-  oauthHealthGroupID.value = group === 'ungrouped' ? -1 : group ? Number(group) : null
-  oauthHealthScopeLabel.value = group === 'ungrouped' ? t('admin.accounts.ungroupedGroup') : group ? groups.value.find(g => g.id === Number(group))?.name ?? String(group) : t('admin.accounts.oauthHealth.allOAuth')
+  return {
+    id: group === 'ungrouped' ? -1 : group ? Number(group) : null,
+    label: group === 'ungrouped' ? t('admin.accounts.ungroupedGroup') : group ? groups.value.find(g => g.id === Number(group))?.name ?? String(group) : t(quality ? 'admin.accounts.oauthQuality.allOAuth' : 'admin.accounts.oauthHealth.allOAuth')
+  }
+}
+const openOAuthHealth = () => {
+  const scope = selectedOAuthGroup()
+  oauthHealthGroupID.value = scope.id
+  oauthHealthScopeLabel.value = scope.label
   showOAuthHealth.value = true
+}
+const openOAuthQuality = () => {
+  const scope = selectedOAuthGroup(true)
+  oauthQualityGroupID.value = scope.id
+  oauthQualityScopeLabel.value = scope.label
+  oauthQualityTypes.value = params.type ? [String(params.type)] : ['oauth', 'apikey', 'setup-token', 'bedrock']
+  showOAuthQuality.value = true
 }
 const groupsByID = computed(() => new Map(groups.value.map(group => [group.id, group])))
 const accountGroupsForRow = (account: Pick<AccountListItem, 'group_ids'>): AdminGroup[] => {

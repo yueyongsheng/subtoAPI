@@ -553,6 +553,20 @@ const routes: RouteRecordRaw[] = [
       descriptionKey: 'admin.accounts.description'
     }
   },
+  // Local-only visual preview. It intentionally uses mock data and does not
+  // participate in the authenticated admin route above.
+  {
+    path: '/preview/admin/accounts',
+    name: 'PreviewAdminAccounts',
+    component: () => import('@/views/admin/AccountManagementPreviewView.vue'),
+    meta: {
+      requiresAuth: false,
+      preview: true,
+      title: 'Account Management Preview',
+      titleKey: 'admin.accounts.title',
+      descriptionKey: 'admin.accounts.description'
+    }
+  },
   {
     path: '/admin/plugins',
     name: 'AdminPlugins',
@@ -831,6 +845,25 @@ router.beforeEach(async (to, _from, next) => {
   // Check if route requires authentication
   const requiresAuth = to.meta.requiresAuth !== false // Default to true
   const requiresAdmin = to.meta.requiresAdmin === true
+
+  // While running Vite locally, opening the familiar admin URL should show
+  // the visual fixture directly instead of sending the reviewer through login.
+  if (import.meta.env.DEV && to.path === '/admin/accounts') {
+    next({ path: '/preview/admin/accounts', query: to.query })
+    return
+  }
+
+  if (to.meta.preview === true && !import.meta.env.DEV) {
+    next('/home')
+    return
+  }
+
+  // Preview routes are available only from the Vite dev server. They render
+  // local fixtures and must remain reachable even when backend mode is on.
+  if (to.meta.preview === true && import.meta.env.DEV) {
+    next()
+    return
+  }
 
   if (to.path === '/setup') {
     try {

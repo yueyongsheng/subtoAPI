@@ -55,6 +55,9 @@ declare module 'vue-router' {
      */
     requiresRiskControl?: boolean
 
+    /** Local-only visual preview route. */
+    preview?: boolean
+
     /**
      * 是否要求订阅功能开关（subscription_enabled，opt-out）未被显式关闭
      * @default false

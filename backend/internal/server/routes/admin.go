@@ -364,6 +364,8 @@ func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAu
 		accounts.GET("/oauth-availability", h.Admin.Account.GetOAuthGroupAvailability)
 		accounts.POST("/oauth-health/check", h.Admin.Account.CheckOAuthHealth)
 		accounts.POST("/oauth-health/adjust", h.Admin.Account.AdjustOAuthHealth)
+		accounts.POST("/oauth-quality/accounts", h.Admin.Account.ListOAuthQualityAccounts)
+		accounts.POST("/oauth-quality/run", h.Admin.Account.RunOAuthQuality)
 		accounts.GET("/upstream-billing-rates", h.Admin.Account.GetUpstreamBillingRates)
 		accounts.GET("/upstream-billing-probe/settings", h.Admin.Account.GetUpstreamBillingProbeSettings)
 		accounts.PUT("/upstream-billing-probe/settings", h.Admin.Account.UpdateUpstreamBillingProbeSettings)

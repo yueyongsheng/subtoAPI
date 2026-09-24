@@ -74,6 +74,81 @@ export default {
         action: { reduce: '降低至 {value}', increase: '恢复 / 增加至 {value}', rollback: '回退至 {value}', cooldown: '临时冷却 3 分钟' },
         change: { reduce: '已降低并发', restore: '旧版恢复记录', increase: '已增加并发', rollback: '已回退并发', cooldown: '已临时冷却' }
       },
+      oauthQuality: {
+  "button": "能力质量检测",
+  "title": "账号能力质量检测",
+  "allOAuth": "全部分组",
+  "allAccounts": "全部分组",
+  "scope": "检测范围：{scope}",
+  "description": "选择账号和检测方法，比较同一模型在不同账号下的回答。单次结果仅供能力复核，不自动调整并发。",
+  "scopeTitle": "1. 选择检测账号",
+  "group": "分组",
+  "types": "账号类型（可多选）",
+  "search": "搜索账号",
+  "searchPlaceholder": "输入账号名称或 ID",
+  "scopeHint": "加载所选分组和类型下的全部账号，覆盖所有分页。可全选，也可仅勾选某个账号；切换分组或类型会清空勾选。",
+  "selectAll": "全选筛选结果",
+  "clearSelection": "取消当前结果勾选",
+  "clearAll": "清空全部勾选",
+  "hiddenSelected": "搜索结果外仍选中 {count} 个",
+  "selected": "已选 {count} / {total} 个账号",
+  "selectAccount": "选择账号 #{id}",
+  "notSchedulable": "未参与调度",
+  "loadingAccounts": "正在加载全部符合范围的账号…",
+  "empty": "当前分组、类型和搜索条件下没有账号。",
+  "loadFailed": "账号列表加载失败，请调整范围或重新打开检测。",
+  "methodsTitle": "2. 选择检测方法（可多选）",
+  "methods": {
+    "svg_html": {
+      "label": "鹈鹕骑自行车",
+      "hint": "生成 HTML / SVG 动画，展示源码供人工复核画面与动画。"
+    },
+    "reasoning_exact": {
+      "label": "馒头推理题",
+      "hint": "按手感选形状：9 个圆形＋12 个五角星形，预期答案 21。"
+    },
+    "english_knowledge": {
+      "label": "英文人物问答",
+      "hint": "Thibault Sottiaux on X；参考回答 yes，仅作辅助比较。建议使用 gpt-6-astra。"
+    },
+    "structured_output": {
+      "label": "严格 JSON",
+      "hint": "检查是否仅输出指定 JSON，核对字段、类型和取值。"
+    },
+    "custom": {
+      "label": "自定义问题",
+      "hint": "填写你自己的题目；预期答案可留空，逐账号对比回答。"
+    }
+  },
+  "customPrompt": "自定义问题",
+  "customPlaceholder": "输入要发给每个账号的完整问题…",
+  "customExpected": "预期答案（可选）",
+  "expectedPlaceholder": "留空则只收集回答，供人工复核",
+  "expectedHint": "填写时按完整文本匹配，仅忽略首尾空白；留空标为需复核。题目最多 8000 字，预期答案最多 2000 字。",
+  "model": "检测模型",
+  "modelPlaceholder": "例如 gpt-6-astra",
+  "rules": "每个账号只执行勾选的方法，使用上方同一个模型。正式检测会消耗上游额度；请使用所选账号支持的模型。",
+  "run": "开始检测（{count} 个账号）",
+  "running": "检测中…",
+  "completed": "本轮检测完成。点击账号或详情查看各题输出。",
+  "runFailed": "当前请求未完成，已停止后续检测；保留已完成结果。请确认请求状态后重试。",
+  "resultSummary": "{passed} / {total} 个账号通过所选检测",
+  "probeSummary": "{passed} / {total} 道题通过检测",
+  "passed": "符合规则",
+  "review": "需复核",
+  "failed": "请求失败",
+  "previewNotice": "本地交互预览 · 演示账号和结果，不发起真实模型请求。",
+  "estimate": "{accounts} 个账号 × {methods} 个方法 = {requests} 次请求",
+  "resultTitle": "3. 检测结果",
+  "progress": "已完成 {done} / {total} 个账号",
+  "account": "账号",
+  "result": "详情 / 通过数",
+  "details": "查看详情",
+  "manualReview": "人工复核",
+  "stop": "完成当前账号后停止",
+  "stopping": "等待当前账号完成…",
+  "stopped": "已停止后续检测，已完成结果保留。"
+},
       title: '账号管理',
       description: '管理 AI 平台账号和 Cookie',
       createAccount: '添加账号',
