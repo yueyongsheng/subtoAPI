@@ -21,8 +21,18 @@ This directory is a credential-free production template. It is not ready to run 
 5. Keep `postgres-init` and its bootstrap script owned by root but executable/readable by the container (`755`); an unreadable bind mount prevents PostgreSQL initialization.
 6. Replace the Caddy domain and install it as the host Caddy configuration. Create `/var/log/caddy` and `sub2api-access.log` as `caddy:caddy` before loading the config.
 7. Format and validate the installed Caddyfile before enabling or reloading Caddy.
-8. After Cloudflare proxying is verified, restrict origin ports 80/443 to the current official Cloudflare IP ranges; keep SSH independently accessible.
+8. Keep port 80 restricted to Cloudflare. For the public `api-yue99.xyz` direct API, allow TCP 443 to the server's public IPv4 only after loading the primary site's Cloudflare peer-IP restriction in Caddy; keep SSH independently accessible.
 9. Validate with `docker compose config` before starting containers.
+
+## Public direct API
+
+`api-yue99.xyz` uses a DNSPod A record pointing directly to `154.36.168.12`, without a CDN proxy. Clients use `https://api-yue99.xyz/v1` and their existing Sub2API API keys. There is no additional customer IP allowlist or direct-access entitlement. Existing per-key restrictions still apply.
+
+The Caddy template keeps the primary `api-yue88.xyz` site restricted to Cloudflare's TCP peer networks and loopback addresses. Update these networks together with the firewall when Cloudflare publishes changes. The direct host forwards gateway paths and `/health` only; web UI, management and payment paths return 404. Forwarding headers are overwritten with the direct peer IP before reaching Sub2API. If custom forwarded-IP headers are enabled later, normalize them at this ingress too.
+
+The direct host obtains and renews a publicly trusted certificate using TLS-ALPN-01 on TCP 443. Port 80 is not needed for its certificate validation. The direct API does not enable response compression and preserves immediate SSE forwarding and `Cache-Control: no-store, no-transform`.
+
+Back up the live Caddyfile and firewall rules before rollout, validate and reload Caddy, then open direct HTTPS. Verify the primary site's normal access, rejection of direct primary-host requests (including forged forwarding headers), direct API authentication, complete streaming responses and usage records. A shared server and network connection do not provide traffic or bandwidth isolation between these hosts.
 
 Example host preparation:
 

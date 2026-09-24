@@ -73,3 +73,15 @@ func TestGPT6AstraCreatedTimestampRemainsUnknown(t *testing.T) {
 	}
 	t.Fatal("gpt-6-astra is missing from the default model catalog")
 }
+
+func TestGPT6SolLunaModelIdentity(t *testing.T) {
+	for _, model := range []string{"gpt-6-sol", "gpt-6-luna"} {
+		if model == "gpt-6-sol" {
+			require.Contains(t, DefaultModelIDs(), model)
+		}
+		require.True(t, IsGPT6SolOrLunaModelSpelling(model))
+	}
+	require.False(t, IsGPT6SolOrLunaModelSpelling("gpt-6-astra"))
+	require.False(t, IsGPT6SolOrLunaModelSpelling("gpt-6-solitude"))
+	require.False(t, IsGPT6SolOrLunaModelSpelling("gpt-6-luna-preview"))
+}

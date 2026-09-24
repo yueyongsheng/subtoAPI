@@ -677,6 +677,8 @@ export default {
       cacheReadShort: 'R',
       tierHint: 'The whole request is billed at the tier matching its total context (input + cache write + cache read)',
       tierHintMarginal: 'Only the portion above the threshold is billed at this tier; output is unaffected',
+      reasoningMultiplierBadge: '{effort} x{multiplier}',
+      reasoningMultiplierHint: 'When the forwarded reasoning effort is {effort}, billing and quota usage for the request are multiplied by {multiplier}. Unconfigured levels use 1x',
       maxReasoningMultiplierBadge: 'Max x{multiplier}',
       maxReasoningMultiplierHint: 'When the forwarded reasoning effort is max, billing and quota usage for the request are multiplied by {multiplier}',
       marginalBadge: 'excess-only tiers',
@@ -727,6 +729,8 @@ export default {
       billingModePerRequest: 'Per Request',
       billingModeImage: 'Per Image',
       billingModeVideo: 'Per Video',
+      videoPrice: 'Video Price',
+      unitPerSecond: '/ second',
       inputPrice: 'Input',
       outputPrice: 'Output',
       cacheWritePrice: 'Cache Write',
@@ -739,6 +743,7 @@ export default {
       unitPerRequest: '/ request'
     }
   },
+
 
   affiliate: {
     title: 'Affiliate Rebates',

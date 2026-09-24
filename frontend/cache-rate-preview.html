@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>悦享 API · 缓存率效果预览</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { createApp, computed, h, ref } from 'vue'
+    import { createPinia } from 'pinia'
+    import i18n, { loadLocaleMessages } from '/src/i18n/index.ts'
+    import UsageStatsCards from '/src/components/admin/usage/UsageStatsCards.vue'
+    import UsageTable from '/src/components/admin/usage/UsageTable.vue'
+    import '/src/style.css'
+
+    await loadLocaleMessages('zh')
+    i18n.global.locale.value = 'zh'
+
+    // 本地演示数据，直接渲染项目中的真实组件。
+    const examples = [
+      ['gpt-5.6-sol', 311, 46, 80100, 0],
+      ['gpt-5.6-sol', 1216, 776, 180000, 0],
+      ['gpt-6-astra', 6323, 920, 183800, 0],
+      ['gpt-5.6-terra', 7345, 246, 61600, 0],
+      ['gpt-5.6-sol', 3000, 200, 90000, 7000],
+      ['gpt-6-astra', 0, 20, 10000, 0],
+      ['gpt-5.6-sol', 1450, 11, 0, 0],
+    ]
+    const rows = examples.map(([model, input, output, read, creation], index) => ({
+      id: index + 1, request_id: `local-preview-${index + 1}`, model,
+      api_key: { name: '演示 Key' }, account: { name: '演示账号' },
+      group: { name: '演示分组', platform: 'openai' },
+      input_tokens: input, output_tokens: output, cache_read_tokens: read,
+      cache_creation_tokens: creation, cache_creation_5m_tokens: creation,
+      cache_creation_1h_tokens: 0, cache_ttl_overridden: false,
+      image_input_tokens: 0, image_output_tokens: 0, image_count: 0,
+      input_cost: 0, output_cost: 0, cache_read_cost: 0, cache_creation_cost: 0,
+      actual_cost: 0, total_cost: 0, rate_multiplier: 1,
+      account_rate_multiplier: 1, billing_mode: 'token', request_type: 'stream',
+      stream: true, first_token_ms: 2190, duration_ms: 3080,
+      created_at: '2026-09-15T00:21:41Z',
+    }))
+
+    createApp({ setup() {
+      const admin = ref(true)
+      const dark = ref(false)
+      const filter = ref('all')
+      const data = computed(() => rows.filter(row => filter.value === 'all'
+        || (filter.value === 'cached' ? row.cache_read_tokens > 0 : row.cache_read_tokens === 0)))
+      const stats = computed(() => {
+        const sum = key => data.value.reduce((total, row) => total + row[key], 0)
+        const input = sum('input_tokens'), output = sum('output_tokens')
+        const read = sum('cache_read_tokens'), creation = sum('cache_creation_tokens')
+        return {
+          total_requests: data.value.length, total_input_tokens: input, total_output_tokens: output,
+          total_cache_read_tokens: read, total_cache_creation_tokens: creation,
+          total_cache_tokens: read + creation, total_tokens: input + output + read + creation,
+          total_actual_cost: 0, total_cost: 0, total_account_cost: 0, average_duration_ms: 3080,
+        }
+      })
+      const columns = [
+        { key: 'api_key', label: 'API 密钥' }, { key: 'model', label: '模型' },
+        { key: 'stream', label: '类型' }, { key: 'tokens', label: 'TOKEN' },
+        { key: 'cost', label: '费用' }, { key: 'latency', label: '延迟' },
+        { key: 'created_at', label: '时间' },
+      ]
+      const controlClass = 'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200'
+      return () => h('main', { class: 'min-h-screen bg-gray-50 text-gray-900 dark:bg-dark-950 dark:text-white' }, [
+        h('header', { class: 'border-b border-gray-200 bg-white px-6 py-5 dark:border-dark-700 dark:bg-dark-900' }, [
+          h('h1', { class: 'text-xl font-bold' }, '悦享 API · 使用记录'),
+          h('p', { class: 'mt-1 text-sm text-gray-500 dark:text-gray-400' }, '本地效果预览 · 演示数据'),
+        ]),
+        h('div', { class: 'mx-auto max-w-[1600px] space-y-6 p-4 lg:p-8' }, [
+          h('div', { class: 'flex flex-wrap items-center gap-3' }, [
+            h('button', { class: controlClass, onClick: () => { admin.value = !admin.value } }, admin.value ? '当前：管理员视图 · 点击切换用户' : '当前：用户视图 · 点击切换管理员'),
+            h('button', { class: controlClass, onClick: () => { dark.value = !dark.value; document.documentElement.classList.toggle('dark', dark.value) } }, dark.value ? '切换浅色' : '切换深色'),
+            h('select', { class: controlClass, 'aria-label': '筛选演示记录', value: filter.value, onChange: event => { filter.value = event.target.value } }, [
+              h('option', { value: 'all' }, '全部演示记录'),
+              h('option', { value: 'cached' }, '有缓存命中'),
+              h('option', { value: 'uncached' }, '无缓存命中'),
+            ]),
+          ]),
+          h(UsageStatsCards, { stats: stats.value, showCacheHitRate: admin.value, showAccountCost: admin.value }),
+          h(UsageTable, { data: data.value, columns, showCacheHitRate: admin.value, showAccountBilling: admin.value, showUpstreamEndpoint: admin.value }),
+        ]),
+      ])
+    }}).use(createPinia()).use(i18n).mount('#app')
+  </script>
+</body>
+</html>

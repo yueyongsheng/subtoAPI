@@ -1,34 +1,91 @@
 api-yue88.xyz {
-  # Long-lived SSE must remain uncompressed. If an upstream connection ends
-  # early, a truncated gzip/zstd body surfaces in strict clients as
-  # "error decoding response body" before they can parse response.failed.
-  @compressible {
-    not path /v1/responses* /responses* /backend-api/codex/responses* /v1/chat/completions /chat/completions /v1/messages /antigravity/v1/messages
-  }
-  @streaming path /v1/responses* /responses* /backend-api/codex/responses* /v1/chat/completions /chat/completions /v1/messages /antigravity/v1/messages
-  encode @compressible zstd gzip
+	# The public direct API shares port 443. Keep the primary site behind
+	# Cloudflare using the TCP peer address, never a client-supplied header.
+	# Official Cloudflare networks verified on 2026-09-12.
+	@outside_cloudflare {
+		not remote_ip 127.0.0.1/32 ::1/128 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+	}
+	respond @outside_cloudflare "Forbidden" 403
 
-  @static path /assets/*
-  header @static Cache-Control "public, max-age=31536000, immutable"
+	# Long-lived SSE must remain uncompressed. If an upstream connection ends
+	# early, a truncated gzip/zstd body surfaces in strict clients as
+	# "error decoding response body" before they can parse response.failed.
+	@compressible {
+		not path /v1/responses* /responses* /backend-api/codex/responses* /v1/chat/completions /chat/completions /v1/messages /antigravity/v1/messages
+	}
+	@streaming path /v1/responses* /responses* /backend-api/codex/responses* /v1/chat/completions /chat/completions /v1/messages /antigravity/v1/messages
+	encode @compressible zstd gzip
 
-  @dynamic not path /assets/*
-  header @dynamic Cache-Control "no-store"
-  header @streaming Cache-Control "no-store, no-transform"
+	@static path /assets/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
 
-  reverse_proxy 127.0.0.1:8080 {
-    health_uri /health
-    health_interval 30s
-    health_timeout 10s
-    stream_close_delay 24h
-    flush_interval -1
-  }
+	@dynamic not path /assets/*
+	header @dynamic Cache-Control "no-store"
+	header @streaming Cache-Control "no-store, no-transform"
 
-  log {
-    output file /var/log/caddy/sub2api-access.log {
-      roll_size 50MiB
-      roll_keep 10
-      roll_keep_for 720h
-    }
-    format json
-  }
+	# Keep signed plugin UI assets unchanged through the CDN.
+	@plugin_ui path /api/v1/plugin-ui/*
+	header @plugin_ui Cache-Control "private, no-store, no-transform"
+
+	reverse_proxy 127.0.0.1:8080 {
+		health_uri /health
+		health_interval 30s
+		health_timeout 10s
+		stream_close_delay 24h
+		flush_interval -1
+	}
+
+	log {
+		output file /var/log/caddy/sub2api-access.log {
+			roll_size 50MiB
+			roll_keep 10
+			roll_keep_for 720h
+		}
+		format json
+	}
+}
+
+# DNSPod A record: api-yue99.xyz -> 154.36.168.12 (no CDN proxy).
+# Reuse existing Sub2API keys and billing; no separate customer IP allowlist.
+api-yue99.xyz {
+	tls {
+		issuer acme {
+			# Keep port 80 restricted to Cloudflare. Issue and renew over TLS-ALPN-01.
+			disable_http_challenge
+		}
+	}
+
+	@gateway path /health /v1/* /v1beta/* /backend-api/codex/* /antigravity/v1/* /antigravity/v1beta/* /antigravity/models /responses /responses/* /models /messages/count_tokens /alpha/search /chat/completions /embeddings /images/generations /images/generations/async /images/edits /images/edits/async /images/tasks/* /videos /videos/* /tts /stt /custom-voices /custom-voices/* /realtime /web_search /x_search
+	handle @gateway {
+		header Cache-Control "no-store, no-transform"
+		# No encode directive: preserve complete SSE frames and immediate output.
+		reverse_proxy 127.0.0.1:8080 {
+			# The direct TCP peer is authoritative. Replace spoofable forwarding
+			# headers before Sub2API uses them for ACLs, rate limits and usage logs.
+			header_up CF-Connecting-IP {http.request.remote.host}
+			header_up X-Real-IP {http.request.remote.host}
+			header_up X-Forwarded-For {http.request.remote.host}
+			header_up -True-Client-IP
+			header_up -Forwarded
+			health_uri /health
+			health_interval 30s
+			health_timeout 10s
+			stream_close_delay 24h
+			flush_interval -1
+		}
+	}
+
+	# Web UI, account administration and payment callbacks use the primary site.
+	handle {
+		respond "Not Found" 404
+	}
+
+	log {
+		output file /var/log/caddy/sub2api-direct-access.log {
+			roll_size 50MiB
+			roll_keep 10
+			roll_keep_for 720h
+		}
+		format json
+	}
 }

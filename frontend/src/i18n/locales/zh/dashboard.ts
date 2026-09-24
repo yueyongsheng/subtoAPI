@@ -682,6 +682,8 @@ export default {
       cacheReadShort: '读',
       tierHint: '按单次请求的总上下文（输入 + 缓存写入 + 缓存读取）所在档位对整单计价',
       tierHintMarginal: '仅超过阈值的部分按该档计价，输出不加价',
+      reasoningMultiplierBadge: '{effort} x{multiplier}',
+      reasoningMultiplierHint: '转发推理力度为 {effort} 时，计费和额度消耗都会乘以 {multiplier}；未配置的等级按 1 倍计费',
       maxReasoningMultiplierBadge: 'Max x{multiplier}',
       maxReasoningMultiplierHint: '最终转发的推理强度为 max 时，整次请求的计费与额度消耗乘以 {multiplier}',
       marginalBadge: '超出部分计价',
@@ -731,6 +733,8 @@ export default {
       billingModePerRequest: '按次',
       billingModeImage: '按图片',
       billingModeVideo: '按视频',
+      videoPrice: '视频单价',
+      unitPerSecond: '/ 秒',
       inputPrice: '输入',
       outputPrice: '输出',
       cacheWritePrice: '缓存写入',
@@ -743,6 +747,7 @@ export default {
       unitPerRequest: '/ 次'
     }
   },
+
 
   affiliate: {
     title: '邀请返利',
