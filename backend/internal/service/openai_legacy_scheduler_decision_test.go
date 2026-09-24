@@ -131,7 +131,7 @@ func TestLegacySchedulerDecision_PreviousResponseRouting(t *testing.T) {
 		require.False(t, decision.StickyPreviousHit)
 	})
 
-	t.Run("transport-incompatible owner releases its slot and falls back", func(t *testing.T) {
+	t.Run("transport-incompatible owner is filtered before acquisition and falls back", func(t *testing.T) {
 		released := make([]int64, 0)
 		svc := newLegacySchedulerDecisionTestService(newLegacySchedulerDecisionTestAccounts(groupID, false), true, schedulerTestConcurrencyCache{releasedIDs: &released})
 		require.NoError(t, svc.getOpenAIWSStateStore().BindResponseAccount(ctx, groupID, responseID, 38102, time.Hour))
@@ -147,7 +147,7 @@ func TestLegacySchedulerDecision_PreviousResponseRouting(t *testing.T) {
 		require.Equal(t, int64(38101), selection.Account.ID)
 		require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
 		require.False(t, decision.StickyPreviousHit)
-		require.Contains(t, released, int64(38102), "the owning account's slot must be released after the transport check fails")
+		require.NotContains(t, released, int64(38102), "a transport-incompatible response owner is filtered before acquiring a slot")
 	})
 
 	t.Run("channel-restricted request model fails before routing", func(t *testing.T) {

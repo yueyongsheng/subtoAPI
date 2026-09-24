@@ -46,13 +46,6 @@ const DataTableStub = {
   `,
 }
 
-const WithdrawDialogStub = {
-  name: 'AffiliateOfflineWithdrawDialog',
-  props: ['show'],
-  emits: ['close', 'success'],
-  template: '<div data-test="withdraw-dialog" :data-show="String(show)" />',
-}
-
 function mountTable(type: 'invites' | 'rebates' | 'transfers') {
   return mount(AdminAffiliateRecordsTable, {
     props: { type },
@@ -65,7 +58,6 @@ function mountTable(type: 'invites' | 'rebates' | 'transfers') {
         Icon: true,
         OrderStatusBadge: true,
         BaseDialog: true,
-        AffiliateOfflineWithdrawDialog: WithdrawDialogStub,
       },
     },
   })
@@ -111,69 +103,5 @@ describe('AdminAffiliateRecordsTable', () => {
     expect(row.get('[data-test="cell-payment_type"]').text()).toBe('-')
     expect(row.get('[data-test="cell-order_status"]').text()).toBe('-')
     expect(row.get('[data-test="cell-rebate_amount"]').text()).toBe('$2.00')
-    expect(wrapper.find('[data-test="affiliate-withdraw-open"]').exists()).toBe(false)
-  })
-
-  it('lists offline withdrawals next to balance transfers with their type', async () => {
-    listTransferRecords.mockResolvedValue(page([
-      {
-        ledger_id: 11,
-        action: 'withdraw',
-        user_id: 42,
-        user_email: 'inviter@example.com',
-        username: 'inviter',
-        amount: 12.5,
-        balance_after: 5.5,
-        available_quota_after: 7.5,
-        frozen_quota_after: 0,
-        history_quota_after: 30,
-        snapshot_available: true,
-        created_at: '2026-09-17T08:00:00Z',
-      },
-      {
-        ledger_id: 10,
-        action: 'transfer',
-        user_id: 42,
-        user_email: 'inviter@example.com',
-        username: 'inviter',
-        amount: 3,
-        balance_after: 5.5,
-        available_quota_after: 20,
-        frozen_quota_after: 0,
-        history_quota_after: 30,
-        snapshot_available: true,
-        created_at: '2026-09-16T08:00:00Z',
-      },
-    ]))
-
-    const wrapper = mountTable('transfers')
-    await flushPromises()
-
-    const withdrawRow = wrapper.get('[data-test="row-0"]')
-    expect(withdrawRow.get('[data-test="cell-action"]').text()).toBe('admin.affiliates.outflowTypes.withdraw')
-    expect(withdrawRow.get('[data-test="cell-amount"]').text()).toBe('$12.50')
-
-    const transferRow = wrapper.get('[data-test="row-1"]')
-    expect(transferRow.get('[data-test="cell-action"]').text()).toBe('admin.affiliates.outflowTypes.transfer')
-  })
-
-  it('opens the offline withdrawal dialog and reloads the first page after recording', async () => {
-    listTransferRecords.mockResolvedValue(page([]))
-
-    const wrapper = mountTable('transfers')
-    await flushPromises()
-    expect(listTransferRecords).toHaveBeenCalledTimes(1)
-
-    const button = wrapper.get('[data-test="affiliate-withdraw-open"]')
-    expect(button.text()).toBe('admin.affiliates.withdraw.button')
-    await button.trigger('click')
-    expect(wrapper.get('[data-test="withdraw-dialog"]').attributes('data-show')).toBe('true')
-
-    wrapper.findComponent(WithdrawDialogStub).vm.$emit('success', { ledger_id: 12 })
-    await flushPromises()
-
-    expect(wrapper.get('[data-test="withdraw-dialog"]').attributes('data-show')).toBe('false')
-    expect(listTransferRecords).toHaveBeenCalledTimes(2)
-    expect(listTransferRecords.mock.calls[1][0]).toMatchObject({ page: 1 })
   })
 })
