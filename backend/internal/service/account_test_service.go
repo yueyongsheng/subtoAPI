@@ -2768,7 +2768,7 @@ func (s *AccountTestService) processGeminiStream(c *gin.Context, body io.Reader)
 						for _, part := range parts {
 							if partMap, ok := part.(map[string]any); ok {
 								if text, ok := partMap["text"].(string); ok && text != "" {
-									qualityOutput.WriteString(text)
+									_, _ = qualityOutput.WriteString(text)
 									s.sendEvent(c, TestEvent{Type: "content", Text: text})
 									if visualQualityOutputComplete(c, &qualityOutput) {
 										s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
@@ -2913,7 +2913,7 @@ func (s *AccountTestService) processClaudeStream(c *gin.Context, body io.Reader)
 		case "content_block_delta":
 			if delta, ok := data["delta"].(map[string]any); ok {
 				if text, ok := delta["text"].(string); ok {
-					qualityOutput.WriteString(text)
+					_, _ = qualityOutput.WriteString(text)
 					s.sendEvent(c, TestEvent{Type: "content", Text: text})
 					if visualQualityOutputComplete(c, &qualityOutput) {
 						s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
@@ -2998,7 +2998,7 @@ func (s *AccountTestService) processOpenAIChatCompletionsStream(c *gin.Context, 
 			}
 			if delta, ok := choice["delta"].(map[string]any); ok {
 				if text, ok := delta["content"].(string); ok && text != "" {
-					qualityOutput.WriteString(text)
+					_, _ = qualityOutput.WriteString(text)
 					s.sendEvent(c, TestEvent{Type: "content", Text: text})
 					if visualQualityOutputComplete(c, &qualityOutput) {
 						s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
@@ -3008,7 +3008,7 @@ func (s *AccountTestService) processOpenAIChatCompletionsStream(c *gin.Context, 
 			}
 			if message, ok := choice["message"].(map[string]any); ok {
 				if text, ok := message["content"].(string); ok && text != "" {
-					qualityOutput.WriteString(text)
+					_, _ = qualityOutput.WriteString(text)
 					s.sendEvent(c, TestEvent{Type: "content", Text: text})
 					if visualQualityOutputComplete(c, &qualityOutput) {
 						s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
@@ -3067,7 +3067,7 @@ func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader)
 		case "response.output_text.delta":
 			// OpenAI Responses API uses "delta" field for text content
 			if delta, ok := data["delta"].(string); ok && delta != "" {
-				qualityOutput.WriteString(delta)
+				_, _ = qualityOutput.WriteString(delta)
 				s.sendEvent(c, TestEvent{Type: "content", Text: delta})
 				if visualQualityOutputComplete(c, &qualityOutput) {
 					s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
