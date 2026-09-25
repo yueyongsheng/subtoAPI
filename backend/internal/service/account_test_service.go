@@ -2839,7 +2839,12 @@ func createOpenAITestPayloadWithPrompt(modelID string, isOAuth bool, prompt stri
 		},
 		"stream": true,
 	}
-	if isVisualQualityPrompt(testPrompt) {
+	// ChatGPT's internal OAuth Responses endpoint rejects the public API
+	// `max_output_tokens` field.  The visual prompt already asks for a short
+	// document and the stream parser stops after the closing HTML/SVG tag, so
+	// leave the field out for OAuth while retaining the cap for compatible API
+	// key Responses endpoints.
+	if isVisualQualityPrompt(testPrompt) && !isOAuth {
 		payload["max_output_tokens"] = 1800
 	}
 

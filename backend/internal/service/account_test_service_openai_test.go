@@ -266,9 +266,12 @@ func TestAccountTestService_VisualProbeStopsAfterCompleteHTML(t *testing.T) {
 
 func TestAccountTestService_VisualPayloadCapsOutput(t *testing.T) {
 	prompt := "只输出 HTML，使用内嵌 SVG 绘制鹈鹕骑自行车动画，必须包含 <svg> 和完整 </html>。"
-	responses := createOpenAITestPayloadWithPrompt("gpt-6-astra", true, prompt)
+	oauthResponses := createOpenAITestPayloadWithPrompt("gpt-6-astra", true, prompt)
+	apiKeyResponses := createOpenAITestPayloadWithPrompt("gpt-6-astra", false, prompt)
 	chat := createOpenAIChatCompletionsTestPayload("gpt-6-astra", prompt)
-	require.Equal(t, 1800, responses["max_output_tokens"])
+	_, oauthHasMaxOutputTokens := oauthResponses["max_output_tokens"]
+	require.False(t, oauthHasMaxOutputTokens, "ChatGPT OAuth Responses rejects max_output_tokens")
+	require.Equal(t, 1800, apiKeyResponses["max_output_tokens"])
 	require.Equal(t, 1800, chat["max_tokens"])
 	if got := accountProbeMaxTokens([]string{prompt}, 256); got != 1800 {
 		t.Fatalf("visual quality max tokens = %d, want 1800", got)

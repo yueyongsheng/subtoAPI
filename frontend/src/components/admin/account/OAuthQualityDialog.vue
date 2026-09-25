@@ -86,7 +86,7 @@
             <tbody><tr v-for="account in report.accounts" :key="account.id" class="border-t border-gray-100 dark:border-dark-700">
               <td class="p-3"><button class="text-left font-medium text-primary-600" @click="expandedID = expandedID === account.id ? null : account.id">{{ account.name }} <span class="text-xs">#{{ account.id }}</span></button></td>
               <td class="whitespace-nowrap p-3">{{ typeLabel(account.type) }}</td>
-              <td v-for="probe in account.probes" :key="probe.key" class="whitespace-nowrap p-3"><span :class="statusClass(probe.status)">{{ statusLabel(probe.status, probe.key) }}</span></td>
+              <td v-for="probe in account.probes" :key="probe.key" class="whitespace-nowrap p-3"><span :class="statusClass(displayProbeStatus(probe))">{{ statusLabel(displayProbeStatus(probe), probe.key, probe.output_preview) }}</span></td>
               <td class="whitespace-nowrap p-3"><button class="text-primary-600" @click="expandedID = expandedID === account.id ? null : account.id">{{ t(k + 'details') }} · {{ account.passed }}/{{ account.total }}</button></td>
             </tr></tbody>
           </table>
@@ -94,7 +94,7 @@
         <div v-if="expandedAccount" class="space-y-3 rounded-xl bg-gray-50 p-4 dark:bg-dark-900">
           <p class="font-medium">{{ expandedAccount.name }} · {{ expandedAccount.summary }}</p>
           <div v-for="probe in expandedAccount.probes" :key="probe.key" class="rounded-lg bg-white p-3 text-sm dark:bg-dark-800">
-            <div class="flex items-center gap-2"><span class="font-medium">{{ probeLabel(probe.key) }}</span><span :class="statusClass(probe.status)">{{ statusLabel(probe.status, probe.key) }}</span><span class="text-xs text-gray-500">{{ probe.latency_ms }} ms</span></div>
+            <div class="flex items-center gap-2"><span class="font-medium">{{ probeLabel(probe.key) }}</span><span :class="statusClass(displayProbeStatus(probe))">{{ statusLabel(displayProbeStatus(probe), probe.key, probe.output_preview) }}</span><span class="text-xs text-gray-500">{{ probe.latency_ms }} ms</span></div>
             <p class="mt-2 text-gray-500">{{ probe.summary }}</p>
             <template v-if="probe.key === 'svg_html' && probe.output_preview">
               <p class="mt-3 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t(k + 'visualPreview') }}</p>
@@ -181,9 +181,12 @@ const expandedAccount = computed(() => report.value?.accounts.find(a => a.id ===
 const canRun = computed(() => !busy.value && !loadingAccounts.value && selectedIDs.value.length > 0 && accountTypes.value.length > 0 && probeKeys.value.length > 0 && !!modelID.value && (!probeKeys.value.includes('custom') || !!customPrompt.value.trim()))
 function typeLabel(type: string) { return ({ oauth: 'OAuth', apikey: 'API Key', 'setup-token': 'Setup Token', bedrock: 'AWS Bedrock' } as Record<string, string>)[type] ?? type }
 function probeLabel(key: string) { return t(k + 'methods.' + key + '.label') }
-function statusLabel(status: string, probeKey?: string) {
-  if (probeKey === 'svg_html') return t(k + 'visualReview')
-  return t(k + (status === 'passed' ? 'passed' : status === 'failed' ? 'failed' : 'review'))
+function displayProbeStatus(probe: OAuthQualityAccountResult['probes'][number]) {
+  return probe.key === 'svg_html' && !probe.output_preview?.trim() ? 'failed' : probe.status
+}
+function statusLabel(status: string, probeKey?: string, outputPreview?: string) {
+  if (probeKey === 'svg_html' && status === 'review' && outputPreview?.trim()) return t(k + 'visualReview')
+	return t(k + (status === 'passed' ? 'passed' : status === 'failed' ? 'failed' : 'review'))
 }
 function statusClass(status: string) {
   return 'rounded px-2 py-1 text-xs ' + (status === 'passed' ? 'bg-emerald-100 text-emerald-700' : status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')

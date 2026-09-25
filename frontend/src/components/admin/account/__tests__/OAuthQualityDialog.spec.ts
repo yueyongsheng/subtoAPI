@@ -113,5 +113,19 @@ describe('Account quality selection', () => {
   expect(w.find('[role="alert"]').text()).toContain('oauthQuality.runFailed')
   w.unmount()
  })
+ it('shows visual manual judgment only when HTML/SVG output exists', async () => {
+  const w = render({ initialAccountIds: [1] })
+  await flushPromises()
+  vi.mocked(runOAuthQuality).mockResolvedValueOnce({
+   checked_at: new Date().toISOString(), group_id: 7, model_id: 'gpt-6-astra', account_types: ['oauth', 'apikey'], probe_keys: ['svg_html'],
+   accounts: [{ ...fixtures[0], status: 'failed', summary: 'request failed', passed: 0, total: 1, probes: [{ key: 'svg_html', label: 'svg_html', status: 'failed', summary: 'request failed' }] }],
+  })
+  await w.get('[data-testid="run-quality"]').trigger('click')
+  await flushPromises()
+  expect(w.text()).toContain('oauthQuality.failed')
+  expect(w.text()).not.toContain('oauthQuality.visualReview')
+  expect(w.find('iframe').exists()).toBe(false)
+  w.unmount()
+ })
 })
 
