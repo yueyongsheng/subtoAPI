@@ -151,7 +151,7 @@ var oauthQualityProbes = []OAuthQualityProbe{
 	{
 		Key:    "svg_html",
 		Label:  "鹈鹕骑自行车",
-		Prompt: "创建一个 HTML，内容是用 SVG 绘制一个鹈鹕骑自行车的 2D 动画。不要进行任何测试，不要调用 skills，不要网络检索，不要调用子智能体，直接生成完整 HTML 源码。",
+		Prompt: "只输出一个可直接在浏览器打开的、短小完整的单文件 HTML 源码，不要 Markdown 代码围栏、解释、文件链接、工具、网络或测试。使用内嵌 SVG 绘制一个鹈鹕骑自行车的 2D 动画，必须包含 <svg>...</svg> 以及 CSS @keyframes 或 SVG animate，禁止外部资源；控制在 1200 token 内，并确保输出包含完整的 </html>。",
 	},
 	{
 		Key:    "english_knowledge",
@@ -247,6 +247,17 @@ func (s *OAuthQualityService) Run(ctx context.Context, groupID *int64, ids []int
 			probeCancel()
 			item := OAuthQualityProbeResult{Key: probe.Key, Label: probe.Label}
 			if runErr != nil || test == nil || test.Status != "success" {
+				// A visual probe is intentionally reviewed by a human. If the
+				// upstream sent usable HTML/SVG before its stream terminated (for
+				// example at an edge timeout), retain it for preview instead of
+				// presenting the transport detail as a quality verdict.
+				if probe.Key == "svg_html" && test != nil && strings.TrimSpace(test.ResponseText) != "" {
+					item.Status = "review"
+					item.Summary = "已收到画图输出，请在预览中人工判断画面；传输未完整结束"
+					item.LatencyMS, item.OutputPreview = test.LatencyMs, previewQualityOutput(test.ResponseText)
+					result.Probes = append(result.Probes, item)
+					continue
+				}
 				item.Status = "failed"
 				item.Summary = "传输或上游请求失败"
 				if test != nil {

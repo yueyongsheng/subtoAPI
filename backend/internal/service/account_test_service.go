@@ -326,9 +326,26 @@ func accountProbePrompt(prompts []string) string {
 
 func accountProbeMaxTokens(prompts []string, fallback int) int {
 	if len(prompts) > 0 && strings.TrimSpace(prompts[0]) != "" && strings.TrimSpace(prompts[0]) != "hi" {
+		if isVisualQualityPrompt(prompts[0]) {
+			return 1800
+		}
 		return 4096
 	}
 	return fallback
+}
+
+func isVisualQualityPrompt(prompt string) bool {
+	lower := strings.ToLower(strings.TrimSpace(prompt))
+	return strings.Contains(lower, "<svg") ||
+		(strings.Contains(lower, "svg") && (strings.Contains(lower, "pelican") || strings.Contains(prompt, "鹈鹕")))
+}
+
+func visualQualityOutputComplete(c *gin.Context, output *strings.Builder) bool {
+	if c == nil || !c.GetBool("account_quality_probe_visual") || output == nil {
+		return false
+	}
+	lower := strings.ToLower(output.String())
+	return strings.Contains(lower, "</html>") || strings.Contains(lower, "</svg>")
 }
 
 // createTestPayloadWithPrompt keeps the regular connectivity probe default
@@ -2699,6 +2716,9 @@ func createGeminiTestPayload(modelID string, prompt string) []byte {
 			},
 		},
 	}
+	if isVisualQualityPrompt(textPrompt) {
+		payload["generationConfig"] = map[string]any{"maxOutputTokens": 1800}
+	}
 	bytes, _ := json.Marshal(payload)
 	return bytes
 }
@@ -2706,6 +2726,7 @@ func createGeminiTestPayload(modelID string, prompt string) []byte {
 // processGeminiStream processes SSE stream from Gemini API
 func (s *AccountTestService) processGeminiStream(c *gin.Context, body io.Reader) error {
 	reader := bufio.NewReader(body)
+	var qualityOutput strings.Builder
 
 	for {
 		line, err := reader.ReadString('\n')
@@ -2747,7 +2768,12 @@ func (s *AccountTestService) processGeminiStream(c *gin.Context, body io.Reader)
 						for _, part := range parts {
 							if partMap, ok := part.(map[string]any); ok {
 								if text, ok := partMap["text"].(string); ok && text != "" {
+									qualityOutput.WriteString(text)
 									s.sendEvent(c, TestEvent{Type: "content", Text: text})
+									if visualQualityOutputComplete(c, &qualityOutput) {
+										s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+										return nil
+									}
 								}
 								if inlineData, ok := partMap["inlineData"].(map[string]any); ok {
 									mimeType, _ := inlineData["mimeType"].(string)
@@ -2813,6 +2839,9 @@ func createOpenAITestPayloadWithPrompt(modelID string, isOAuth bool, prompt stri
 		},
 		"stream": true,
 	}
+	if isVisualQualityPrompt(testPrompt) {
+		payload["max_output_tokens"] = 1800
+	}
 
 	// OAuth accounts using ChatGPT internal API require store: false
 	if isOAuth {
@@ -2831,7 +2860,7 @@ func createOpenAIChatCompletionsTestPayload(modelID string, prompt string) map[s
 		testPrompt = "hi"
 	}
 
-	return map[string]any{
+	payload := map[string]any{
 		"model": modelID,
 		"messages": []map[string]any{
 			{
@@ -2841,11 +2870,16 @@ func createOpenAIChatCompletionsTestPayload(modelID string, prompt string) map[s
 		},
 		"stream": true,
 	}
+	if isVisualQualityPrompt(testPrompt) {
+		payload["max_tokens"] = 1800
+	}
+	return payload
 }
 
 // processClaudeStream processes the SSE stream from Claude API
 func (s *AccountTestService) processClaudeStream(c *gin.Context, body io.Reader) error {
 	reader := bufio.NewReader(body)
+	var qualityOutput strings.Builder
 
 	for {
 		line, err := reader.ReadString('\n')
@@ -2879,7 +2913,12 @@ func (s *AccountTestService) processClaudeStream(c *gin.Context, body io.Reader)
 		case "content_block_delta":
 			if delta, ok := data["delta"].(map[string]any); ok {
 				if text, ok := delta["text"].(string); ok {
+					qualityOutput.WriteString(text)
 					s.sendEvent(c, TestEvent{Type: "content", Text: text})
+					if visualQualityOutputComplete(c, &qualityOutput) {
+						s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+						return nil
+					}
 				}
 			}
 		case "message_stop":
@@ -2903,6 +2942,7 @@ func (s *AccountTestService) processOpenAIChatCompletionsStream(c *gin.Context, 
 	reader := bufio.NewReader(body)
 	seenJSON := false
 	seenFinish := false
+	var qualityOutput strings.Builder
 
 	for {
 		line, err := reader.ReadString('\n')
@@ -2958,12 +2998,22 @@ func (s *AccountTestService) processOpenAIChatCompletionsStream(c *gin.Context, 
 			}
 			if delta, ok := choice["delta"].(map[string]any); ok {
 				if text, ok := delta["content"].(string); ok && text != "" {
+					qualityOutput.WriteString(text)
 					s.sendEvent(c, TestEvent{Type: "content", Text: text})
+					if visualQualityOutputComplete(c, &qualityOutput) {
+						s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+						return nil
+					}
 				}
 			}
 			if message, ok := choice["message"].(map[string]any); ok {
 				if text, ok := message["content"].(string); ok && text != "" {
+					qualityOutput.WriteString(text)
 					s.sendEvent(c, TestEvent{Type: "content", Text: text})
+					if visualQualityOutputComplete(c, &qualityOutput) {
+						s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+						return nil
+					}
 				}
 			}
 			if finishReason, ok := choice["finish_reason"].(string); ok && finishReason != "" {
@@ -2977,6 +3027,7 @@ func (s *AccountTestService) processOpenAIChatCompletionsStream(c *gin.Context, 
 func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader) error {
 	reader := bufio.NewReader(body)
 	seenCompleted := false
+	var qualityOutput strings.Builder
 
 	for {
 		line, err := reader.ReadString('\n')
@@ -3016,7 +3067,12 @@ func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader)
 		case "response.output_text.delta":
 			// OpenAI Responses API uses "delta" field for text content
 			if delta, ok := data["delta"].(string); ok && delta != "" {
+				qualityOutput.WriteString(delta)
 				s.sendEvent(c, TestEvent{Type: "content", Text: delta})
+				if visualQualityOutputComplete(c, &qualityOutput) {
+					s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+					return nil
+				}
 			}
 		case "response.completed", "response.done":
 			s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
@@ -3330,7 +3386,9 @@ func (s *AccountTestService) RunTestBackgroundWithPrompt(ctx context.Context, ac
 	w := httptest.NewRecorder()
 	ginCtx, _ := gin.CreateTestContext(w)
 	ginCtx.Request = (&http.Request{}).WithContext(ctx)
-	ginCtx.Set("account_quality_probe", strings.TrimSpace(prompt) != "")
+	trimmedPrompt := strings.TrimSpace(prompt)
+	ginCtx.Set("account_quality_probe", trimmedPrompt != "")
+	ginCtx.Set("account_quality_probe_visual", isVisualQualityPrompt(trimmedPrompt))
 
 	testErr := s.TestAccountConnection(ginCtx, accountID, modelID, prompt, AccountTestModeDefault)
 

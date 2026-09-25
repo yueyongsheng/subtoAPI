@@ -101,7 +101,7 @@ export default {
   "methods": {
     "svg_html": {
       "label": "鹈鹕骑自行车",
-      "hint": "生成 HTML / SVG 动画，展示源码供人工复核画面与动画。"
+      "hint": "生成 HTML / SVG 动画，直接预览画面；结果只供你人工判断，不自动判定通过或失败。"
     },
     "reasoning_exact": {
       "label": "馒头推理题",
@@ -145,6 +145,9 @@ export default {
   "result": "详情 / 通过数",
   "details": "查看详情",
   "manualReview": "人工复核",
+  "visualReview": "人工判断",
+  "visualPreview": "画面预览（请自行判断）",
+  "viewSource": "查看 HTML / SVG 源码",
   "stop": "完成当前账号后停止",
   "stopping": "等待当前账号完成…",
   "stopped": "已停止后续检测，已完成结果保留。"

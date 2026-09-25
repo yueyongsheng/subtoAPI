@@ -45,6 +45,7 @@ type qualityMemoryRunner struct {
 	calls  []qualityRunnerCall
 	output map[string]string
 	err    error
+	status string
 }
 
 func (r *qualityMemoryRunner) RunTestBackgroundWithPrompt(_ context.Context, accountID int64, modelID, prompt string) (*ScheduledTestResult, error) {
@@ -52,7 +53,11 @@ func (r *qualityMemoryRunner) RunTestBackgroundWithPrompt(_ context.Context, acc
 	if r.err != nil {
 		return nil, r.err
 	}
-	return &ScheduledTestResult{Status: "success", ResponseText: r.output[prompt], LatencyMs: 12}, nil
+	status := r.status
+	if status == "" {
+		status = "success"
+	}
+	return &ScheduledTestResult{Status: status, ResponseText: r.output[prompt], LatencyMs: 12}, nil
 }
 func qualityFixtureRunner() *qualityMemoryRunner {
 	r := &qualityMemoryRunner{output: map[string]string{}}
@@ -203,6 +208,21 @@ func TestOAuthQualityUngroupedAndFailures(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "failed", report.Accounts[0].Status)
 	require.NotContains(t, report.Accounts[0].Probes[0].Summary, "private details")
+}
+
+func TestOAuthQualityVisualOutputIsKeptForManualReviewAfterTransportError(t *testing.T) {
+	svc, runner := qualityTestService()
+	runner.status = "failed"
+	runner.output[oauthQualityProbes[2].Prompt] = "<html><body><svg><text>pelican bicycle</text>"
+	// A terminated stream can still carry enough HTML/SVG for the administrator
+	// to inspect; it must not be rendered as a red quality failure.
+	runner.err = nil
+	report, err := svc.Run(context.Background(), nil, []int64{1}, "gpt-6-astra", []string{"oauth"}, []string{"svg_html"}, nil)
+	require.NoError(t, err)
+	probe := report.Accounts[0].Probes[0]
+	require.Equal(t, "review", probe.Status)
+	require.Contains(t, probe.OutputPreview, "pelican bicycle")
+	require.Contains(t, probe.Summary, "人工判断")
 }
 func TestPreviewQualityOutputKeepsUTF8Boundaries(t *testing.T) {
 	value := strings.Repeat("鹈", oauthQualityPreviewBytes+10)

@@ -248,6 +248,33 @@ func TestAccountTestService_OpenAIStreamEOFBeforeCompletedFails(t *testing.T) {
 	require.NotContains(t, recorder.Body.String(), `"success":true`)
 }
 
+func TestAccountTestService_VisualProbeStopsAfterCompleteHTML(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctx, recorder := newTestContext()
+	ctx.Set("account_quality_probe_visual", true)
+	body := strings.Join([]string{
+		`data: {"type":"response.output_text.delta","delta":"<!doctype html><html><body><svg>"}`,
+		"",
+		`data: {"type":"response.output_text.delta","delta":"<animate /></svg></body></html>"}`,
+		"",
+	}, "\n")
+
+	err := (&AccountTestService{}).processOpenAIStream(ctx, strings.NewReader(body))
+	require.NoError(t, err)
+	require.Contains(t, recorder.Body.String(), `"success":true`)
+}
+
+func TestAccountTestService_VisualPayloadCapsOutput(t *testing.T) {
+	prompt := "只输出 HTML，使用内嵌 SVG 绘制鹈鹕骑自行车动画，必须包含 <svg> 和完整 </html>。"
+	responses := createOpenAITestPayloadWithPrompt("gpt-6-astra", true, prompt)
+	chat := createOpenAIChatCompletionsTestPayload("gpt-6-astra", prompt)
+	require.Equal(t, 1800, responses["max_output_tokens"])
+	require.Equal(t, 1800, chat["max_tokens"])
+	if got := accountProbeMaxTokens([]string{prompt}, 256); got != 1800 {
+		t.Fatalf("visual quality max tokens = %d, want 1800", got)
+	}
+}
+
 func TestAccountTestService_DeepSeekCustomBaseURLUsesV1ResponsesPath(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ctx, _ := newTestContext()

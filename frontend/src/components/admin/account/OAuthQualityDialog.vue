@@ -86,7 +86,7 @@
             <tbody><tr v-for="account in report.accounts" :key="account.id" class="border-t border-gray-100 dark:border-dark-700">
               <td class="p-3"><button class="text-left font-medium text-primary-600" @click="expandedID = expandedID === account.id ? null : account.id">{{ account.name }} <span class="text-xs">#{{ account.id }}</span></button></td>
               <td class="whitespace-nowrap p-3">{{ typeLabel(account.type) }}</td>
-              <td v-for="probe in account.probes" :key="probe.key" class="whitespace-nowrap p-3"><span :class="statusClass(probe.status)">{{ statusLabel(probe.status) }}</span></td>
+              <td v-for="probe in account.probes" :key="probe.key" class="whitespace-nowrap p-3"><span :class="statusClass(probe.status)">{{ statusLabel(probe.status, probe.key) }}</span></td>
               <td class="whitespace-nowrap p-3"><button class="text-primary-600" @click="expandedID = expandedID === account.id ? null : account.id">{{ t(k + 'details') }} · {{ account.passed }}/{{ account.total }}</button></td>
             </tr></tbody>
           </table>
@@ -94,9 +94,23 @@
         <div v-if="expandedAccount" class="space-y-3 rounded-xl bg-gray-50 p-4 dark:bg-dark-900">
           <p class="font-medium">{{ expandedAccount.name }} · {{ expandedAccount.summary }}</p>
           <div v-for="probe in expandedAccount.probes" :key="probe.key" class="rounded-lg bg-white p-3 text-sm dark:bg-dark-800">
-            <div class="flex items-center gap-2"><span class="font-medium">{{ probeLabel(probe.key) }}</span><span :class="statusClass(probe.status)">{{ statusLabel(probe.status) }}</span><span class="text-xs text-gray-500">{{ probe.latency_ms }} ms</span></div>
+            <div class="flex items-center gap-2"><span class="font-medium">{{ probeLabel(probe.key) }}</span><span :class="statusClass(probe.status)">{{ statusLabel(probe.status, probe.key) }}</span><span class="text-xs text-gray-500">{{ probe.latency_ms }} ms</span></div>
             <p class="mt-2 text-gray-500">{{ probe.summary }}</p>
-            <pre v-if="probe.output_preview" class="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs">{{ probe.output_preview }}</pre>
+            <template v-if="probe.key === 'svg_html' && probe.output_preview">
+              <p class="mt-3 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t(k + 'visualPreview') }}</p>
+              <iframe
+                class="mt-2 h-80 w-full rounded-lg border border-gray-200 bg-white dark:border-dark-600"
+                :srcdoc="visualPreviewDocument(probe.output_preview)"
+                sandbox="allow-scripts"
+                referrerpolicy="no-referrer"
+                :title="t(k + 'visualPreview')"
+              />
+              <details class="mt-2">
+                <summary class="cursor-pointer text-xs text-primary-600">{{ t(k + 'viewSource') }}</summary>
+                <pre class="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs">{{ probe.output_preview }}</pre>
+              </details>
+            </template>
+            <pre v-else-if="probe.output_preview" class="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs">{{ probe.output_preview }}</pre>
           </div>
         </div>
         <p v-if="message" role="status" class="text-sm text-primary-600">{{ message }}</p>
@@ -167,11 +181,25 @@ const expandedAccount = computed(() => report.value?.accounts.find(a => a.id ===
 const canRun = computed(() => !busy.value && !loadingAccounts.value && selectedIDs.value.length > 0 && accountTypes.value.length > 0 && probeKeys.value.length > 0 && !!modelID.value && (!probeKeys.value.includes('custom') || !!customPrompt.value.trim()))
 function typeLabel(type: string) { return ({ oauth: 'OAuth', apikey: 'API Key', 'setup-token': 'Setup Token', bedrock: 'AWS Bedrock' } as Record<string, string>)[type] ?? type }
 function probeLabel(key: string) { return t(k + 'methods.' + key + '.label') }
-function statusLabel(status: string) { return t(k + (status === 'passed' ? 'passed' : status === 'failed' ? 'failed' : 'review')) }
+function statusLabel(status: string, probeKey?: string) {
+  if (probeKey === 'svg_html') return t(k + 'visualReview')
+  return t(k + (status === 'passed' ? 'passed' : status === 'failed' ? 'failed' : 'review'))
+}
 function statusClass(status: string) {
   return 'rounded px-2 py-1 text-xs ' + (status === 'passed' ? 'bg-emerald-100 text-emerald-700' : status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')
 }
 function formatTime(value: string) { return new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }) }
+function visualPreviewDocument(value: string) {
+  let source = value.trim()
+    .replace(/^```(?:html|xml|svg)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+  const csp = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'; img-src data: blob:; font-src data:; media-src data: blob:">'
+  if (!/<html[\s>]/i.test(source)) {
+    return `<!doctype html><html><head><meta charset="utf-8">${csp}</head><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#fff">${source}</body></html>`
+  }
+  if (/<head(?:\s[^>]*)?>/i.test(source)) return source.replace(/<head(?:\s[^>]*)?>/i, match => match + '<meta charset="utf-8">' + csp)
+  return source.replace(/<html(?:\s[^>]*)?>/i, match => match + '<head><meta charset="utf-8">' + csp + '</head>')
+}
 function toggleAll() {
   const visible = new Set(visibleAccounts.value.map(a => a.id))
   selectedIDs.value = allSelected.value ? selectedIDs.value.filter(id => !visible.has(id)) : [...new Set([...selectedIDs.value, ...visible])]

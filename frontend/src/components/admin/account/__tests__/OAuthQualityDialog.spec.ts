@@ -48,6 +48,8 @@ describe('Account quality selection', () => {
   expect(runOAuthQuality).toHaveBeenCalledTimes(4)
   expect(vi.mocked(runOAuthQuality).mock.calls.map(call=>call[1])).toEqual([[1],[1],[2],[2]])
   expect(vi.mocked(runOAuthQuality).mock.calls.map(call=>call[4])).toEqual([['svg_html'],['reasoning_exact'],['svg_html'],['reasoning_exact']])
+  expect(w.find('iframe').exists()).toBe(true)
+  expect(w.find('iframe').attributes('sandbox')).toBe('allow-scripts')
   w.unmount()
  })
  it('clears selection on scope changes and discards late results', async () => {

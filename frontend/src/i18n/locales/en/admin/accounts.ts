@@ -101,7 +101,7 @@ export default {
   "methods": {
     "svg_html": {
       "label": "Pelican on a bicycle",
-      "hint": "Generate HTML / SVG animation; inspect the source and animation manually."
+      "hint": "Generate an HTML / SVG animation and preview it; you decide the visual result manually."
     },
     "reasoning_exact": {
       "label": "Bun reasoning puzzle",
@@ -145,6 +145,9 @@ export default {
   "result": "Details / matched",
   "details": "View details",
   "manualReview": "Manual review",
+  "visualReview": "Manual judgment",
+  "visualPreview": "Visual preview (judge manually)",
+  "viewSource": "View HTML / SVG source",
   "stop": "Stop after current account",
   "stopping": "Waiting for current account…",
   "stopped": "Further checks stopped. Completed results are retained."
