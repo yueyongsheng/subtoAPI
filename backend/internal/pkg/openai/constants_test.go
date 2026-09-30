@@ -35,6 +35,20 @@ func TestDefaultModelsIncludeGPT6Sol(t *testing.T) {
 	require.Zero(t, model.Created)
 }
 
+func TestDefaultModelsIncludeGPT61Sol(t *testing.T) {
+	byID := make(map[string]Model, len(DefaultModels))
+	for _, model := range DefaultModels {
+		byID[model.ID] = model
+	}
+	model, ok := byID["gpt-6.1-sol"]
+	require.True(t, ok)
+	require.Equal(t, "GPT-6.1 Sol", model.DisplayName)
+	require.Zero(t, model.Created)
+	require.True(t, IsPublicOpenAIModelID("gpt-6.1-sol"))
+	require.True(t, IsGPT61SolModelSpelling("openai/gpt-6.1-sol-max"))
+	require.False(t, IsGPT61SolModelSpelling("gpt-6.1-sol-none"))
+}
+
 func TestDefaultModelsExposeOnlyExactGPT6AstraID(t *testing.T) {
 	ids := DefaultModelIDs()
 	require.Contains(t, ids, "gpt-6-astra")

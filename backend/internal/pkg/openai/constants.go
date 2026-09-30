@@ -26,6 +26,7 @@ var DefaultModels = []Model{
 	// API-key response is verified; zero prevents inventing release metadata.
 	{ID: "gpt-6-astra", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6 Astra"},
 	{ID: "gpt-6-sol", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6 Sol"},
+	{ID: "gpt-6.1-sol", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6.1 Sol"},
 	{ID: "gpt-5.5", Object: "model", Created: 1776873600, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.5"},
 	{ID: "gpt-5.4", Object: "model", Created: 1738368000, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.4"},
 	{ID: "gpt-5.4-mini", Object: "model", Created: 1738368000, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.4 Mini"},
@@ -57,12 +58,12 @@ func IsPublicOpenAIModelID(id string) bool {
 	if id == "" {
 		return false
 	}
-	if id == "gpt-6-astra" || id == "gpt-6-sol" {
+	if id == "gpt-6-astra" || id == "gpt-6-sol" || id == "gpt-6.1-sol" {
 		return true
 	}
 	lower := strings.ToLower(id)
 	return lower != "gpt-6" && lower != "astra" &&
-		!strings.HasPrefix(lower, "gpt-6-") && !strings.Contains(lower, "astra")
+		!strings.HasPrefix(lower, "gpt-6.1") && !strings.HasPrefix(lower, "gpt-6-") && !strings.Contains(lower, "astra")
 }
 
 // DefaultTestModel default model for testing OpenAI accounts
@@ -157,7 +158,7 @@ func CanonicalizeOpenAIModelAliasSpelling(model string) string {
 func CodexBaseInstructionsForModel(model string) string {
 	canonical := CanonicalizeOpenAIModelAliasSpelling(model)
 	switch {
-	case canonical == "gpt-6-astra" || canonical == "gpt-6-sol":
+	case canonical == "gpt-6-astra" || canonical == "gpt-6-sol" || canonical == "gpt-6.1-sol":
 		if v := strings.TrimSpace(instructionsGPT6Astra); v != "" {
 			return instructionsGPT6Astra
 		}
@@ -193,4 +194,23 @@ func IsGPT6SolOrLunaModelSpelling(model string) bool {
 		}
 	}
 	return false
+}
+
+// IsGPT61SolModelSpelling recognizes the public ID and supported local suffixes.
+// GPT-6.1 Sol does not support none or minimal reasoning.
+func IsGPT61SolModelSpelling(model string) bool {
+	canonical := CanonicalizeOpenAIModelAliasSpelling(model)
+	if canonical == "gpt-6.1-sol" {
+		return true
+	}
+	suffix, ok := strings.CutPrefix(canonical, "gpt-6.1-sol-")
+	if !ok {
+		return false
+	}
+	switch suffix {
+	case "low", "medium", "high", "xhigh", "max", "openai-compact":
+		return true
+	default:
+		return false
+	}
 }

@@ -104,6 +104,23 @@ var (
 		Mode:                                "chat",
 		SupportsPromptCaching:               true,
 	}
+	openAIGPT61SolFallbackPricing = &LiteLLMModelPricing{
+		InputCostPerToken:                   7e-06,
+		InputCostPerTokenPriority:           14e-06,
+		OutputCostPerToken:                  35e-06,
+		OutputCostPerTokenPriority:          70e-06,
+		CacheCreationInputTokenCost:         8.75e-06,
+		CacheCreationInputTokenCostPriority: 17.5e-06,
+		CacheReadInputTokenCost:             0.35e-06,
+		CacheReadInputTokenCostPriority:     0.7e-06,
+		LongContextInputTokenThreshold:      272000,
+		LongContextInputCostMultiplier:      2,
+		LongContextOutputCostMultiplier:     1.5,
+		SupportsServiceTier:                 true,
+		LiteLLMProvider:                     "openai",
+		Mode:                                "chat",
+		SupportsPromptCaching:               true,
+	}
 	openAIGPT6LunaFallbackPricing = &LiteLLMModelPricing{
 		InputCostPerToken:                   0.1e-6,
 		InputCostPerTokenPriority:           0.2e-6,
@@ -1534,6 +1551,12 @@ func (s *PricingService) matchOpenAIModel(model string) *LiteLLMModelPricing {
 		}
 	}
 
+	if openai.IsGPT61SolModelSpelling(model) {
+		if pricing, ok := s.pricingData["gpt-6.1-sol"]; ok {
+			return pricing
+		}
+		return openAIGPT61SolFallbackPricing
+	}
 	if openai.IsGPT6SolOrLunaModelSpelling(model) {
 		if pricing, ok := s.pricingData[normalizeKnownOpenAICodexModel(model)]; ok {
 			return pricing

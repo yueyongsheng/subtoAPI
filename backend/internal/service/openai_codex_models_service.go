@@ -524,7 +524,7 @@ func newConfiguredCodexModelDescriptor(modelID string) configuredCodexModelDescr
 				descriptor.ContextWindow = configuredCodexGPT6AstraContext
 				descriptor.MaxContextWindow = configuredCodexGPT6AstraContext
 			}
-			if isOpenAIGPT6SolModel(modelID) {
+			if isOpenAIGPT6SolModel(modelID) || isOpenAIGPT61SolModel(modelID) {
 				descriptor.ContextWindow = configuredCodexGPT6SolContext
 				descriptor.MaxContextWindow = configuredCodexGPT6SolContext
 			}
@@ -2068,6 +2068,7 @@ func CodexModelsManifestETag(body []byte) string {
 var apiKeyCodexModelsWithoutResponsesLite = map[string]struct{}{
 	"gpt-6-astra":   {},
 	"gpt-6-sol":     {},
+	"gpt-6.1-sol":   {},
 	"gpt-5.6-sol":   {},
 	"gpt-5.6-terra": {},
 	"gpt-5.6-luna":  {},

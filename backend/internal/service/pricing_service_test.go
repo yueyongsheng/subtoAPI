@@ -251,6 +251,7 @@ func TestDefaultPricingIncludesOfficialGPT56Rates(t *testing.T) {
 		inputPriority, cachedPriority, cacheWritePriority, outputPriority float64
 	}{
 		{model: "gpt-6-sol", input: 7e-6, cached: 0.7e-6, cacheWrite: 8.75e-6, output: 35e-6, inputPriority: 14e-6, cachedPriority: 1.4e-6, cacheWritePriority: 17.5e-6, outputPriority: 70e-6},
+		{model: "gpt-6.1-sol", input: 7e-6, cached: 0.35e-6, cacheWrite: 8.75e-6, output: 35e-6, inputPriority: 14e-6, cachedPriority: 0.7e-6, cacheWritePriority: 17.5e-6, outputPriority: 70e-6},
 		{model: "gpt-5.6-sol", input: 17.5e-6, cached: 1.75e-6, cacheWrite: 21.875e-6, output: 105e-6, inputPriority: 35e-6, cachedPriority: 3.5e-6, cacheWritePriority: 43.75e-6, outputPriority: 210e-6},
 		{model: "gpt-5.6-terra", input: 7e-6, cached: 0.7e-6, cacheWrite: 8.75e-6, output: 42e-6, inputPriority: 14e-6, cachedPriority: 1.4e-6, cacheWritePriority: 17.5e-6, outputPriority: 84e-6},
 		{model: "gpt-5.6-luna", input: 0.7e-6, cached: 0.07e-6, cacheWrite: 0.875e-6, output: 4.2e-6, inputPriority: 1.4e-6, cachedPriority: 0.14e-6, cacheWritePriority: 1.75e-6, outputPriority: 8.4e-6},
