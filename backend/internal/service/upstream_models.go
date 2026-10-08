@@ -1302,6 +1302,7 @@ func extractUpstreamModelCatalog(body []byte, grok bool) ([]string, map[string]U
 			applyCodexToolCapabilities(entry.CodexToolCapabilities, fields, true)
 		}
 		entry = sanitizeAstraUpstreamModelMetadata(modelID, entry)
+		entry = sanitizeFixedOpenAIGPT6UpstreamModelMetadata(modelID, entry)
 		if upstreamModelMetadataIsUseful(entry) {
 			metadata[modelID] = entry
 		}

@@ -3,16 +3,49 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"net/url"
 	"strings"
 )
 
 var codexToolCapabilityFields = []string{
+	"service_tiers",
 	"supports_search_tool", "apply_patch_tool_type", "comp_hash", "tool_mode", "use_responses_lite",
 	"multi_agent_reasoning_effort", "multi_agent_version",
 }
 
 var fixedAstraReasoningLevels = []string{"low", "medium", "high", "xhigh", "max"}
+
+func fixedOpenAIGPT6Model(modelID string) string {
+	switch canonicalizeOpenAIModelAliasSpelling(modelID) {
+	case "gpt-6-astra":
+		return "gpt-6-astra"
+	case "gpt-6-sol":
+		return "gpt-6-sol"
+	case "gpt-6.1-sol":
+		return "gpt-6.1-sol"
+	default:
+		return ""
+	}
+}
+
+func sanitizeFixedOpenAIGPT6UpstreamModelMetadata(modelID string, metadata UpstreamModelMetadata) UpstreamModelMetadata {
+	model := fixedOpenAIGPT6Model(modelID)
+	if model == "" {
+		return metadata
+	}
+	reasoning := true
+	metadata.Reasoning = &reasoning
+	metadata.SupportedReasoningLevels = append([]string(nil), fixedAstraReasoningLevels...)
+	if model == "gpt-6.1-sol" {
+		metadata.DefaultReasoningLevel = "low"
+	} else if model == "gpt-6-astra" {
+		metadata.DefaultReasoningLevel = "medium"
+	} else {
+		metadata.DefaultReasoningLevel = "medium"
+	}
+	return metadata
+}
 
 func sanitizeAstraUpstreamModelMetadata(modelID string, metadata UpstreamModelMetadata) UpstreamModelMetadata {
 	if !isOpenAIGPT6AstraModel(modelID) {
@@ -25,6 +58,51 @@ func sanitizeAstraUpstreamModelMetadata(modelID string, metadata UpstreamModelMe
 	delete(metadata.CodexToolCapabilities, "multi_agent_reasoning_effort")
 	delete(metadata.CodexToolCapabilities, "multi_agent_version")
 	return metadata
+}
+
+func sanitizeFixedOpenAIGPT6ManifestFields(modelID string, fields map[string]json.RawMessage) bool {
+	model := fixedOpenAIGPT6Model(modelID)
+	if model == "" || fields == nil {
+		return false
+	}
+	set := func(key string, value any) bool {
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			return false
+		}
+		if bytes.Equal(bytes.TrimSpace(fields[key]), encoded) {
+			return false
+		}
+		fields[key] = encoded
+		return true
+	}
+	changed := false
+	defaultEffort := "medium"
+	if model == "gpt-6.1-sol" {
+		defaultEffort = "low"
+	}
+	changed = set("default_reasoning_level", defaultEffort) || changed
+	changed = set("supported_reasoning_levels", configuredCodexGPTReasoningLevels(modelID)) || changed
+	if model != "gpt-6-astra" {
+		changed = set("context_window", int64(1_050_000)) || changed
+		maxContext := int64(1_050_000)
+		if model == "gpt-6.1-sol" {
+			maxContext = 922_000
+		}
+		changed = set("max_context_window", maxContext) || changed
+	}
+	if model != "gpt-6-astra" {
+		changed = set("service_tiers", configuredCodexServiceTiersForModel(modelID)) || changed
+	}
+	if model == "gpt-6-astra" {
+		for _, key := range []string{"multi_agent_reasoning_effort", "multi_agent_version"} {
+			if _, exists := fields[key]; exists {
+				delete(fields, key)
+				changed = true
+			}
+		}
+	}
+	return changed
 }
 
 func sanitizeAstraCodexToolCapabilities(modelID string, capabilities map[string]json.RawMessage) {
@@ -58,7 +136,12 @@ func applyCodexToolCapabilities(dst, src map[string]json.RawMessage, overwrite b
 		}
 		// These Codex fields are nullable booleans or strings, never arbitrary objects.
 		if !bytes.Equal(value, []byte("null")) {
-			if field == "supports_search_tool" || field == "use_responses_lite" {
+			if field == "service_tiers" {
+				var tiers []configuredCodexServiceTier
+				if json.Unmarshal(value, &tiers) != nil {
+					continue
+				}
+			} else if field == "supports_search_tool" || field == "use_responses_lite" {
 				if !bytes.Equal(value, []byte("true")) && !bytes.Equal(value, []byte("false")) {
 					continue
 				}
@@ -101,7 +184,7 @@ func accountCodexToolCapabilities(account *Account, modelID string) map[string]j
 	parsed, err := url.Parse(baseURL)
 	official := err == nil && (strings.EqualFold(parsed.Hostname(), "api.openai.com") ||
 		(account.IsOpenAIOAuth() && strings.EqualFold(parsed.Hostname(), "chatgpt.com")))
-	if account.IsOpenAI() && isOpenAIGPT6AstraModel(modelID) && official {
+	if account.IsOpenAI() && (isOpenAIGPT6AstraModel(modelID) || openai.IsGPT61SolModelSpelling(modelID)) && official {
 		defaults := map[string]json.RawMessage{
 			"supports_search_tool":  json.RawMessage("true"),
 			"apply_patch_tool_type": json.RawMessage(`"freeform"`),
@@ -124,6 +207,17 @@ func accountCodexToolCapabilities(account *Account, modelID string) map[string]j
 		if disabled && bytes.Equal(capabilities["use_responses_lite"], []byte("true")) {
 			capabilities["use_responses_lite"] = json.RawMessage("false")
 		}
+	}
+	// API Astra publicly supports Ultrafast. OAuth must advertise it in its
+	// account manifest; a subscription label alone does not grant the capability.
+	if account.IsOpenAIApiKey() && isOfficialOpenAIModelsBaseURL(baseURL) && isOpenAIGPT6AstraModel(modelID) {
+		tiers := configuredCodexServiceTiersForModel(modelID)
+		tiers = append(tiers, configuredCodexServiceTier{ID: OpenAIFastTierUltrafast, Name: "Ultrafast", Description: "Lowest latency; 6x Standard token pricing."})
+		encoded, err := json.Marshal(tiers)
+		if err != nil {
+			panic(err)
+		}
+		applyCodexToolCapabilities(capabilities, map[string]json.RawMessage{"service_tiers": encoded}, false)
 	}
 	return capabilities
 }
@@ -232,6 +326,7 @@ func groupCodexModelMetadata(
 			missingMetadata = true
 		}
 		metadata = sanitizeAstraUpstreamModelMetadata(lookupModel, metadata)
+		metadata = sanitizeFixedOpenAIGPT6UpstreamModelMetadata(lookupModel, metadata)
 		metadata.CodexToolCapabilities = accountCodexToolCapabilities(account, lookupModel)
 		candidates = append(candidates, metadata)
 	}

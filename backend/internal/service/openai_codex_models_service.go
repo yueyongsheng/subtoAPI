@@ -378,6 +378,7 @@ type configuredCodexModelMessages struct {
 // emitted: unlike ordinary OpenAI /v1/models entries, the Codex manifest parser
 // requires them to be present.
 type configuredCodexModelDescriptor struct {
+	officialMetadata                  json.RawMessage
 	Slug                              string                          `json:"slug"`
 	DisplayName                       string                          `json:"display_name"`
 	Description                       string                          `json:"description"`
@@ -487,7 +488,7 @@ func newConfiguredCodexModelDescriptor(modelID string) configuredCodexModelDescr
 	}
 
 	if isClaudeCodexModel(modelID) {
-		if claude.IsOpus55(modelID) {
+		if claude.IsOpus55(modelID) || claude.IsSonnet55(modelID) {
 			descriptor.ContextWindow = 1_000_000
 			descriptor.MaxContextWindow = 1_000_000
 		}
@@ -496,6 +497,9 @@ func newConfiguredCodexModelDescriptor(modelID string) configuredCodexModelDescr
 		descriptor.SupportsParallelToolCalls = true
 		if levels := configuredCodexClaudeReasoningLevels(modelID); len(levels) > 0 {
 			defaultReasoningLevel := claudeCodexDefaultReasoningLevel(levels)
+			if claude.IsSonnet55(modelID) {
+				defaultReasoningLevel = "high"
+			}
 			descriptor.DefaultReasoningLevel = &defaultReasoningLevel
 			descriptor.SupportedReasoningLevels = levels
 		}
@@ -508,7 +512,7 @@ func newConfiguredCodexModelDescriptor(modelID string) configuredCodexModelDescr
 		descriptor.ServiceTiers = configuredCodexServiceTiersForModel(modelID)
 		if isOpenAICodexReasoningGPTModel(modelID) {
 			defaultReasoningLevel := "medium"
-			if getNormalizedCodexModel(modelID) == "gpt-5.6-sol" {
+			if getNormalizedCodexModel(modelID) == "gpt-5.6-sol" || openai.IsGPT61SolModelSpelling(modelID) {
 				defaultReasoningLevel = "low"
 			}
 			descriptor.DefaultReasoningLevel = &defaultReasoningLevel
@@ -517,7 +521,7 @@ func newConfiguredCodexModelDescriptor(modelID string) configuredCodexModelDescr
 			descriptor.TruncationPolicy = configuredCodexTruncationPolicy{Mode: "tokens", Limit: configuredCodexToolOutputMaxTokens}
 			// GPT-6 Sol/Luna retain the existing 5.6 Codex window as an offline
 			// compatibility template; live account metadata remains authoritative.
-			if isOpenAIGPT56Model(modelID) || openai.IsGPT6SolOrLunaModelSpelling(modelID) {
+			if isOpenAIGPT56Model(modelID) || openai.IsGPT6SolOrLunaModelSpelling(modelID) || openai.IsGPT61SolModelSpelling(modelID) {
 				descriptor.MaxContextWindow = configuredCodexGPT56MaxContext
 			}
 			if isOpenAIGPT6AstraModel(modelID) {
@@ -536,7 +540,43 @@ func newConfiguredCodexModelDescriptor(modelID string) configuredCodexModelDescr
 		}
 	}
 
+	if openai.IsGPT61SolModelSpelling(modelID) {
+		if err := json.Unmarshal(openai.CodexGPT61SolMetadata, &descriptor); err != nil {
+			panic(err)
+		}
+		descriptor.Slug = modelID
+		normalizeFixedOpenAIGPT6Descriptor(&descriptor, modelID)
+		descriptor.officialMetadata = openai.CodexGPT61SolMetadata
+	}
 	return descriptor
+}
+
+func normalizeFixedOpenAIGPT6Descriptor(descriptor *configuredCodexModelDescriptor, modelID string) {
+	if descriptor == nil {
+		return
+	}
+	switch canonicalizeOpenAIModelAliasSpelling(modelID) {
+	case "gpt-6-astra":
+		defaultEffort := "medium"
+		descriptor.DefaultReasoningLevel = &defaultEffort
+		descriptor.SupportedReasoningLevels = configuredCodexGPTReasoningLevels(modelID)
+		descriptor.ContextWindow = configuredCodexGPT6AstraContext
+		descriptor.MaxContextWindow = configuredCodexGPT6AstraContext
+	case "gpt-6-sol":
+		defaultEffort := "medium"
+		descriptor.DefaultReasoningLevel = &defaultEffort
+		descriptor.SupportedReasoningLevels = configuredCodexGPTReasoningLevels(modelID)
+		descriptor.ContextWindow = configuredCodexGPT6SolContext
+		descriptor.MaxContextWindow = configuredCodexGPT6SolContext
+	case "gpt-6.1-sol":
+		defaultEffort := "low"
+		descriptor.DefaultReasoningLevel = &defaultEffort
+		descriptor.SupportedReasoningLevels = configuredCodexGPTReasoningLevels(modelID)
+		descriptor.ContextWindow = configuredCodexGPT6SolContext
+		// The public GPT-6.1 Sol contract exposes a 1,050,000-token context
+		// window with 922,000 tokens available to the input side.
+		descriptor.MaxContextWindow = 922_000
+	}
 }
 
 func configuredCodexServiceTiersForModel(modelID string) []configuredCodexServiceTier {
@@ -988,13 +1028,16 @@ func buildCodexModelsManifest(
 			return nil, err
 		}
 		capabilities := modelMetadata[modelID].CodexToolCapabilities
-		if len(capabilities) > 0 || isOpenAIGPT6AstraModel(metadataModelID) {
+		if len(capabilities) > 0 || fixedOpenAIGPT6Model(metadataModelID) != "" {
 			var fields map[string]json.RawMessage
 			if err := json.Unmarshal(encoded, &fields); err != nil {
 				return nil, err
 			}
 			applyCodexToolCapabilities(fields, capabilities, true)
 			sanitizeAstraCodexManifestFields(metadataModelID, fields)
+			if metadata, ok := modelMetadata[modelID]; !ok || (!metadata.reasoningConflict && !metadata.inputModalitiesConflict) {
+				sanitizeFixedOpenAIGPT6ManifestFields(metadataModelID, fields)
+			}
 			encoded, err = json.Marshal(fields)
 			if err != nil {
 				return nil, err
@@ -2066,9 +2109,9 @@ func CodexModelsManifestETag(body []byte) string {
 }
 
 var apiKeyCodexModelsWithoutResponsesLite = map[string]struct{}{
+	"gpt-6.1-sol":   {},
 	"gpt-6-astra":   {},
 	"gpt-6-sol":     {},
-	"gpt-6.1-sol":   {},
 	"gpt-5.6-sol":   {},
 	"gpt-5.6-terra": {},
 	"gpt-5.6-luna":  {},
@@ -2280,6 +2323,7 @@ func applySyncedAPIKeyCodexModelMetadata(body []byte, account *Account, overwrit
 			continue
 		}
 		metadata = sanitizeAstraUpstreamModelMetadata(lookupModel, metadata)
+		metadata = sanitizeFixedOpenAIGPT6UpstreamModelMetadata(lookupModel, metadata)
 		if lookupModel != slug {
 			metadata.DisplayName = ""
 			metadata.Description = ""
@@ -2319,6 +2363,7 @@ func applySyncedAPIKeyCodexModelMetadata(body []byte, account *Account, overwrit
 		// List conversion has already applied live fields over account capabilities.
 		modelChanged := applyCodexToolCapabilities(model, metadata.CodexToolCapabilities, false)
 		modelChanged = sanitizeAstraCodexManifestFields(lookupModel, model) || modelChanged
+		modelChanged = sanitizeFixedOpenAIGPT6ManifestFields(lookupModel, model) || modelChanged
 		for _, field := range fields {
 			value, exists := syncedFields[field]
 			if !exists {
@@ -2458,6 +2503,7 @@ func completeAPIKeyCodexModelsManifestMetadata(body []byte, completeAll bool, ac
 			}
 		}
 		modelChanged = sanitizeAstraCodexManifestFields(capabilityModel, model) || modelChanged
+		modelChanged = sanitizeFixedOpenAIGPT6ManifestFields(capabilityModel, model) || modelChanged
 		if !modelChanged {
 			continue
 		}
@@ -2641,4 +2687,43 @@ func buildCodexModelsManifestURL(endpoint string, appendModelsPath bool, clientV
 	query.Set("client_version", clientVersion)
 	requestURL.RawQuery = query.Encode()
 	return requestURL, nil
+}
+
+// MarshalJSON keeps fields added by the official client, including nested tool
+// instructions, while the generated descriptor still controls routing metadata.
+func (d configuredCodexModelDescriptor) MarshalJSON() ([]byte, error) {
+	type descriptor configuredCodexModelDescriptor
+	encoded, err := json.Marshal(descriptor(d))
+	if err != nil || len(d.officialMetadata) == 0 {
+		return encoded, err
+	}
+	var fields, official map[string]json.RawMessage
+	if err := json.Unmarshal(encoded, &fields); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(d.officialMetadata, &official); err != nil {
+		return nil, err
+	}
+	for key, value := range official {
+		if _, exists := fields[key]; !exists {
+			fields[key] = value
+		}
+	}
+	var messages, officialMessages map[string]json.RawMessage
+	if err := json.Unmarshal(fields["model_messages"], &messages); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(official["model_messages"], &officialMessages); err != nil {
+		return nil, err
+	}
+	for key, value := range officialMessages {
+		if _, exists := messages[key]; !exists {
+			messages[key] = value
+		}
+	}
+	fields["model_messages"], err = json.Marshal(messages)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(fields)
 }
