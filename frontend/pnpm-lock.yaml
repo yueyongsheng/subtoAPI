@@ -7,6 +7,7 @@ settings:
 overrides:
   js-cookie: 3.0.7
   form-data@<4.0.6: '>=4.0.6'
+  nanoid: 3.3.18
   postcss@<8.5.18: '>=8.5.18'
   dompurify@<3.4.14: '>=3.4.14'
   source-map-js@<1.2.2: '>=1.2.2'
@@ -18,9 +19,6 @@ importers:
       '@airwallex/components-sdk':
         specifier: ^1.30.2
         version: 1.30.2
-      '@lobehub/icons':
-        specifier: ^4.0.2
-        version: 4.0.2(@lobehub/ui@4.9.2)(@types/react@19.2.7)(antd@6.1.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@stripe/stripe-js':
         specifier: ^9.0.1
         version: 9.0.1
@@ -37,7 +35,7 @@ importers:
         specifier: ^4.4.1
         version: 4.5.1
       dompurify:
-        specifier: ^3.4.14
+        specifier: '>=3.4.14'
         version: 3.4.14
       driver.js:
         specifier: ^1.4.0
@@ -69,9 +67,9 @@ importers:
       vue-router:
         specifier: ^4.2.5
         version: 4.6.4(vue@3.5.43(typescript@5.6.3))
-      xlsx:
-        specifier: ^0.18.5
-        version: 0.18.5
+      write-excel-file:
+        specifier: ^4.1.1
+        version: 4.1.1
     devDependencies:
       '@intlify/message-compiler':
         specifier: 9.14.5
@@ -80,7 +78,7 @@ importers:
         specifier: ^3.0.5
         version: 3.2.0
       '@types/file-saver':
-        specifier: ^2.0.7
+        specifier: 2.0.7
         version: 2.0.7
       '@types/mdx':
         specifier: ^2.0.13
@@ -119,7 +117,7 @@ importers:
         specifier: ^24.1.3
         version: 24.1.3
       postcss:
-        specifier: '>=8.5.18'
+        specifier: ^8.5.22
         version: 8.5.23
       tailwindcss:
         specifier: ^3.4.0
@@ -2523,6 +2521,9 @@ packages:
       picomatch:
         optional: true
 
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
   file-entry-cache@6.0.1:
     resolution: {integrity: sha512-7Gps/XWymbLk2QLYK4NzpMOrYjMhdIxXuIvy2QBsLE6ljuodKvdkWs/cpyJJ3CVIVpH0Oi1Hvg1ovbMzLdFBBg==}
     engines: {node: ^10.12.0 || >=12.0.0}
@@ -4499,6 +4500,10 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  write-excel-file@4.1.1:
+    resolution: {integrity: sha512-MUnCnNtQrcZek832ZcU24uU0rSphFmKPD1DvIjXOlygVb93CV7Tme6H3jUTkxsMmjB2W7HIzERzjqTi5kui71A==}
+    engines: {node: '>=18'}
 
   ws@8.19.0:
     resolution: {integrity: sha512-blAT2mjOEIi0ZzruJfIhb3nps74PRWTCz1IjglWEEpQl5XS/UNama6u2/rjFkDDouqr4L67ry+1aGIALViWjDg==}
@@ -7258,6 +7263,8 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.3
 
+  fflate@0.8.3: {}
+
   file-entry-cache@6.0.1:
     dependencies:
       flat-cache: 3.2.0
@@ -9691,6 +9698,10 @@ snapshots:
       strip-ansi: 7.1.2
 
   wrappy@1.0.2: {}
+
+  write-excel-file@4.1.1:
+    dependencies:
+      fflate: 0.8.3
 
   ws@8.19.0: {}
 
