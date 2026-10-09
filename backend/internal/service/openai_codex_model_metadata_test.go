@@ -127,7 +127,13 @@ func TestCodexToolCapabilitiesNeverAdvertiseNullServiceTiers(t *testing.T) {
 			body, err := buildCodexModelsManifestForAccounts(PlatformOpenAI, []string{"gpt-6-sol"}, tt.accounts, nil, nil, true)
 			require.NoError(t, err)
 			model := decodeCodexManifestModels(t, body)[0]
-			require.Equal(t, []any{}, model["service_tiers"])
+			// GPT-6 Sol has a fixed public Fast contract. Conflicting or null
+			// upstream declarations must not remove that configured capability.
+			require.Equal(t, []any{map[string]any{
+				"id":          "priority",
+				"name":        "Fast",
+				"description": "Priority processing for lower latency.",
+			}}, model["service_tiers"])
 		})
 	}
 
