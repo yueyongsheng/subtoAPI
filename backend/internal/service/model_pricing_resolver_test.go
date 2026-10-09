@@ -840,7 +840,9 @@ func TestCalculateCostUnified_EmptyChannelEntryBillsCatalogImagePrices(t *testin
 	require.NoError(t, err)
 	require.InDelta(t, 500*30e-6, cost.ImageOutputCost, 1e-12)
 	require.InDelta(t, 600*8e-6, cost.ImageInputCost, 1e-12)
-	require.InDelta(t, 400*3e-6, cost.InputCost, 1e-12)
+	// Claude text fallback prices use the Yuexiang 3.5x base rate; channel
+	// entries with no explicit token prices still inherit that base price.
+	require.InDelta(t, 400*10.5e-6, cost.InputCost, 1e-12)
 	require.InDelta(t, 0, cost.OutputCost, 1e-12, "输出全部是图片 token")
 }
 

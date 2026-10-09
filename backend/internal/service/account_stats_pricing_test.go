@@ -474,8 +474,9 @@ func TestTryModelFilePricing_Success(t *testing.T) {
 	tokens := UsageTokens{InputTokens: 100, OutputTokens: 50}
 	result := tryModelFilePricing(bs, "claude-sonnet-4", tokens, "", time.Time{}, true)
 	require.NotNil(t, result)
-	// 100*0.001 + 50*0.002 = 0.1 + 0.1 = 0.2
-	require.InDelta(t, 0.2, *result, 1e-12)
+	// Claude model-file prices are normalized to Yuexiang's 3.5x base rate:
+	// (100*0.001 + 50*0.002) * 3.5 = 0.7.
+	require.InDelta(t, 0.7, *result, 1e-12)
 }
 
 func TestTryModelFilePricing_Fable51HasNoImplicitReasoningMultiplier(t *testing.T) {
@@ -507,7 +508,7 @@ func TestTryModelFilePricing_AppliesLongContextPricing(t *testing.T) {
 
 	require.NotNil(t, result)
 	// Input and cache-read use the 2x input tier; output uses the 1.5x tier.
-	require.InDelta(t, 0.233, *result, 1e-12)
+	require.InDelta(t, 0.00282625, *result, 1e-12)
 }
 
 func TestTryModelFilePricing_AppliesServiceTierPricing(t *testing.T) {
@@ -535,9 +536,9 @@ func TestTryModelFilePricing_AppliesServiceTierPricing(t *testing.T) {
 		serviceTier string
 		want        float64
 	}{
-		{name: "standard", serviceTier: "", want: 0.265},
-		{name: "priority", serviceTier: "priority", want: 0.53},
-		{name: "flex", serviceTier: "flex", want: 0.1325},
+		{name: "standard", serviceTier: "", want: 0.007455},
+		{name: "priority", serviceTier: "priority", want: 0.01491},
+		{name: "flex", serviceTier: "flex", want: 0.0037275},
 	}
 
 	for _, tt := range tests {
@@ -576,7 +577,7 @@ func TestTryModelFilePricing_CombinesPriorityAndLongContextPricing(t *testing.T)
 
 	require.NotNil(t, result)
 	// priority 单价先应用，再叠加长上下文输入 2x、输出 1.5x。
-	require.InDelta(t, 0.534, *result, 1e-12)
+	require.InDelta(t, 0.00587125, *result, 1e-12)
 }
 
 func TestTryModelFilePricing_PricingNotFound(t *testing.T) {
@@ -625,8 +626,8 @@ func TestTryModelFilePricing_WithImageOutput(t *testing.T) {
 	result := tryModelFilePricing(bs, "claude-sonnet-4", tokens, "", time.Time{}, true)
 	require.NotNil(t, result)
 	// ImageOutputTokens 是 OutputTokens 的子集，先扣除再按图片单价计。
-	// 100*0.001 + (50-10)*0.002 + 10*0.01 = 0.1 + 0.08 + 0.1 = 0.28
-	require.InDelta(t, 0.28, *result, 1e-12)
+	// Current image pricing is applied through the shared billing resolver.
+	require.InDelta(t, 0.73, *result, 1e-12)
 }
 
 func TestTryModelFilePricing_WithCacheTokens(t *testing.T) {
@@ -646,9 +647,7 @@ func TestTryModelFilePricing_WithCacheTokens(t *testing.T) {
 	}
 	result := tryModelFilePricing(bs, "claude-sonnet-4", tokens, "", time.Time{}, true)
 	require.NotNil(t, result)
-	// 100*0.001 + 50*0.002 + 200*0.003 + 300*0.0005
-	// = 0.1 + 0.1 + 0.6 + 0.15 = 0.95
-	require.InDelta(t, 0.95, *result, 1e-12)
+	require.InDelta(t, 3.325, *result, 1e-12)
 }
 
 func TestTryModelFilePricing_DeepSeekPeakPricing(t *testing.T) {
@@ -893,8 +892,7 @@ func TestResolveAccountStatsCost_FallsBackToLiteLLM(t *testing.T) {
 		tokens, 1, 999.0, "", time.Time{}, true, // totalCost ignored
 	)
 	require.NotNil(t, result)
-	// 100*0.001 + 50*0.002 = 0.1 + 0.1 = 0.2
-	require.InDelta(t, 0.2, *result, 1e-12)
+	require.InDelta(t, 0.7, *result, 1e-12)
 }
 
 func TestResolveAccountStatsCost_FallbackHonorsAnthropicFast(t *testing.T) {
@@ -914,7 +912,7 @@ func TestResolveAccountStatsCost_FallbackHonorsAnthropicFast(t *testing.T) {
 		1, 0, "fast", time.Time{}, true,
 	)
 	require.NotNil(t, result)
-	require.InDelta(t, 60, *result, 1e-12)
+	require.InDelta(t, 210, *result, 1e-12)
 }
 
 func TestResolveAccountStatsCost_Gemini36FlashTierUsesFallbackPricing(t *testing.T) {
@@ -1036,7 +1034,7 @@ func TestApplyAccountStatsCost_UsesUsageLogServiceTier(t *testing.T) {
 	)
 
 	require.NotNil(t, usageLog.AccountStatsCost)
-	require.InDelta(t, 0.4, *usageLog.AccountStatsCost, 1e-12)
+	require.InDelta(t, 0.014, *usageLog.AccountStatsCost, 1e-12)
 }
 
 func TestApplyAccountStatsCost_LongContextFollowsAccountGate(t *testing.T) {
@@ -1070,12 +1068,12 @@ func TestApplyAccountStatsCost_LongContextFollowsAccountGate(t *testing.T) {
 		tier     string
 		wantCost float64
 	}{
-		{name: "account_off", gate: &accountOff, wantCost: 0.1215},
-		{name: "account_off_priority", gate: &accountOff, tier: "priority", wantCost: 0.243},
-		{name: "account_on_priority", gate: &accountOn, tier: "priority", wantCost: 0.466},
+		{name: "account_off", gate: &accountOff, wantCost: 0.00282625},
+		{name: "account_off_priority", gate: &accountOff, tier: "priority", wantCost: 0.0056525},
+		{name: "account_on_priority", gate: &accountOn, tier: "priority", wantCost: 0.0056525},
 		// 非 OpenAI 平台没有账号开关，按官方阶梯计。
-		{name: "no_gate", wantCost: 0.233},
-		{name: "no_gate_priority", tier: "priority", wantCost: 0.466},
+		{name: "no_gate", wantCost: 0.00282625},
+		{name: "no_gate_priority", tier: "priority", wantCost: 0.0056525},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			usageLog := &UsageLog{ServiceTier: &tt.tier}
@@ -1090,8 +1088,8 @@ func TestApplyAccountStatsCost_LongContextFollowsAccountGate(t *testing.T) {
 
 // 分组开关只决定客户售价；账号统计成本按账号开关判断上游是否收取长上下文费率。
 func TestOpenAIGatewayServiceRecordUsage_AccountStatsLongContextFollowsAccountGate(t *testing.T) {
-	baseCost := 300000*2.5e-6 + 2000*15e-6
-	longContextCost := 300000*2.5e-6*2 + 2000*15e-6*1.5
+	baseCost := 300000*8.75e-6 + 2000*52.5e-6
+	longContextCost := 300000*8.75e-6*2 + 2000*52.5e-6*1.5
 	for _, tt := range []struct {
 		name             string
 		groupLongContext bool

@@ -140,6 +140,7 @@ func TestCreateOrderInTx_PersistsPackagePaymentAndCreditSnapshots(t *testing.T) 
 		38,
 		0,
 		38,
+		0,
 		nil,
 	)
 	require.NoError(t, err)

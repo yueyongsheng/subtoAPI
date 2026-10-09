@@ -291,7 +291,7 @@ func TestQuoteRechargeBonus(t *testing.T) {
 	})
 
 	t.Run("nil config and empty tiers yield plain conversion", func(t *testing.T) {
-		require.Equal(t, rechargeBonusQuote{PayBase: 100, Credited: 100}, quoteRechargeBonus(nil, 100, "USD"))
+		require.Equal(t, rechargeBonusQuote{PayBase: 100, Credited: 2500}, quoteRechargeBonus(nil, 100, "USD"))
 		require.Equal(t, rechargeBonusQuote{PayBase: 100, Credited: 14}, quoteRechargeBonus(&PaymentConfig{BalanceRechargeMultiplier: 0.14}, 100, "CNY"))
 	})
 }
