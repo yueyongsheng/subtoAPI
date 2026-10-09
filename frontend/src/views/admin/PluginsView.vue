@@ -769,6 +769,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cancelUILoad();
   window.removeEventListener("message", handleBridgeMessage);
-  clearPendingBridgeRequests();
+  closeConfiguration();
 });
 </script>
