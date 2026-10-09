@@ -196,6 +196,13 @@ describe('管理员插件页二次验证', () => {
     await flushPromises()
     await wrapper.get('iframe').trigger('load')
     expect(wrapper.get('iframe').attributes('src')).toBe('/current-session')
+    expect(wrapper.text()).toContain('admin.plugins.loadingUI')
+    window.dispatchEvent(new MessageEvent('message', {
+      source: wrapper.get('iframe').element.contentWindow,
+      origin: 'null',
+      data: { source: 'sub2api-plugin-ui', bridge_token: 'current', type: 'sub2api.plugin.ready' },
+    }))
+    await flushPromises()
     expect(wrapper.text()).not.toContain('admin.plugins.loadingUI')
   })
 
