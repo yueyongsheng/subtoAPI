@@ -471,15 +471,6 @@ func testConnectionHandleError(
 	return nil
 }
 
-// buildGeminiTestRequest preserves the minimal connection probe and custom quality prompt.
-func (s *AntigravityGatewayService) buildGeminiTestRequest(projectID, model string, prompts ...string) ([]byte, error) {
-	prompt := ""
-	if len(prompts) > 0 {
-		prompt = prompts[0]
-	}
-	return s.buildGeminiTestRequestWithPrompt(projectID, model, prompt)
-}
-
 // buildGeminiTestRequestWithPrompt 构建 Gemini 格式测试请求
 // 文本模型使用最小 token 消耗：输入 "." + maxOutputTokens: 1；图片模型使用图片生成配置
 func (s *AntigravityGatewayService) buildGeminiTestRequestWithPrompt(projectID, model, prompt string) ([]byte, error) {

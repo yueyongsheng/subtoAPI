@@ -39,8 +39,6 @@ func sanitizeFixedOpenAIGPT6UpstreamModelMetadata(modelID string, metadata Upstr
 	metadata.SupportedReasoningLevels = append([]string(nil), fixedAstraReasoningLevels...)
 	if model == "gpt-6.1-sol" {
 		metadata.DefaultReasoningLevel = "low"
-	} else if model == "gpt-6-astra" {
-		metadata.DefaultReasoningLevel = "medium"
 	} else {
 		metadata.DefaultReasoningLevel = "medium"
 	}

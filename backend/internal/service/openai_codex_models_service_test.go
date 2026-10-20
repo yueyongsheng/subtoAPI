@@ -3789,30 +3789,32 @@ func TestGPT6SolLunaCatalogKeepsAuthoritativeCapabilities(t *testing.T) {
 		require.NoError(t, svc.CompleteAPIKeyCodexModelsManifestForClient(manifest, account))
 		models := decodeCodexManifestModels(t, manifest.Body)
 		require.Len(t, models, 1)
-		if id == "gpt-6.1-sol" {
+		switch id {
+		case "gpt-6.1-sol":
 			require.Equal(t, []string{"low", "medium", "high", "xhigh", "max"}, effortsFromManifestModel(t, models[0]))
 			require.Equal(t, "low", models[0]["default_reasoning_level"])
 			require.Equal(t, float64(1_050_000), models[0]["context_window"])
 			require.Equal(t, float64(922_000), models[0]["max_context_window"])
-		} else if id == "gpt-6-sol" {
+		case "gpt-6-sol":
 			require.Equal(t, []string{"low", "medium", "high", "xhigh", "max"}, effortsFromManifestModel(t, models[0]))
 			require.Equal(t, "medium", models[0]["default_reasoning_level"])
 			require.Equal(t, float64(1_050_000), models[0]["context_window"])
 			require.Equal(t, float64(1_050_000), models[0]["max_context_window"])
-		} else {
+		default:
 			require.Equal(t, []string{"ultra"}, effortsFromManifestModel(t, models[0]))
 			require.Equal(t, "ultra", models[0]["default_reasoning_level"])
 		}
 		require.Equal(t, "xhigh", models[0]["multi_agent_reasoning_effort"])
-		if id == "gpt-6.1-sol" {
+		switch id {
+		case "gpt-6.1-sol":
 			require.Equal(t, float64(1_050_000), models[0]["context_window"])
 			require.Equal(t, float64(922_000), models[0]["max_context_window"])
 			require.Equal(t, []any{map[string]any{"id": "priority", "name": "Fast", "description": "Priority processing for lower latency."}}, models[0]["service_tiers"])
-		} else if id == "gpt-6-sol" {
+		case "gpt-6-sol":
 			require.Equal(t, float64(1_050_000), models[0]["context_window"])
 			require.Equal(t, float64(1_050_000), models[0]["max_context_window"])
 			require.Equal(t, []any{map[string]any{"id": "priority", "name": "Fast", "description": "Priority processing for lower latency."}}, models[0]["service_tiers"])
-		} else {
+		default:
 			require.Equal(t, float64(300000), models[0]["context_window"])
 			require.Equal(t, float64(900000), models[0]["max_context_window"])
 			require.Equal(t, []any{map[string]any{"id": "ultrafast"}}, models[0]["service_tiers"])
