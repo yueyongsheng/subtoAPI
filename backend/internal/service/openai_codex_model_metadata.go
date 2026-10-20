@@ -237,6 +237,12 @@ func codexModelRoutingAccountIDs(group *Group, modelID string) []int64 {
 	return group.GetRoutingAccountIDs(strings.TrimSpace(modelID))
 }
 
+func codexAccountServesPlatformModel(account *Account, platform, modelID string) bool {
+	return account.Platform == platform ||
+		(account.Platform == PlatformAntigravity && mixedListingAccountAllowed(platform, account) &&
+			mixedListingModelAllowed(platform, modelID))
+}
+
 func groupCodexModelMetadata(
 	platform string,
 	modelID string,
@@ -282,7 +288,7 @@ func groupCodexModelMetadata(
 			if routed && !containsInt64(routedAccountIDs, account.ID) {
 				continue
 			}
-			if account.Platform == platform && codexExplicitModelMappingClaims(*account, modelID) {
+			if codexAccountServesPlatformModel(account, platform, modelID) && codexExplicitModelMappingClaims(*account, modelID) {
 				explicitClaims = true
 				break
 			}
@@ -297,7 +303,7 @@ func groupCodexModelMetadata(
 	missingMetadata := false
 	for i := range accounts {
 		account := &accounts[i]
-		if account.Platform != platform {
+		if !codexAccountServesPlatformModel(account, platform, modelID) {
 			continue
 		}
 		if routed && !containsInt64(routedAccountIDs, account.ID) {
@@ -367,7 +373,7 @@ func codexExplicitModelTargetsConflictForPlatform(accounts []Account, platform, 
 	targets := make(map[string]struct{})
 	for i := range accounts {
 		account := &accounts[i]
-		if account.Platform != platform {
+		if !codexAccountServesPlatformModel(account, platform, modelID) {
 			continue
 		}
 		mappedModel, matched := account.ResolveMappedModel(modelID)

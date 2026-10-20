@@ -370,7 +370,7 @@ func TestOpenAIResponseFlush_KeepaliveDoesNotSplitOpenEvent(t *testing.T) {
 func TestOpenAIResponseFlush_FailedAndErrorEventsFlushAtBoundaries(t *testing.T) {
 	t.Run("failed at EOF", func(t *testing.T) {
 		body := "data: {\"type\":\"response.output_text.delta\",\"delta\":\"a\"}\n\n" +
-			"data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"safety_error\",\"message\":\"blocked\"},\"usage\":{\"input_tokens\":3,\"output_tokens\":1}}}\n"
+			"data: {\"type\":\"response.failed\",\"response\":{\"created_at\":1700000000,\"error\":{\"code\":\"safety_error\",\"message\":\"blocked\"},\"usage\":{\"input_tokens\":3,\"output_tokens\":1}}}\n"
 		recorder := newOpenAIResponseFlushRecorder()
 
 		result, err := runOpenAIResponseFlushTest(recorder, io.NopCloser(strings.NewReader(body)), config.GatewayConfig{})
@@ -380,7 +380,7 @@ func TestOpenAIResponseFlush_FailedAndErrorEventsFlushAtBoundaries(t *testing.T)
 		require.Equal(t, 3, result.usage.InputTokens)
 		gotBody, flushes := recorder.snapshot()
 		expectedBody := "data: {\"type\":\"response.output_text.delta\",\"delta\":\"a\"}\n\n" +
-			"data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"safety_error\",\"message\":\"blocked\"}}}\n\n"
+			"data: {\"type\":\"response.failed\",\"response\":{\"created_at\":1700000000,\"error\":{\"code\":\"safety_error\",\"message\":\"blocked\"}}}\n\n"
 		require.Equal(t, expectedBody, gotBody)
 		require.Len(t, flushes, 2)
 		require.Contains(t, flushes[1], "response.failed")
@@ -416,8 +416,11 @@ func TestOpenAIResponseFlush_FailedAndErrorEventsFlushAtBoundaries(t *testing.T)
 		require.False(t, errors.As(err, &failoverErr))
 		require.NotNil(t, result)
 		gotBody, flushes := recorder.snapshot()
-		require.Equal(t, body, gotBody)
-		require.Len(t, flushes, 2)
+		require.Contains(t, gotBody, `"type":"response.failed"`)
+		require.Contains(t, gotBody, `"code":"invalid_request"`)
+		require.Contains(t, gotBody, `"created_at":`)
+		require.True(t, strings.HasSuffix(gotBody, "\n\n"))
+		require.Len(t, flushes, 1)
 	})
 }
 
@@ -482,6 +485,10 @@ func TestOpenAIResponseFlush_ClientDisconnectStillDrainsUsage(t *testing.T) {
 }
 
 func runOpenAIResponseFlushTest(recorder *openAIResponseFlushRecorder, body io.ReadCloser, gatewayCfg config.GatewayConfig) (*openaiStreamingResult, error) {
+	return runOpenAIResponseFlushTestWithAccount(recorder, body, gatewayCfg, &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth})
+}
+
+func runOpenAIResponseFlushTestWithAccount(recorder *openAIResponseFlushRecorder, body io.ReadCloser, gatewayCfg config.GatewayConfig, account *Account) (*openaiStreamingResult, error) {
 	gin.SetMode(gin.TestMode)
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -494,7 +501,7 @@ func runOpenAIResponseFlushTest(recorder *openAIResponseFlushRecorder, body io.R
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 		Body:       body,
 	}
-	return svc.handleStreamingResponse(context.Background(), resp, c, &Account{ID: 1, Platform: PlatformOpenAI}, time.Now(), "gpt-5", "gpt-5")
+	return svc.handleStreamingResponse(context.Background(), resp, c, account, time.Now(), "gpt-5", "gpt-5")
 }
 
 func runOpenAIResponseFlushTestAsync(recorder *openAIResponseFlushRecorder, body io.ReadCloser, gatewayCfg config.GatewayConfig) (<-chan *openaiStreamingResult, <-chan error) {
@@ -557,7 +564,7 @@ func (r *hangingOpenAISSEAfterTerminal) Close() error {
 }
 
 func TestOpenAIResponseFlush_TerminalEventEndsStreamWithoutEOF(t *testing.T) {
-	body := "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":5}}}\n\n"
+	body := "data: {\"type\":\"response.completed\",\"response\":{\"created_at\":1700000000,\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":5}}}\n\n"
 	reader := &hangingOpenAISSEAfterTerminal{payload: []byte(body), release: make(chan struct{})}
 	recorder := newOpenAIResponseFlushRecorder()
 	resultCh, errCh := runOpenAIResponseFlushTestAsync(recorder, reader, config.GatewayConfig{StreamKeepaliveInterval: 1, StreamDataIntervalTimeout: 30})

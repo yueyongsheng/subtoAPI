@@ -246,9 +246,25 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 				nil,
 			)
 		}
-		if hooks != nil && (hooks.MaxReasoningEffort != "" || len(hooks.ReasoningEffortMappings) > 0) {
-			if capped, changed, policyErr := ApplyOpenAIReasoningEffortPolicy(normalized, hooks.MaxReasoningEffort, hooks.ReasoningEffortMappings, hooks.MaxReasoningEffortOverLimit); policyErr == nil && changed {
-				normalized = capped
+		if next, policyErr := applyOpenAIWSReasoningEffortPolicy(normalized, hooks); policyErr != nil {
+			return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, policyErr.Error(), policyErr)
+		} else {
+			normalized = next
+		}
+		responsesLite := isOpenAIResponsesLiteWebSocketPayload(normalized)
+		if compatibilityBody, compatibilityChanged, compatibilityErr := normalizeOpenAIResponsesWebSocketCompatibilityBodyWithConfig(s.cfg, normalized, account, responsesLite); compatibilityErr != nil {
+			return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket request payload", compatibilityErr)
+		} else if compatibilityChanged {
+			normalized = compatibilityBody
+		}
+		if account.IsOpenAIOAuthLike() {
+			aliasedBody, reverse, aliased, aliasErr := aliasOpenAIOAuthReservedToolNamesBody(normalized)
+			if aliasErr != nil {
+				return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, aliasErr.Error(), aliasErr)
+			}
+			updateCodexToolNameReverseForWSFrame(c, normalized, reverse)
+			if aliased {
+				normalized = aliasedBody
 			}
 		}
 
