@@ -398,7 +398,7 @@ func (s *AntigravityGatewayService) TestConnectionWithPrompt(ctx context.Context
 	// 构建请求体
 	var requestBody []byte
 	if shouldUseAntigravityGeminiTestRequest(modelID, mappedModel) {
-		requestBody, err = s.buildGeminiTestRequestWithPrompt(projectID, mappedModel, prompt)
+		requestBody, err = s.buildGeminiTestRequest(projectID, mappedModel, prompt)
 	} else {
 		requestBody, err = s.buildClaudeTestRequest(projectID, mappedModel, prompt)
 	}
@@ -469,6 +469,15 @@ func testConnectionHandleError(
 		"%s test_handle_error status=%d model=%s account=%d body=%s",
 		prefix, statusCode, requestedModel, account.ID, truncateForLog(body, 200))
 	return nil
+}
+
+// buildGeminiTestRequest keeps the optional prompt used by quality probes.
+func (s *AntigravityGatewayService) buildGeminiTestRequest(projectID, model string, prompts ...string) ([]byte, error) {
+	prompt := ""
+	if len(prompts) > 0 {
+		prompt = prompts[0]
+	}
+	return s.buildGeminiTestRequestWithPrompt(projectID, model, prompt)
 }
 
 // buildGeminiTestRequestWithPrompt 构建 Gemini 格式测试请求
