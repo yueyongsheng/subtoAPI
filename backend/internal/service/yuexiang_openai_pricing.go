@@ -12,6 +12,7 @@ var yuexiangOpenAIChargedModels = [...]string{
 	"gpt-6-astra",
 	"gpt-6-sol",
 	"gpt-6.1-sol",
+	"gpt-6.1-terra",
 	"gpt-5.6-sol",
 	"gpt-5.5",
 	"codex-auto-review",
@@ -41,6 +42,8 @@ func yuexiangOpenAIModelPricing(model string) (*ModelPricing, bool) {
 		input, output, cacheWrite, cacheRead = 7e-6, 35e-6, 8.75e-6, 0.35e-6
 	case "gpt-6-sol":
 		input, output, cacheWrite, cacheRead = 7e-6, 35e-6, 8.75e-6, 0.7e-6
+	case "gpt-6.1-terra":
+		input, output, cacheWrite, cacheRead = 3.5e-6, 17.5e-6, 4.375e-6, 0.175e-6
 	case "gpt-5.6-sol", "gpt-5.5", "codex-auto-review":
 		input, output, cacheWrite, cacheRead = 17.5e-6, 105e-6, 21.875e-6, 1.75e-6
 	case "gpt-5.6-terra":
