@@ -71,7 +71,7 @@ export function useStateKitStatus() {
   })
 
   async function refresh() {
-    if (closed || loading.value || document.visibilityState === 'hidden') return
+    if (closed || loading.value || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return
     loading.value = true
     const active = new AbortController()
     controller = active
@@ -115,7 +115,7 @@ export function useStateKitStatus() {
       elapsedSeconds.value = Math.max(elapsedSeconds.value, Math.ceil((performance.now() - snapshotStartedAt) / 1000))
       stale.value = age > 45_000
     }
-    if (document.visibilityState !== 'hidden' && performance.now() - lastAttemptAt >= 30_000) void refresh()
+    if (typeof document !== 'undefined' && document.visibilityState !== 'hidden' && performance.now() - lastAttemptAt >= 30_000) void refresh()
   }
 
   function onVisibility() {

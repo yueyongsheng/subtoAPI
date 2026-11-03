@@ -406,7 +406,7 @@ func TestGatewayModels_UnmappedOpenAIAccountsSupplementMappedModels(t *testing.T
 				require.ElementsMatch(t, tt.want, modelIDsForTest(got.Data))
 				for _, model := range got.Data {
 					require.Equal(t, "model", model.Object, model.ID)
-					if model.ID == "gpt-6-astra" || model.ID == "gpt-6-sol" || model.ID == "gpt-6.1-sol" {
+					if model.ID == "gpt-6-astra" || model.ID == "gpt-6-sol" || model.ID == "gpt-6.1-sol" || model.ID == "gpt-6.1-terra" {
 						require.Zero(t, model.Created, model.ID)
 					} else {
 						require.Positive(t, model.Created, model.ID)
@@ -563,7 +563,7 @@ func TestGatewayModels_GeminiGroupFallsBackToGeminiModels(t *testing.T) {
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	require.Equal(t, "list", got.Object)
-	require.Contains(t, modelIDsForTest(got.Data), "gemini-2.5-flash")
+	require.Contains(t, modelIDsForTest(got.Data), "gemini-3.5-flash")
 	require.NotContains(t, modelIDsForTest(got.Data), "claude-sonnet-4-6")
 }
 

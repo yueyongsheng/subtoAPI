@@ -1980,6 +1980,8 @@ func TestNewModelPricingCatalogFallbackAndContext(t *testing.T) {
 			input, output, write, read float64
 		}{
 			{"gpt-6-sol", 7e-6, 35e-6, 8.75e-6, 0.7e-6},
+			{"gpt-6.1-terra", 1e-6, 5e-6, 1.25e-6, 0.05e-6},
+			{"openai/gpt-6.1-terra-max", 1e-6, 5e-6, 1.25e-6, 0.05e-6},
 		} {
 			t.Run(source+"/"+tc.model, func(t *testing.T) {
 				for _, n := range []int{271999, 272000, 272001} {
