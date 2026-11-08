@@ -49,6 +49,8 @@ describe('useModelWhitelist', () => {
     expect(models).toContain('gpt-6.1-terra')
     expect(models).toContain('gpt-6-sol')
     expect(models).toContain('gpt-6-luna')
+    expect(models).toContain('gpt-image-2.6-flare')
+    expect(models).toContain('gpt-image-2.6-sunburst')
   })
 
   it('openai 预设映射包含公开 GPT-6.1 Sol 和 Astra', () => {

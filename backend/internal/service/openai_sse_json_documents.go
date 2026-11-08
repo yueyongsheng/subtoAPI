@@ -139,6 +139,14 @@ func (s *validatedOpenAISSELineScanner) Scan() bool {
 		// later failure event cannot merge into the same SSE event. Malformed data
 		// is discarded before it reaches the downstream decoder.
 		sourceErr := s.source.Err()
+		// A transport limit rejects the entire unfinished event. Its buffered
+		// prefix may be valid JSON, but it is not a complete upstream frame.
+		if errors.Is(sourceErr, errSSETransportLimit) || errors.Is(sourceErr, bufio.ErrTooLong) || errors.Is(sourceErr, errOpenAIFirstOutputScannerLimit) {
+			s.frame = nil
+			s.frameOpen.Store(false)
+			s.deferredErr = sourceErr
+			return false
+		}
 		if len(s.frame) > 0 {
 			if err := validateOpenAISSEFrame(s.frame); err != nil {
 				s.frame = nil
