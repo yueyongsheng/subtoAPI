@@ -58,10 +58,6 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 		firstOutputTimeout = s.openAIFirstOutputTimeout(reasoningEffort)
 	}
 	guardFirstOutput := firstOutputTimeout > 0
-	// Keep OpenAI preamble frames private until a semantic event commits the
-	// attempt. This preserves failover when capacity errors follow metadata even
-	// when the explicit deadline is disabled; successful streams still commit
-	// the buffered preamble at their first terminal/output event.
 	stageFirstOutput := account != nil && account.Platform == PlatformOpenAI
 	var attemptResponseHeaders http.Header
 	if stageFirstOutput {
@@ -173,9 +169,8 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 	if stageFirstOutput {
 		scanner.Split(newBoundedSSESplit(s.cfg, maxLineSize, openAIFirstOutputDynamicScanLines(&firstOutputScanGuard)))
 	}
-	// Validate complete SSE frames before staging or forwarding them. This also
-	// synthesizes the missing blank-line boundary when an upstream closes after
-	// a final line without the usual SSE terminator.
+	// Validate complete SSE frames before staging or forwarding them, including
+	// a final complete data line that lacks the blank-line dispatch boundary.
 	documentScanner := newValidatedOpenAISSELineScanner(newOpenAISSEJSONDocumentScanner(scanner))
 
 	streamInterval := time.Duration(0)
@@ -351,6 +346,7 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 	needModelReplace := originalModel != mappedModel
 	var createdAtStamper responsesCreatedAtStamper
 	streamOutputAccumulator := apicompat.NewBufferedResponseAccumulator()
+	streamOutputAccumulator.XAIServerSideSearch = account != nil && account.IsGrok()
 	streamDoneItems := newResponsesStreamOutputItems()
 	streamImageOutputs := make([]json.RawMessage, 0, 1)
 	streamSeenImages := make(map[string]struct{})
@@ -499,6 +495,25 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 		sendErrorEvent(code, message)
 		return resultWithUsage(), fmt.Errorf("stream read error: %w", scanErr), true
 	}
+	// Upstream keepalive events bypass the first-output stage the same way the
+	// comment keepalive does: Codex resets its stream idle timer only on parsed
+	// SSE events, while the attempt's lifecycle events and account headers stay
+	// private until semantic output. The bytes do not count as client output.
+	keepaliveEventDirect := false
+	forwardsKeepaliveDirect := func(eventType string) bool {
+		return eventType == "keepalive" && stageFirstOutput && !firstOutputStage.closed && !failureDelivered && !suppressCurrentEvent
+	}
+	writeKeepaliveDirect := func(value string) {
+		if clientDisconnected {
+			return
+		}
+		n, err := w.Write([]byte(value))
+		recordOpenAIStreamKeepaliveBytes(c, n)
+		if err != nil {
+			clientDisconnected = true
+			logger.LegacyPrintf("service.openai_gateway", "Client disconnected during streaming, continuing to drain upstream for billing")
+		}
+	}
 	processSSELine := func(line string, queueDrained bool) {
 		if streamEarlyErr != nil {
 			return
@@ -507,11 +522,23 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 			pendingSSEEventType = eventType
 			eventType = strings.TrimSpace(eventType)
 			suppressCurrentEvent = codexFailureTerminal && (eventType == "error" || (sawBareError && !sawResponseFailed && eventType != "response.failed"))
+			if forwardsKeepaliveDirect(eventType) {
+				keepaliveEventDirect = true
+				eventInProgress = true
+				writeKeepaliveDirect(line + "\n")
+				return
+			}
 		}
 		// Extract data from SSE line (supports both "data: " and "data:" formats)
 		if data, ok := extractOpenAISSEDataLine(line); ok {
 			dataBytes := []byte(data)
 			eventType := effectiveOpenAISSEEventType(dataBytes, pendingSSEEventType)
+			if keepaliveEventDirect || forwardsKeepaliveDirect(eventType) {
+				keepaliveEventDirect = true
+				eventInProgress = true
+				writeKeepaliveDirect(line + "\n")
+				return
+			}
 			if codexFailureTerminal && sawBareError && !sawResponseFailed &&
 				(eventType == "response.completed" || eventType == "response.done") {
 				// A later successful terminal is authoritative over a pending bare
@@ -770,6 +797,16 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 		// A blank line dispatches a guarded event from the attempt-local stage.
 		if stageFirstOutput && line == "" {
 			pendingSSEEventType = ""
+			if keepaliveEventDirect {
+				keepaliveEventDirect = false
+				eventInProgress = false
+				writeKeepaliveDirect("\n")
+				if !clientDisconnected {
+					flusher.Flush()
+					lastDownstreamWriteAt = time.Now()
+				}
+				return
+			}
 			if suppressCurrentEvent {
 				suppressCurrentEvent = false
 				terminalFailurePending = false

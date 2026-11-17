@@ -450,7 +450,7 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 		return nil, fmt.Errorf("prepare http bridge body: %w", err)
 	}
 	if account.Platform != PlatformGrok {
-		if scoped, changed, scopeErr := applyCodexAccountIdentityClientMetadataRaw(body, codexAccountIdentitySource(c, account), getAPIKeyIDFromContext(c)); scopeErr != nil {
+		if scoped, changed, scopeErr := applyCodexAccountIdentityClientMetadataRaw(body, codexAccountIdentitySource(c, account), getAPIKeyIDFromContext(c), codexClientSessionID(c)); scopeErr != nil {
 			return nil, scopeErr
 		} else if changed {
 			body = scoped
