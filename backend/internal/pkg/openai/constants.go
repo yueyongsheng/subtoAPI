@@ -103,6 +103,9 @@ var instructionsGPT55 string
 //go:embed instructions_gpt6_astra.txt
 var instructionsGPT6Astra string
 
+// GPT-6.2 descriptors from the 2026-11-17 Codex models response, client 0.169.0.
+//
+
 // CodexGPT61SolMetadata is the complete official descriptor from openai/codex
 // b1e72963c3b71a9265a551e54beff078384efed9, codex-rs/models-manager/models.json.
 //
@@ -302,7 +305,7 @@ func ValidateGPT61TerraReasoningEffort(model, effort string) error {
 }
 
 // ValidateGPT61ReasoningEffort applies the published effort scale of each
-// GPT-6.1 model.
+// GPT-6.1 and GPT-6.2 model.
 func ValidateGPT61ReasoningEffort(model, effort string) error {
 	if id := GPT62ModelID(model); id != "" {
 		switch strings.ToLower(strings.TrimSpace(effort)) {
@@ -314,4 +317,15 @@ func ValidateGPT61ReasoningEffort(model, effort string) error {
 		return err
 	}
 	return ValidateGPT61TerraReasoningEffort(model, effort)
+}
+
+// ValidateGPT62ReasoningEffort rejects disabled and minimal reasoning on GPT-6.2.
+func ValidateGPT62ReasoningEffort(model, effort string) error {
+	switch strings.ToLower(strings.TrimSpace(effort)) {
+	case "none", "minimal":
+		if base := GPT62ModelID(model); base != "" {
+			return fmt.Errorf("%s does not support reasoning effort %q; use low, medium, high, xhigh or max", base, effort)
+		}
+	}
+	return nil
 }
