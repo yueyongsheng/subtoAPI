@@ -1672,6 +1672,20 @@ func (s *PricingService) matchByModelFamily(model string) *LiteLLMModelPricing {
 // 5. gpt-5.4* -> 业务静态兜底价
 // 6. 最终回退到 DefaultTestModel (gpt-5.1-codex)
 func (s *PricingService) matchOpenAIModel(model string) *LiteLLMModelPricing {
+	if id := openai.GPT62ModelID(model); id != "" {
+		if pricing, ok := s.pricingData[id]; ok {
+			return pricing
+		}
+		card, _ := yuexiangOpenAIModelPricing(id)
+		return &LiteLLMModelPricing{
+			InputCostPerToken: card.InputPricePerToken, OutputCostPerToken: card.OutputPricePerToken,
+			CacheCreationInputTokenCost: card.CacheCreationPricePerToken, CacheReadInputTokenCost: card.CacheReadPricePerToken,
+			InputCostPerTokenPriority: card.InputPricePerTokenPriority, OutputCostPerTokenPriority: card.OutputPricePerTokenPriority,
+			CacheCreationInputTokenCostPriority: card.CacheCreationPricePerTokenPriority, CacheReadInputTokenCostPriority: card.CacheReadPricePerTokenPriority,
+			LongContextInputTokenThreshold: card.LongContextInputThreshold, LongContextInputCostMultiplier: card.LongContextInputMultiplier, LongContextOutputCostMultiplier: card.LongContextOutputMultiplier,
+			SupportsServiceTier: true, SupportsPromptCaching: true, LiteLLMProvider: "openai", Mode: "chat",
+		}
+	}
 	if strings.HasPrefix(model, "gpt-5.3-codex-spark") {
 		if pricing, ok := s.pricingData["gpt-5.1-codex"]; ok {
 			logger.LegacyPrintf("service.pricing", "[Pricing][SparkBilling] %s -> %s billing", model, "gpt-5.1-codex")

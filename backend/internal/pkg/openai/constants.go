@@ -29,6 +29,8 @@ var DefaultModels = []Model{
 	{ID: "gpt-6-astra", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6 Astra"},
 	{ID: "gpt-6-sol", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6 Sol"},
 	{ID: "gpt-6.1-sol", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6.1 Sol"},
+	{ID: "gpt-6.2-astra", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6.2 Astra"},
+	{ID: "gpt-6.2-sol", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6.2 Sol"},
 	{ID: "gpt-6.1-terra", Object: "model", Created: 0, OwnedBy: "openai", Type: "model", DisplayName: "GPT-6.1 Terra"},
 	{ID: "gpt-5.5", Object: "model", Created: 1776873600, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.5"},
 	{ID: "gpt-5.4", Object: "model", Created: 1738368000, OwnedBy: "openai", Type: "model", DisplayName: "GPT-5.4"},
@@ -63,12 +65,12 @@ func IsPublicOpenAIModelID(id string) bool {
 	if id == "" {
 		return false
 	}
-	if id == "gpt-6-astra" || id == "gpt-6-sol" || id == "gpt-6.1-sol" || id == "gpt-6.1-terra" {
+	if id == "gpt-6.2-astra" || id == "gpt-6.2-sol" || id == "gpt-6-astra" || id == "gpt-6-sol" || id == "gpt-6.1-sol" || id == "gpt-6.1-terra" {
 		return true
 	}
 	lower := strings.ToLower(id)
 	return lower != "gpt-6" && lower != "astra" &&
-		!strings.HasPrefix(lower, "gpt-6.1") && !strings.HasPrefix(lower, "gpt-6-") && !strings.Contains(lower, "astra")
+		!strings.HasPrefix(lower, "gpt-6.") && !strings.HasPrefix(lower, "gpt-6-") && !strings.Contains(lower, "astra")
 }
 
 // DefaultTestModel default model for testing OpenAI accounts
@@ -190,6 +192,8 @@ func CanonicalizeOpenAIModelAliasSpelling(model string) string {
 func CodexBaseInstructionsForModel(model string) string {
 	canonical := CanonicalizeOpenAIModelAliasSpelling(model)
 	switch {
+	case IsGPT62ModelSpelling(canonical):
+		return codexInstructionsTemplate(GPT62CodexMetadata(canonical))
 	case IsGPT61SolModelSpelling(canonical):
 		return codexInstructionsTemplate(CodexGPT61SolMetadata)
 	case IsGPT61TerraModelSpelling(canonical):
@@ -273,7 +277,7 @@ func IsGPT61TerraModelSpelling(model string) bool {
 // RequiresResponsesForToolCalls reports models whose tool calls are only
 // available through the Responses API.
 func RequiresResponsesForToolCalls(model string) bool {
-	return IsGPT61SolModelSpelling(model) || IsGPT61TerraModelSpelling(model)
+	return IsGPT62ModelSpelling(model) || IsGPT61SolModelSpelling(model) || IsGPT61TerraModelSpelling(model)
 }
 
 // ValidateGPT61SolReasoningEffort rejects disabled reasoning instead of silently
@@ -300,6 +304,12 @@ func ValidateGPT61TerraReasoningEffort(model, effort string) error {
 // ValidateGPT61ReasoningEffort applies the published effort scale of each
 // GPT-6.1 model.
 func ValidateGPT61ReasoningEffort(model, effort string) error {
+	if id := GPT62ModelID(model); id != "" {
+		switch strings.ToLower(strings.TrimSpace(effort)) {
+		case "none", "minimal":
+			return fmt.Errorf("%s does not support reasoning effort %q; use low, medium, high, xhigh or max", id, effort)
+		}
+	}
 	if err := ValidateGPT61SolReasoningEffort(model, effort); err != nil {
 		return err
 	}

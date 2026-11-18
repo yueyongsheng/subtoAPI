@@ -732,6 +732,10 @@ describe('UseKeyModal', () => {
       variants: { none: {}, low: {}, medium: {}, high: {}, xhigh: {}, max: {} }
     })
     expect(models['gpt-6-sol'].variants).toHaveProperty('none')
+	for (const id of ['gpt-6.2-astra', 'gpt-6.2-sol']) {
+	  expect(models[id].limit).toEqual({ context: 1050000, input: 922000, output: 128000 })
+	  expect(Object.keys(models[id].variants)).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+	}
     expect(models['gpt-6-luna'].limit).toEqual({ context: 1050000, output: 128000 })
     expect(models['gpt-6']).toBeUndefined()
     expect(models['gpt-6-astra']).toEqual({

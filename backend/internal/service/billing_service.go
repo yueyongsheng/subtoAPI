@@ -644,6 +644,9 @@ func (s *BillingService) initFallbackPricing() {
 		LongContextInputMultiplier:         2,
 		LongContextOutputMultiplier:        1.5,
 	}
+	for _, id := range []string{"gpt-6.2-astra", "gpt-6.2-sol"} {
+		s.fallbackPrices[id], _ = yuexiangOpenAIModelPricing(id)
+	}
 	s.fallbackPrices["gpt-6.1-sol"] = &ModelPricing{
 		InputPricePerToken:                 7e-6,
 		InputPricePerTokenPriority:         14e-6,
@@ -1390,7 +1393,7 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	// OpenAI（GPT-5 / Codex 族）：仅匹配已知型号，避免未知 OpenAI 型号误计价。
 	if normalized := normalizeKnownOpenAICodexModel(modelLower); normalized != "" {
 		switch normalized {
-		case "gpt-6.1-terra", "gpt-6-sol", "gpt-6.1-sol", "gpt-6-luna":
+		case "gpt-6.2-astra", "gpt-6.2-sol", "gpt-6.1-terra", "gpt-6-sol", "gpt-6.1-sol", "gpt-6-luna":
 			return s.fallbackPrices[normalized]
 		case "gpt-6-astra":
 			return s.fallbackPrices["gpt-6-astra"]
@@ -1538,12 +1541,12 @@ func (s *BillingService) getModelPricingAt(model string, pricingAt time.Time) (*
 	// 标准化模型名称（转小写）
 	model = strings.ToLower(model)
 	canonicalModel := canonicalizeOpenAIModelAliasSpelling(model)
-	if strings.HasPrefix(canonicalModel, "gpt-6") && canonicalModel != "gpt-6-astra" && canonicalModel != "gpt-6-sol" && !openai.IsGPT61SolModelSpelling(canonicalModel) && !openai.IsGPT61TerraModelSpelling(canonicalModel) {
+	if strings.HasPrefix(canonicalModel, "gpt-6") && canonicalModel != "gpt-6-astra" && canonicalModel != "gpt-6-sol" && !openai.IsGPT61SolModelSpelling(canonicalModel) && !openai.IsGPT61TerraModelSpelling(canonicalModel) && !openai.IsGPT62ModelSpelling(canonicalModel) {
 		return nil, fmt.Errorf("%w for model: %s", ErrModelPricingUnavailable, model)
 	}
 	// 悦享公开 OpenAI 收费模型使用精确允许列表和统一基础价格。
 	if pricing, ok := yuexiangOpenAIModelPricing(canonicalModel); ok {
-		return s.applyModelSpecificPricingPolicy(model, pricing), nil
+		return s.applyModelSpecificPricingPolicyEx(model, pricing, true, pricingAt), nil
 	}
 
 	// 1. 优先从动态价格服务获取
@@ -2147,6 +2150,16 @@ func (s *BillingService) applyModelSpecificPricingPolicyEx(model string, pricing
 	if isOpenAIGPT6AstraModel(normalized) {
 		cloned.UltrafastMultiplier = 6
 	}
+	if openai.IsGPT62ModelSpelling(normalized) {
+		if pricingAt.IsZero() {
+			pricingAt = time.Now()
+		}
+		cloned.UltrafastMultiplier = 3
+		// The official promotion ends 2027-03-01 00:00 Pacific (08:00 UTC).
+		if !pricingAt.Before(time.Date(2027, time.March, 1, 8, 0, 0, 0, time.UTC)) {
+			cloned.UltrafastMultiplier = 6
+		}
+	}
 	if needsOpus55FastMultiplier {
 		multiplier := 2.0
 		cloned.FastMultiplier = &multiplier
@@ -2175,7 +2188,7 @@ func (s *BillingService) applyModelSpecificPricingPolicyEx(model string, pricing
 // 档的模型（如 gpt-5.5-pro、gpt-5.4-mini/nano）返回 0。
 func openAIModelFastPricingRatio(normalized string) float64 {
 	switch normalized {
-	case "gpt-5.4", "gpt-5.5", "codex-auto-review", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra", "gpt-6-sol", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna":
+	case "gpt-6.2-astra", "gpt-6.2-sol", "gpt-5.4", "gpt-5.5", "codex-auto-review", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra", "gpt-6-sol", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna":
 		return 2.0
 	default:
 		if isOpenAIGPT6AstraModel(normalized) {

@@ -2236,11 +2236,11 @@ func openAIFastPolicySettingsFromContext(ctx context.Context) *OpenAIFastPolicyS
 }
 
 // openAIModelSupportsUltrafast reports whether OpenAI offers the Ultrafast
-// service tier for the model: GPT-6 Astra and GPT-6.1 Sol only.
+// service tier for the model: GPT-6 Astra, GPT-6.1 Sol and GPT-6.2.
 // Billing keeps the deployed model-specific multipliers independently.
 func openAIModelSupportsUltrafast(model string) bool {
 	normalized := normalizeKnownOpenAICodexModel(model)
-	return isOpenAIGPT6AstraModel(normalized) || normalized == "gpt-6.1-sol"
+	return openai.IsGPT62ModelSpelling(normalized) || isOpenAIGPT6AstraModel(normalized) || normalized == "gpt-6.1-sol"
 }
 
 // openAIGroupForcedServiceTier returns the service_tier that the trusted request
@@ -2842,7 +2842,7 @@ func validateGPT61CompatRequest(body []byte, model string) error {
 }
 
 func validateGPT61RawEffort(body []byte, model string) error {
-	if !openai.IsGPT61SolModelSpelling(model) && !openai.IsGPT61TerraModelSpelling(model) {
+	if !openai.IsGPT62ModelSpelling(model) && !openai.IsGPT61SolModelSpelling(model) && !openai.IsGPT61TerraModelSpelling(model) {
 		return nil
 	}
 	for _, path := range []string{"reasoning.effort", "reasoning_effort", "output_config.effort"} {

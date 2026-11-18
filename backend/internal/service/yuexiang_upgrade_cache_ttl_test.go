@@ -18,7 +18,9 @@ func TestYuexiangUpgradePreservesCacheWriteCostAcrossTTLs(t *testing.T) {
 			catalog = newStubPricingServiceFromJSON(t, string(embedded))
 		}
 		svc := NewBillingService(nil, catalog)
-		for _, model := range yuexiangOpenAIChargedModels {
+		// Freeze the deployed pre-GPT-6.2 cards: new models have explicitly
+		// published 12h prices and must not inherit this legacy fallback.
+		for _, model := range []string{"gpt-6-astra", "gpt-6-sol", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-5.6-sol", "gpt-5.5", "codex-auto-review", "gpt-5.6-terra", "gpt-5.4", "gpt-5.6-luna"} {
 			for _, tier := range []string{"", "priority", "flex", "batch"} {
 				for _, input := range []int{100, 272000, 272001} {
 					t.Run(fmt.Sprintf("%s/%s/%s/%d", source, model, tier, input), func(t *testing.T) {

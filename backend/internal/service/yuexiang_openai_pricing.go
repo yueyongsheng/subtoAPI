@@ -9,6 +9,8 @@ const (
 )
 
 var yuexiangOpenAIChargedModels = [...]string{
+	"gpt-6.2-astra",
+	"gpt-6.2-sol",
 	"gpt-6-astra",
 	"gpt-6-sol",
 	"gpt-6.1-sol",
@@ -35,7 +37,16 @@ func yuexiangOpenAIModelPricing(model string) (*ModelPricing, bool) {
 		}
 	}
 	var input, output, cacheWrite, cacheRead float64
+	var cacheWrite12h *float64
 	switch model {
+	case "gpt-6.2-astra":
+		input, output, cacheWrite, cacheRead = 28e-6, 140e-6, 35e-6, 1.4e-6
+		price := 70e-6
+		cacheWrite12h = &price
+	case "gpt-6.2-sol":
+		input, output, cacheWrite, cacheRead = 7e-6, 35e-6, 8.75e-6, 0.35e-6
+		price := 17.5e-6
+		cacheWrite12h = &price
 	case "gpt-6-astra":
 		input, output, cacheWrite, cacheRead = 35e-6, 175e-6, 43.75e-6, 3.5e-6
 	case "gpt-6.1-sol":
@@ -61,6 +72,7 @@ func yuexiangOpenAIModelPricing(model string) (*ModelPricing, bool) {
 		OutputPricePerToken:                output,
 		OutputPricePerTokenPriority:        output * 2,
 		CacheCreationPricePerToken:         cacheWrite,
+		CacheCreation12hPricePerToken:      cacheWrite12h,
 		CacheCreationPricePerTokenPriority: cacheWrite * 2,
 		CacheReadPricePerToken:             cacheRead,
 		CacheReadPricePerTokenPriority:     cacheRead * 2,
