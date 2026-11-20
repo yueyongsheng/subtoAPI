@@ -360,38 +360,35 @@ func createTestPayloadWithPrompt(modelID, prompt string) (map[string]any, error)
 		testPrompt = "hi"
 	}
 
-	return map[string]any{
+	payload := map[string]any{
 		"model": modelID,
 		"messages": []map[string]any{
 			{
 				"role": "user",
 				"content": []map[string]any{
 					{
-						"type": "text",
-						"text": testPrompt,
-						"cache_control": map[string]string{
-							"type": "ephemeral",
-						},
+						"type":          "text",
+						"text":          testPrompt,
+						"cache_control": map[string]string{"type": "ephemeral"},
 					},
 				},
 			},
 		},
 		"system": []map[string]any{
 			{
-				"type": "text",
-				"text": claudeCodeSystemPrompt,
-				"cache_control": map[string]string{
-					"type": "ephemeral",
-				},
+				"type":          "text",
+				"text":          claudeCodeSystemPrompt,
+				"cache_control": map[string]string{"type": "ephemeral"},
 			},
 		},
-		"metadata": map[string]string{
-			"user_id": sessionID,
-		},
-		"max_tokens":  accountProbeMaxTokens([]string{prompt}, 1024),
-		"temperature": 1,
-		"stream":      true,
-	}, nil
+		"metadata":   map[string]string{"user_id": sessionID},
+		"max_tokens": accountProbeMaxTokens([]string{prompt}, 1024),
+		"stream":     true,
+	}
+	if !claude.RejectsTemperature(modelID) {
+		payload["temperature"] = 1
+	}
+	return payload, nil
 }
 
 // TestAccountConnection tests an account's connection by sending a test request
@@ -737,6 +734,28 @@ func (s *AccountTestService) testClaudeVertexServiceAccountConnection(c *gin.Con
 	return s.processClaudeStream(c, resp.Body)
 }
 
+func buildBedrockTestPayload(modelID string) map[string]any {
+	payload := map[string]any{
+		"anthropic_version": "bedrock-2023-05-31",
+		"messages": []map[string]any{
+			{
+				"role": "user",
+				"content": []map[string]any{
+					{
+						"type": "text",
+						"text": "hi",
+					},
+				},
+			},
+		},
+		"max_tokens": 256,
+	}
+	if !claude.RejectsTemperature(modelID) {
+		payload["temperature"] = 1
+	}
+	return payload
+}
+
 // testBedrockAccountConnection tests a Bedrock (SigV4 or API Key) account using non-streaming invoke
 func (s *AccountTestService) testBedrockAccountConnection(c *gin.Context, ctx context.Context, account *Account, testModelID string, prompts ...string) error {
 	region := bedrockRuntimeRegion(account)
@@ -754,21 +773,15 @@ func (s *AccountTestService) testBedrockAccountConnection(c *gin.Context, ctx co
 	c.Writer.Flush()
 
 	// Create a minimal Bedrock-compatible payload (no stream, no cache_control)
-	bedrockPayload := map[string]any{
-		"anthropic_version": "bedrock-2023-05-31",
-		"messages": []map[string]any{
-			{
-				"role": "user",
-				"content": []map[string]any{
-					{
-						"type": "text",
-						"text": accountProbePrompt(prompts),
-					},
-				},
-			},
-		},
-		"max_tokens":  accountProbeMaxTokens(prompts, 256),
-		"temperature": 1,
+	bedrockPayload := buildBedrockTestPayload(testModelID)
+	bedrockPayload["max_tokens"] = accountProbeMaxTokens(prompts, 256)
+	if claude.RejectsTemperature(testModelID) {
+		delete(bedrockPayload, "temperature")
+	}
+	if content, ok := bedrockPayload["messages"].([]map[string]any); ok && len(content) > 0 {
+		if items, ok := content[0]["content"].([]map[string]any); ok && len(items) > 0 {
+			items[0]["text"] = accountProbePrompt(prompts)
+		}
 	}
 	bedrockBody, _ := json.Marshal(bedrockPayload)
 

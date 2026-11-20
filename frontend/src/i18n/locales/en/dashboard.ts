@@ -679,6 +679,7 @@ export default {
       longContextDisabledNote: 'Long-context tier pricing is disabled for this group: requests above the threshold are billed at the base tier; official tiers are for reference only'
     },
     table: {
+      copyModelId: 'Copy model ID {model}',
       model: 'Model',
       input: 'Input',
       output: 'Output',
@@ -759,7 +760,7 @@ export default {
     }
   },
 
-
+  // Model Plaza (public group/model pricing showcase)
   affiliate: {
     title: 'Affiliate Rebates',
     description: 'Invite new users and convert your rebate quota into account balance',

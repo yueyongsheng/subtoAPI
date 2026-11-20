@@ -684,6 +684,7 @@ export default {
       longContextDisabledNote: '该分组未启用长上下文阶梯计费，超阈值请求仍按基础档计费，官方阶梯仅供参考'
     },
     table: {
+      copyModelId: '复制模型 ID {model}',
       model: '模型',
       input: '输入',
       output: '输出',
@@ -763,7 +764,7 @@ export default {
     }
   },
 
-
+  // Model Plaza (public group/model pricing showcase)
   affiliate: {
     title: '邀请返利',
     description: '邀请新用户注册，并将返利额度转入账户余额',
