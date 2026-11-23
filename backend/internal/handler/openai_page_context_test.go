@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -92,6 +93,71 @@ func TestNormalizeCodexAdditionalUntrustedContext(t *testing.T) {
 	}
 }
 
+func TestNormalizeCodexDynamicAdditionalUntrustedContext(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		output string
+	}{
+		{name: "plugin_context", output: "context from a plugin"},
+		{name: "editor_state_2", output: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := pageContextRequest(t, map[string]any{
+				"type":      "function_call_output",
+				"namespace": "agent",
+				"name":      tc.name,
+				"call_id":   nil,
+				"output":    tc.output,
+			}, map[string]any{"role": "user", "content": "continue"})
+			h := &OpenAIGatewayHandler{}
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			require.False(t, h.validateFunctionCallOutputRequest(c, body, zap.NewNop()))
+			require.Equal(t, 400, w.Code)
+
+			got, changed := normalizeCodexUntrustedContext(body)
+			require.True(t, changed)
+			w = httptest.NewRecorder()
+			c, _ = gin.CreateTestContext(w)
+			require.True(t, h.validateFunctionCallOutputRequest(c, got, zap.NewNop()))
+			require.False(t, c.Writer.Written())
+			require.Equal(t, "message", gjson.GetBytes(got, "input.0.type").String())
+			require.Equal(t, "<external_"+tc.name+">"+tc.output+"</external_"+tc.name+">", gjson.GetBytes(got, "input.0.content.0.text").String())
+		})
+	}
+}
+
+func TestNormalizeCodexDynamicAdditionalUntrustedContextRejectsUnsafeNames(t *testing.T) {
+	for _, name := range []string{"", "bad-name", "<bad>", strings.Repeat("a", 129)} {
+		body := pageContextRequest(t, map[string]any{
+			"type":      "function_call_output",
+			"namespace": "agent",
+			"name":      name,
+			"output":    "context",
+		})
+		got, changed := normalizeCodexUntrustedContext(body)
+		require.False(t, changed, "name=%q", name)
+		require.Equal(t, body, got)
+	}
+}
+
+func TestNormalizeCodexAdditionalContextPreservesRealToolItem(t *testing.T) {
+	for _, callID := range []any{nil, "", "call_real"} {
+		item := map[string]any{
+			"type":      "function_call_output",
+			"id":        "fco_real",
+			"namespace": "agent",
+			"name":      "read_file",
+			"call_id":   callID,
+			"output":    "result",
+		}
+		body := pageContextRequest(t, item)
+		got, changed := normalizeCodexUntrustedContext(body)
+		require.False(t, changed, "call_id=%v", callID)
+		require.Equal(t, body, got)
+	}
+}
+
 func TestNormalizeCodexAdditionalUntrustedContextPreservesRealAndMalformedOutputs(t *testing.T) {
 	for _, name := range codexTextContextNamesForTest {
 		for _, override := range []map[string]any{
@@ -123,8 +189,8 @@ func TestNormalizeCodexAdditionalUntrustedContextPreservesRealAndMalformedOutput
 		}
 	}
 	// Recognized external context cannot make an unrelated tool result valid.
-	body := pageContextRequest(t, pageContextItem("browser_info", "tab"),
-		pageContextItem("read_file", "result"))
+	badTool := pageContextItem("read_file", "result")
+	body := pageContextRequest(t, pageContextItem("browser_info", "tab"), badTool)
 	got, changed := normalizeCodexUntrustedContext(body)
 	require.True(t, changed)
 	h := &OpenAIGatewayHandler{}
@@ -261,7 +327,7 @@ func TestNormalizeCodexPageContextRejectsUnrelatedOrMalformedItems(t *testing.T)
 		{"null call id", "call_id", nil},
 		{"other namespace", "namespace", "codex_app"},
 		{"missing namespace", "namespace", ""},
-		{"other tool", "name", "read_file"},
+		{"other tool", "name", "read-file"},
 		{"other type", "type", "custom_tool_call_output"},
 		{"not JSON", "output", "some text"},
 		{"not snapshot", "output", `{"other":null}`},
