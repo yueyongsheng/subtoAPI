@@ -93,6 +93,32 @@ func TestNormalizeCodexAdditionalUntrustedContext(t *testing.T) {
 	}
 }
 
+func TestNormalizeCodexKnownContextAcceptsNullCallIDAfterCompaction(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		output string
+	}{
+		{name: "codex_apps_open_page", output: `{"page_id":null}`},
+		{name: "browser_info", output: "browser context"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			item := pageContextItem(tc.name, tc.output)
+			item["call_id"] = nil
+			body := pageContextRequest(t, item, map[string]any{"role": "user", "content": "continue"})
+
+			got, changed := normalizeCodexUntrustedContext(body)
+			require.True(t, changed)
+			require.Equal(t, "message", gjson.GetBytes(got, "input.0.type").String())
+			expectedText := "<external_" + tc.name + ">" + tc.output + "</external_" + tc.name + ">"
+			if tc.name == "codex_apps_open_page" {
+				expectedText = "<external_" + tc.name + ">\n" + tc.output + "\n</external_" + tc.name + ">"
+			}
+			require.Equal(t, expectedText, gjson.GetBytes(got, "input.0.content.0.text").String())
+			require.False(t, service.ValidateFunctionCallOutputContextBytes(got).HasFunctionCallOutput)
+		})
+	}
+}
+
 func TestNormalizeCodexDynamicAdditionalUntrustedContext(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -162,7 +188,6 @@ func TestNormalizeCodexAdditionalUntrustedContextPreservesRealAndMalformedOutput
 	for _, name := range codexTextContextNamesForTest {
 		for _, override := range []map[string]any{
 			{"call_id": "call_real"},
-			{"call_id": nil},
 			{"call_id": 42},
 			{"namespace": "other"},
 			{"namespace": nil},
@@ -324,7 +349,6 @@ func TestNormalizeCodexPageContextRejectsUnrelatedOrMalformedItems(t *testing.T)
 	}{
 		{"real call", "call_id", "call_real"},
 		{"invalid call id", "call_id", 42},
-		{"null call id", "call_id", nil},
 		{"other namespace", "namespace", "codex_app"},
 		{"missing namespace", "namespace", ""},
 		{"other tool", "name", "read-file"},

@@ -102,7 +102,10 @@ func isCodexAdditionalContextItem(item map[string]json.RawMessage, name string, 
 	}
 	if callID, exists := item["call_id"]; exists {
 		var value string
-		if isJSONNull(callID) || json.Unmarshal(callID, &value) != nil || strings.TrimSpace(value) != "" {
+		// Codex Desktop may serialize the external context placeholder as
+		// call_id:null after compaction. It remains distinguishable from a real
+		// tool result because the item has a recognized external-context name.
+		if !isJSONNull(callID) && (json.Unmarshal(callID, &value) != nil || strings.TrimSpace(value) != "") {
 			return false
 		}
 	}
